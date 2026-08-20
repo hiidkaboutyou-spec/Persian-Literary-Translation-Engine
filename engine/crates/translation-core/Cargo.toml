@@ -1,0 +1,8 @@
+[package]
+name = "translation-core"
+version = "0.1.0"
+edition = "2021"
+description = "Core translation pipeline primitives for the Persian Literary Translation Engine"
+license = "MIT"
+
+[dependencies]
