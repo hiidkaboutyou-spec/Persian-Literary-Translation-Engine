@@ -1,3 +1,7 @@
+pub mod pipeline;
+
+pub use pipeline::{PipelineStage, TranslationPipeline};
+
 #[derive(Debug, Clone)]
 pub struct TranslationRequest {
     pub source: String,
