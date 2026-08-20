@@ -1,0 +1,23 @@
+{
+  "module": "intimacy_translation_pipeline",
+  "version": "1.0",
+  "purpose": "literary quality control framework",
+  "stages": [
+    {
+      "name": "scene_analysis",
+      "checks": ["purpose", "relationship_context", "emotional_state"]
+    },
+    {
+      "name": "voice_preservation",
+      "checks": ["pov", "dialogue_style", "character_consistency"]
+    },
+    {
+      "name": "adaptation_review",
+      "checks": ["meaning_preservation", "tone", "pacing"]
+    },
+    {
+      "name": "final_quality_pass",
+      "checks": ["natural_persian", "literary_flow", "no_unintended_additions"]
+    }
+  ]
+}
