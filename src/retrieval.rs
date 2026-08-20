@@ -3,7 +3,7 @@ use std::collections::HashSet;
 
 use crate::models::{Character, GlossaryEntry, RelationshipMemory, TranslationMemoryEntry};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct ScoredMemory<'a> {
     pub entry: &'a TranslationMemoryEntry,
     pub score: f32,
