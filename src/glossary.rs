@@ -1,16 +1,24 @@
-use serde::{Deserialize, Serialize};
+use crate::domain::GlossaryEntry;
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct GlossaryEntry {
-    pub source: String,
-    pub preferred_translation: String,
-    pub notes: Option<String>,
+#[derive(Default)]
+pub struct GlossaryEngine {
+    entries: Vec<GlossaryEntry>,
 }
 
-pub struct GlossaryManager;
-
-impl GlossaryManager {
+impl GlossaryEngine {
     pub fn new() -> Self {
-        Self
+        Self { entries: Vec::new() }
+    }
+
+    pub fn add(&mut self, entry: GlossaryEntry) {
+        self.entries.push(entry);
+    }
+
+    pub fn find(&self, source: &str) -> Option<&GlossaryEntry> {
+        self.entries.iter().find(|entry| entry.source == source)
+    }
+
+    pub fn all(&self) -> &[GlossaryEntry] {
+        &self.entries
     }
 }
