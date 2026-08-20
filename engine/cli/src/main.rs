@@ -11,7 +11,8 @@ fn usage() {
 }
 
 fn inspect(path: &str) -> Result<(), String> {
-    let document = load_text_file(path).map_err(|error| format!("failed to read {path}: {error}"))?;
+    let document =
+        load_text_file(path).map_err(|error| format!("failed to read {path}: {error}"))?;
     let chapters = split_into_chapters(&document.text);
 
     println!("title: {}", document.title);
@@ -24,7 +25,8 @@ fn inspect(path: &str) -> Result<(), String> {
 }
 
 fn prepare(path: &str, target_language: &str) -> Result<(), String> {
-    let document = load_text_file(path).map_err(|error| format!("failed to read {path}: {error}"))?;
+    let document =
+        load_text_file(path).map_err(|error| format!("failed to read {path}: {error}"))?;
     let chapters = split_into_chapters(&document.text);
 
     println!("document: {}", document.title);
