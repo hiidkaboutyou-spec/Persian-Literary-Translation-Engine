@@ -1,0 +1,8 @@
+[package]
+name = "document-engine"
+version = "0.1.0"
+edition = "2021"
+description = "Document ingestion primitives for the Persian Literary Translation Engine"
+license = "MIT"
+
+[dependencies]
