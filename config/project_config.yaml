@@ -1,0 +1,15 @@
+project:
+  name: Persian Literary Translation Engine
+  language_source: English
+  language_target: Persian
+  domain: fiction
+
+translation:
+  preserve_voice: true
+  preserve_emotion: true
+  use_glossary: true
+  use_translation_memory: true
+
+output:
+  format: docx
+  style: literary_persian
