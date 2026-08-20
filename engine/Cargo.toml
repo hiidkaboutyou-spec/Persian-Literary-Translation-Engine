@@ -1,8 +1,10 @@
 [workspace]
-members = [
-    "crates/translation-core",
-    "crates/memory-engine",
-    "crates/character-engine",
-    "crates/quality-engine",
-]
 resolver = "2"
+members = [
+  "crates/translation-core",
+  "crates/memory-engine",
+  "crates/character-engine",
+  "crates/quality-engine",
+  "crates/document-engine",
+  "cli"
+]
