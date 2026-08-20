@@ -1,6 +1,10 @@
 //! Document ingestion layer.
 //! Future support: PDF, EPUB, DOCX parsing.
 
+pub mod chapter;
+
+pub use chapter::{split_into_chapters, Chapter};
+
 #[derive(Debug, Clone)]
 pub struct Document {
     pub title: String,
