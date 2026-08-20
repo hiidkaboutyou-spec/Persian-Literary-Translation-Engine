@@ -1,3 +1,11 @@
+pub mod pipeline;
+pub mod provider;
+
+pub use pipeline::{PipelineStage, TranslationPipeline};
+pub use provider::{
+    EchoProvider, PassKind, ProviderError, ProviderRequest, ProviderResponse, TranslationProvider,
+};
+
 #[derive(Debug, Clone)]
 pub struct TranslationRequest {
     pub source: String,
@@ -17,4 +25,38 @@ pub fn prepare_translation(request: TranslationRequest, context: TranslationCont
         context.glossary_enabled,
         context.character_memory_enabled
     )
+}
+
+pub fn execute_translation<P: TranslationProvider>(
+    provider: &P,
+    request: TranslationRequest,
+    context_text: impl Into<String>,
+) -> Result<ProviderResponse, ProviderError> {
+    provider.execute(&ProviderRequest {
+        pass: PassKind::Translate,
+        source_text: request.source,
+        target_language: request.target_language,
+        context: context_text.into(),
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn translation_execution_is_provider_neutral() {
+        let result = execute_translation(
+            &EchoProvider,
+            TranslationRequest {
+                source: "hello".into(),
+                target_language: "fa".into(),
+            },
+            "character context",
+        )
+        .unwrap();
+
+        assert_eq!(result.text, "hello");
+        assert_eq!(result.provider, "echo");
+    }
 }
