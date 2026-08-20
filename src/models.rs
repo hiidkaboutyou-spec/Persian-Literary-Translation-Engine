@@ -27,3 +27,10 @@ pub struct TranslationMemoryEntry {
     pub translation: String,
     pub context: String,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RelationshipMemory {
+    pub character_a: String,
+    pub character_b: String,
+    pub dynamic_notes: String,
+}
