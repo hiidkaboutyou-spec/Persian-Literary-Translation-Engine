@@ -1,0 +1,8 @@
+[workspace]
+members = [
+    "translator-core",
+    "memory-engine",
+    "character-engine",
+    "quality-engine"
+]
+resolver = "2"
