@@ -47,7 +47,7 @@ mod tests {
 
     #[test]
     fn chapter_api_is_exposed() {
-        let chapters = split_into_chapters("One\n\nTwo");
+        let chapters = split_into_chapters("Chapter 1\nOne\nChapter 2\nTwo");
         assert_eq!(chapters.len(), 2);
         assert_eq!(chapters[0].index, 0);
         assert_eq!(chapters[1].content, "Two");
