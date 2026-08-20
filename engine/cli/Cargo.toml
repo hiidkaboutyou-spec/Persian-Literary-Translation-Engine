@@ -1,0 +1,10 @@
+[package]
+name = "literary-engine"
+version = "0.1.0"
+edition = "2021"
+description = "Command-line interface for the Persian Literary Translation Engine"
+license = "MIT"
+
+[dependencies]
+translation-core = { path = "../crates/translation-core" }
+document-engine = { path = "../crates/document-engine" }
