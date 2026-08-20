@@ -85,7 +85,11 @@ pub fn similarity(a: &str, b: &str) -> f32 {
     let b_tokens: HashSet<&str> = b_norm.split_whitespace().collect();
     let intersection = a_tokens.intersection(&b_tokens).count() as f32;
     let union = a_tokens.union(&b_tokens).count() as f32;
-    let jaccard = if union == 0.0 { 0.0 } else { intersection / union };
+    let jaccard = if union == 0.0 {
+        0.0
+    } else {
+        intersection / union
+    };
 
     let phrase_bonus = if a_norm.contains(&b_norm) || b_norm.contains(&a_norm) {
         0.20
@@ -136,18 +140,37 @@ mod tests {
     #[test]
     fn ranks_semantically_related_memory_first() {
         let entries = vec![
-            entry("a quiet smile", "لبخندی آرام", "gentle dialogue", &["tender"]),
-            entry("he slammed the door", "در را محکم کوبید", "argument", &["anger"]),
+            entry(
+                "a quiet smile",
+                "لبخندی آرام",
+                "gentle dialogue",
+                &["tender"],
+            ),
+            entry(
+                "he slammed the door",
+                "در را محکم کوبید",
+                "argument",
+                &["anger"],
+            ),
         ];
 
-        let hits = rank_memory(&entries, "quiet smile in a gentle moment", &RetrievalConfig::default());
+        let hits = rank_memory(
+            &entries,
+            "quiet smile in a gentle moment",
+            &RetrievalConfig::default(),
+        );
         assert_eq!(hits.len(), 1);
         assert_eq!(hits[0].entry.translation, "لبخندی آرام");
     }
 
     #[test]
     fn exact_source_match_receives_maximum_relevance() {
-        let entries = vec![entry("I missed you", "دلم برات تنگ شده بود", "dialogue", &[])];
+        let entries = vec![entry(
+            "I missed you",
+            "دلم برات تنگ شده بود",
+            "dialogue",
+            &[],
+        )];
         let hits = rank_memory(&entries, "I missed you", &RetrievalConfig::default());
         assert_eq!(hits[0].score, 1.0);
     }
@@ -159,7 +182,11 @@ mod tests {
             entry("soft touch", "لمس آرام", "intimacy", &[]),
             entry("storm outside", "طوفان بیرون", "weather", &[]),
         ];
-        let config = RetrievalConfig { max_results: 1, min_score: 0.10, ..Default::default() };
+        let config = RetrievalConfig {
+            max_results: 1,
+            min_score: 0.10,
+            ..Default::default()
+        };
         let hits = rank_memory(&entries, "soft voice", &config);
         assert_eq!(hits.len(), 1);
         assert_eq!(hits[0].entry.source, "soft voice");
