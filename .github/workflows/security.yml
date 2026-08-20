@@ -1,0 +1,45 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'engine/**'
+      - '.github/workflows/security.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'engine/**'
+      - '.github/workflows/security.yml'
+  schedule:
+    - cron: '23 3 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cargo-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: engine
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@cargo-audit
+
+      - name: Generate lockfile
+        run: cargo generate-lockfile
+
+      - name: Audit dependencies
+        run: cargo audit
