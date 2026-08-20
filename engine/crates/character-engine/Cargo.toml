@@ -1,0 +1,8 @@
+[package]
+name = "character-engine"
+version = "0.1.0"
+edition = "2021"
+description = "Character and voice memory primitives"
+license = "MIT"
+
+[dependencies]
