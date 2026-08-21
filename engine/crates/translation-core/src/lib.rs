@@ -1,7 +1,7 @@
 pub mod pipeline;
 pub mod provider;
 
-pub use pipeline::{PipelineStage, TranslationPipeline};
+pub use pipeline::{PipelineInput, PipelineOutput, PipelineStage, TranslationPipeline};
 pub use provider::{
     EchoProvider, PassKind, ProviderError, ProviderRequest, ProviderResponse, TranslationProvider,
 };
