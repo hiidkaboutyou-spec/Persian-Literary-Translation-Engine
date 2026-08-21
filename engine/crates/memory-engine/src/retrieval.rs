@@ -15,6 +15,11 @@ pub struct RetrievalConfig {
     pub min_score: f32,
     pub context_weight: f32,
     pub tag_weight: f32,
+    /// Prevents near-identical source examples from crowding out useful variety.
+    /// Set to 1.0 to disable source-level diversity filtering.
+    pub diversity_threshold: f32,
+    /// Avoids returning multiple memories that collapse to the same Persian wording.
+    pub deduplicate_translations: bool,
 }
 
 impl Default for RetrievalConfig {
@@ -24,6 +29,8 @@ impl Default for RetrievalConfig {
             min_score: 0.12,
             context_weight: 0.30,
             tag_weight: 0.15,
+            diversity_threshold: 0.82,
+            deduplicate_translations: true,
         }
     }
 }
@@ -37,7 +44,7 @@ pub fn rank_memory<'a>(
         return Vec::new();
     }
 
-    let mut hits: Vec<_> = entries
+    let mut candidates: Vec<_> = entries
         .iter()
         .filter_map(|entry| {
             let source_score = similarity(query, &entry.source);
@@ -60,14 +67,43 @@ pub fn rank_memory<'a>(
         })
         .collect();
 
-    hits.sort_by(|a, b| {
+    candidates.sort_by(|a, b| {
         b.score
             .partial_cmp(&a.score)
             .unwrap_or(Ordering::Equal)
             .then_with(|| a.entry.source.len().cmp(&b.entry.source.len()))
     });
-    hits.truncate(config.max_results);
-    hits
+
+    let mut selected: Vec<RetrievalHit<'a>> = Vec::with_capacity(config.max_results);
+    let mut seen_translations = HashSet::new();
+
+    for candidate in candidates {
+        if config.deduplicate_translations {
+            let translation_key = normalize(&candidate.entry.translation);
+            if !translation_key.is_empty() && seen_translations.contains(&translation_key) {
+                continue;
+            }
+        }
+
+        let too_similar = selected.iter().any(|existing| {
+            similarity(&candidate.entry.source, &existing.entry.source)
+                >= config.diversity_threshold
+        });
+        if too_similar {
+            continue;
+        }
+
+        if config.deduplicate_translations {
+            seen_translations.insert(normalize(&candidate.entry.translation));
+        }
+        selected.push(candidate);
+
+        if selected.len() >= config.max_results {
+            break;
+        }
+    }
+
+    selected
 }
 
 pub fn similarity(a: &str, b: &str) -> f32 {
@@ -188,5 +224,58 @@ mod tests {
         let hits = rank_memory(&entries, "soft voice", &config);
         assert_eq!(hits.len(), 1);
         assert_eq!(hits[0].entry.source, "soft voice");
+    }
+
+    #[test]
+    fn removes_duplicate_persian_wording_from_prompt_evidence() {
+        let entries = vec![
+            entry("he whispered softly", "آرام زمزمه کرد", "intimate dialogue", &[]),
+            entry("she whispered softly", "آرام زمزمه کرد", "quiet dialogue", &[]),
+            entry("a soft laugh", "خنده‌ای آرام", "tender moment", &[]),
+        ];
+
+        let hits = rank_memory(
+            &entries,
+            "soft quiet dialogue",
+            &RetrievalConfig {
+                min_score: 0.05,
+                ..Default::default()
+            },
+        );
+
+        assert_eq!(
+            hits.iter()
+                .filter(|hit| hit.entry.translation == "آرام زمزمه کرد")
+                .count(),
+            1
+        );
+    }
+
+    #[test]
+    fn preserves_varied_examples_instead_of_near_duplicate_sources() {
+        let entries = vec![
+            entry("he gave her a quiet smile", "لبخند آرامی به او زد", "tender", &[]),
+            entry("he gave him a quiet smile", "لبخند آرامی نثارش کرد", "tender", &[]),
+            entry("his voice softened", "صدایش نرم‌تر شد", "tender", &[]),
+        ];
+
+        let hits = rank_memory(
+            &entries,
+            "quiet tender moment smile voice",
+            &RetrievalConfig {
+                min_score: 0.05,
+                diversity_threshold: 0.70,
+                deduplicate_translations: false,
+                ..Default::default()
+            },
+        );
+
+        assert!(hits.iter().any(|hit| hit.entry.source == "his voice softened"));
+        assert_eq!(
+            hits.iter()
+                .filter(|hit| hit.entry.source.contains("quiet smile"))
+                .count(),
+            1
+        );
     }
 }
