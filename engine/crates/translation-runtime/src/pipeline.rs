@@ -27,7 +27,7 @@ pub struct ContextSnapshot {
 pub struct DecisionTrace {
     pub decisions: Vec<String>,
     pub rationale: Vec<String>,
-    pub confidence: f32,
+    pub confidence: u8,
     pub human_overrides: Vec<String>,
 }
 
@@ -95,7 +95,7 @@ mod tests {
             decision_trace: DecisionTrace {
                 decisions: vec!["choice".into()],
                 rationale: vec!["reason".into()],
-                confidence: 0.9,
+                confidence: 90,
                 human_overrides: vec![],
             },
         };
@@ -122,7 +122,7 @@ mod tests {
             decision_trace: DecisionTrace {
                 decisions: vec![],
                 rationale: vec![],
-                confidence: 0.0,
+                confidence: 0,
                 human_overrides: vec![],
             },
         });
