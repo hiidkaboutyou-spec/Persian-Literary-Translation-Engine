@@ -1,4 +1,4 @@
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CharacterProfile {
     pub name: String,
     pub voice_notes: String,
@@ -16,9 +16,55 @@ pub fn build_character_context(profile: &CharacterProfile) -> String {
     parts.join("\n")
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RelationshipProfile {
+    pub character_a: String,
+    pub character_b: String,
+    pub dynamic_notes: String,
+    pub address_notes: String,
+    pub boundaries_notes: String,
+}
+
+impl RelationshipProfile {
+    pub fn new(character_a: impl Into<String>, character_b: impl Into<String>) -> Self {
+        Self {
+            character_a: character_a.into(),
+            character_b: character_b.into(),
+            dynamic_notes: String::new(),
+            address_notes: String::new(),
+            boundaries_notes: String::new(),
+        }
+    }
+
+    fn context(&self) -> String {
+        let mut parts = vec![format!(
+            "Relationship: {} ↔ {}",
+            self.character_a, self.character_b
+        )];
+        if !self.dynamic_notes.trim().is_empty() {
+            parts.push(format!("Dynamic: {}", self.dynamic_notes.trim()));
+        }
+        if !self.address_notes.trim().is_empty() {
+            parts.push(format!("Forms of address: {}", self.address_notes.trim()));
+        }
+        if !self.boundaries_notes.trim().is_empty() {
+            parts.push(format!("Continuity constraints: {}", self.boundaries_notes.trim()));
+        }
+        parts.join("\n")
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CharacterAlias {
+    pub canonical_name: String,
+    pub alias: String,
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct CharacterBible {
     profiles: Vec<CharacterProfile>,
+    aliases: Vec<CharacterAlias>,
+    relationships: Vec<RelationshipProfile>,
 }
 
 impl CharacterBible {
@@ -30,28 +76,98 @@ impl CharacterBible {
         self.profiles.push(profile);
     }
 
+    pub fn add_alias(&mut self, canonical_name: impl Into<String>, alias: impl Into<String>) {
+        let canonical_name = canonical_name.into();
+        let alias = alias.into();
+        if canonical_name.trim().is_empty() || alias.trim().is_empty() {
+            return;
+        }
+        if self.aliases.iter().any(|existing| {
+            normalize_for_matching(&existing.canonical_name) == normalize_for_matching(&canonical_name)
+                && normalize_for_matching(&existing.alias) == normalize_for_matching(&alias)
+        }) {
+            return;
+        }
+        self.aliases.push(CharacterAlias {
+            canonical_name,
+            alias,
+        });
+    }
+
+    pub fn add_relationship(&mut self, relationship: RelationshipProfile) {
+        self.relationships.push(relationship);
+    }
+
     pub fn profiles(&self) -> &[CharacterProfile] {
         &self.profiles
     }
 
-    /// Returns only characters explicitly present in the current passage.
-    /// This keeps translation prompts focused and prevents voice notes from
-    /// unrelated characters from contaminating dialogue decisions.
+    pub fn aliases(&self) -> &[CharacterAlias] {
+        &self.aliases
+    }
+
+    pub fn relationships(&self) -> &[RelationshipProfile] {
+        &self.relationships
+    }
+
+    /// Returns characters explicitly present in the passage by canonical name
+    /// or by a registered nickname/title/alias. This keeps prompts compact
+    /// while preserving character voice when prose uses non-canonical names.
     pub fn relevant_to_text(&self, text: &str) -> Vec<&CharacterProfile> {
         let normalized_text = normalize_for_matching(text);
         self.profiles
             .iter()
-            .filter(|profile| contains_name(&normalized_text, &profile.name))
+            .filter(|profile| self.profile_is_present(&normalized_text, profile))
             .collect()
     }
 
-    /// Builds compact prompt context for characters found in a passage.
+    /// Returns relationship memories only when both participants are present.
+    /// This prevents unrelated romantic/familial dynamics from leaking into a
+    /// scene while retaining forms of address and continuity constraints.
+    pub fn relevant_relationships(&self, text: &str) -> Vec<&RelationshipProfile> {
+        let normalized_text = normalize_for_matching(text);
+        self.relationships
+            .iter()
+            .filter(|relationship| {
+                self.character_is_present(&normalized_text, &relationship.character_a)
+                    && self.character_is_present(&normalized_text, &relationship.character_b)
+            })
+            .collect()
+    }
+
+    /// Builds prompt-ready scene context containing only present characters and
+    /// relationships. Character context is emitted before relationship context
+    /// so voice remains the primary invariant and scene dynamics refine it.
     pub fn context_for_text(&self, text: &str) -> String {
-        self.relevant_to_text(text)
+        let mut sections = self
+            .relevant_to_text(text)
             .into_iter()
             .map(build_character_context)
-            .collect::<Vec<_>>()
-            .join("\n\n")
+            .collect::<Vec<_>>();
+
+        sections.extend(
+            self.relevant_relationships(text)
+                .into_iter()
+                .map(RelationshipProfile::context),
+        );
+
+        sections.join("\n\n")
+    }
+
+    fn profile_is_present(&self, normalized_text: &str, profile: &CharacterProfile) -> bool {
+        self.character_is_present(normalized_text, &profile.name)
+    }
+
+    fn character_is_present(&self, normalized_text: &str, canonical_name: &str) -> bool {
+        if contains_name(normalized_text, canonical_name) {
+            return true;
+        }
+
+        let normalized_canonical = normalize_for_matching(canonical_name);
+        self.aliases.iter().any(|registered| {
+            normalize_for_matching(&registered.canonical_name) == normalized_canonical
+                && contains_name(normalized_text, &registered.alias)
+        })
     }
 }
 
@@ -119,11 +235,67 @@ mod tests {
     }
 
     #[test]
-    fn name_matching_respects_word_boundaries() {
+    fn alias_matching_restores_character_voice_context() {
+        let mut bible = CharacterBible::new();
+        bible.add(profile("Alexander Lightwood", "restrained", "loyal"));
+        bible.add_alias("Alexander Lightwood", "Alec");
+
+        let relevant = bible.relevant_to_text("Alec lowered his eyes before answering.");
+        assert_eq!(relevant.len(), 1);
+        assert_eq!(relevant[0].name, "Alexander Lightwood");
+    }
+
+    #[test]
+    fn alias_matching_respects_word_boundaries() {
         let mut bible = CharacterBible::new();
         bible.add(profile("Al", "quiet", "observant"));
 
         assert!(bible.relevant_to_text("Alice crossed the room.").is_empty());
         assert_eq!(bible.relevant_to_text("Al crossed the room.").len(), 1);
+    }
+
+    #[test]
+    fn relationship_context_requires_both_characters() {
+        let mut bible = CharacterBible::new();
+        bible.add(profile("Magnus", "witty", "warm"));
+        bible.add(profile("Alexander Lightwood", "restrained", "loyal"));
+        bible.add_alias("Alexander Lightwood", "Alec");
+
+        let mut relationship = RelationshipProfile::new("Magnus", "Alexander Lightwood");
+        relationship.dynamic_notes = "playful teasing with underlying tenderness".into();
+        relationship.address_notes = "Magnus often calls Alexander 'darling'".into();
+        bible.add_relationship(relationship);
+
+        assert!(bible
+            .relevant_relationships("Magnus stood alone by the window.")
+            .is_empty());
+
+        let relationships = bible.relevant_relationships("Alec looked over at Magnus.");
+        assert_eq!(relationships.len(), 1);
+        assert!(relationships[0].dynamic_notes.contains("teasing"));
+    }
+
+    #[test]
+    fn context_orders_character_voice_before_relationship_dynamics() {
+        let mut bible = CharacterBible::new();
+        bible.add(profile("Magnus", "witty", "warm"));
+        bible.add(profile("Alec", "restrained", "loyal"));
+
+        let mut relationship = RelationshipProfile::new("Magnus", "Alec");
+        relationship.dynamic_notes = "affectionate banter".into();
+        bible.add_relationship(relationship);
+
+        let context = bible.context_for_text("Magnus smiled at Alec.");
+        let voice_position = context.find("Voice: witty").unwrap();
+        let relationship_position = context.find("Relationship: Magnus ↔ Alec").unwrap();
+        assert!(voice_position < relationship_position);
+    }
+
+    #[test]
+    fn duplicate_aliases_are_not_added_twice() {
+        let mut bible = CharacterBible::new();
+        bible.add_alias("Alexander Lightwood", "Alec");
+        bible.add_alias("Alexander Lightwood", "Alec");
+        assert_eq!(bible.aliases().len(), 1);
     }
 }
