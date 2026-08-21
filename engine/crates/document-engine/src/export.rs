@@ -24,7 +24,12 @@ pub fn export_persian_docx(
     let deflated = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
 
     write_part(&mut archive, "[Content_Types].xml", content_types(), stored)?;
-    write_part(&mut archive, "_rels/.rels", package_relationships(), deflated)?;
+    write_part(
+        &mut archive,
+        "_rels/.rels",
+        package_relationships(),
+        deflated,
+    )?;
     write_part(
         &mut archive,
         "docProps/core.xml",
