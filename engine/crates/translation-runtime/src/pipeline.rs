@@ -1,33 +1,52 @@
-use crate::{TranslationProvider, TranslationRuntimeError};
+use chrono::Utc;
+use uuid::Uuid;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TranslationRequest {
-    pub source_text: String,
-}
+use crate::{execution::{TranslationExecutionRequest, TranslationOutput}, QualityGate, TranslationProvider, TranslationRuntimeError};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TranslationOutput {
-    pub translated_text: String,
-}
-
-pub struct TranslationPipeline<P> {
+pub struct TranslationExecutionPipeline<P, Q> {
     provider: P,
+    quality_gate: Q,
 }
 
-impl<P> TranslationPipeline<P>
+impl<P, Q> TranslationExecutionPipeline<P, Q>
 where
     P: TranslationProvider,
+    Q: QualityGate,
 {
-    pub fn new(provider: P) -> Self {
-        Self { provider }
+    pub fn new(provider: P, quality_gate: Q) -> Self {
+        Self { provider, quality_gate }
     }
 
     pub fn execute(
         &self,
-        request: TranslationRequest,
+        request: TranslationExecutionRequest,
     ) -> Result<TranslationOutput, TranslationRuntimeError> {
-        let translated_text = self.provider.translate(&request.source_text)?;
+        if request.source_text.trim().is_empty() {
+            return Err(TranslationRuntimeError::InvalidContext(
+                "source text cannot be empty".into(),
+            ));
+        }
 
-        Ok(TranslationOutput { translated_text })
+        let translated_text = self
+            .provider
+            .translate(&request)
+            .map_err(|error| TranslationRuntimeError::ProviderFailure(error.to_string()))?;
+
+        let output = TranslationOutput {
+            translated_text,
+            execution_id: Uuid::new_v4(),
+            provider_name: self.provider.provider_name().to_string(),
+            created_at: Utc::now(),
+        };
+
+        let report = self.quality_gate.validate(&output)?;
+
+        if !report.accepted {
+            return Err(TranslationRuntimeError::QualityRejected(
+                "quality gate rejected output".into(),
+            ));
+        }
+
+        Ok(output)
     }
 }
