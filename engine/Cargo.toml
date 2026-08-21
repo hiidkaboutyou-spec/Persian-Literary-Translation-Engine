@@ -7,5 +7,6 @@ members = [
   "crates/quality-engine",
   "crates/document-engine",
   "crates/project-engine",
+  "crates/literary-intelligence-engine",
   "cli"
 ]
