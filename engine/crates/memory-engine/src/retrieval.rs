@@ -47,8 +47,11 @@ pub fn rank_memory<'a>(
     let mut candidates: Vec<_> = entries
         .iter()
         .filter_map(|entry| {
-            let source_score = similarity(query, &entry.source);
-            let context_score = similarity(query, &entry.context) * config.context_weight;
+            // Literary passages are often much longer than a stored translation-memory
+            // example. Score both the whole passage and local sentence/token windows so
+            // a highly relevant line of dialogue is not diluted by surrounding prose.
+            let source_score = passage_similarity(query, &entry.source);
+            let context_score = passage_similarity(query, &entry.context) * config.context_weight;
             let tag_score = entry
                 .tags
                 .iter()
@@ -76,6 +79,7 @@ pub fn rank_memory<'a>(
 
     let mut selected: Vec<RetrievalHit<'a>> = Vec::with_capacity(config.max_results);
     let mut seen_translations = HashSet::new();
+    let diversity_threshold = config.diversity_threshold.clamp(0.0, 1.0);
 
     for candidate in candidates {
         if config.deduplicate_translations {
@@ -85,10 +89,12 @@ pub fn rank_memory<'a>(
             }
         }
 
-        let too_similar = selected.iter().any(|existing| {
-            similarity(&candidate.entry.source, &existing.entry.source)
-                >= config.diversity_threshold
-        });
+        // A threshold of 1.0 is documented as "disabled". Keep that promise even
+        // for exact duplicate source examples, which have similarity 1.0.
+        let too_similar = diversity_threshold < 1.0
+            && selected.iter().any(|existing| {
+                similarity(&candidate.entry.source, &existing.entry.source) >= diversity_threshold
+            });
         if too_similar {
             continue;
         }
@@ -104,6 +110,44 @@ pub fn rank_memory<'a>(
     }
 
     selected
+}
+
+/// Scores a stored memory against both the full passage and smaller local units.
+/// This matters for fiction because a paragraph may contain narration, action and
+/// dialogue while the useful memory often corresponds to only one sentence or beat.
+fn passage_similarity(passage: &str, candidate: &str) -> f32 {
+    let mut best = similarity(passage, candidate);
+    if best >= 1.0 || candidate.trim().is_empty() {
+        return best;
+    }
+
+    for segment in passage.split(['.', '!', '?', '…', ';', ':', '\n', '\r']) {
+        if segment.trim().is_empty() {
+            continue;
+        }
+        best = best.max(similarity(segment, candidate));
+        if best >= 1.0 {
+            return best;
+        }
+    }
+
+    // Some source files have weak punctuation after extraction. A bounded token
+    // window still lets a short remembered phrase surface from a long raw paragraph.
+    let words: Vec<&str> = passage.split_whitespace().collect();
+    let candidate_words = candidate.split_whitespace().count().max(1);
+    let window_size = (candidate_words * 2).clamp(4, 24);
+
+    if words.len() > window_size {
+        for window in words.windows(window_size) {
+            let local = window.join(" ");
+            best = best.max(similarity(&local, candidate));
+            if best >= 1.0 {
+                return best;
+            }
+        }
+    }
+
+    best
 }
 
 pub fn similarity(a: &str, b: &str) -> f32 {
@@ -210,6 +254,26 @@ mod tests {
     }
 
     #[test]
+    fn retrieves_a_local_line_from_a_long_literary_passage() {
+        let entries = vec![
+            entry("his hands were shaking", "دست‌هایش می‌لرزید", "fear", &[]),
+            entry(
+                "sunlight filled the kitchen",
+                "نور آفتاب آشپزخانه را پر کرده بود",
+                "setting",
+                &[],
+            ),
+        ];
+
+        let query = "He tried to smile as though nothing had happened. His hands were shaking. She noticed, but neither of them said a word about it.";
+        let hits = rank_memory(&entries, query, &RetrievalConfig::default());
+
+        assert!(!hits.is_empty());
+        assert_eq!(hits[0].entry.source, "his hands were shaking");
+        assert!(hits[0].score >= 1.0);
+    }
+
+    #[test]
     fn respects_score_threshold_and_result_limit() {
         let entries = vec![
             entry("soft voice", "صدای آرام", "dialogue", &[]),
@@ -299,5 +363,22 @@ mod tests {
                 .count(),
             1
         );
+    }
+
+    #[test]
+    fn diversity_threshold_one_really_disables_source_filtering() {
+        let entries = vec![
+            entry("I know", "می‌دونم", "casual dialogue", &[]),
+            entry("I know", "می‌دانم", "formal dialogue", &[]),
+        ];
+        let config = RetrievalConfig {
+            min_score: 0.05,
+            diversity_threshold: 1.0,
+            deduplicate_translations: false,
+            ..Default::default()
+        };
+
+        let hits = rank_memory(&entries, "I know", &config);
+        assert_eq!(hits.len(), 2);
     }
 }
