@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{self, Read};
+use std::io::Read;
 use std::path::Path;
 use zip::ZipArchive;
 
@@ -35,26 +35,20 @@ pub fn load_docx_file(path: impl AsRef<Path>) -> Result<Document, DocumentError>
 pub(crate) fn extract_docx_text(xml: &str) -> String {
     let mut output = String::new();
     let mut cursor = 0;
-    let mut first_in_paragraph = true;
 
     while let Some(relative_start) = xml[cursor..].find('<') {
         let start = cursor + relative_start;
-        if start > cursor && !first_in_paragraph {
-            // Text outside tags is ignored unless it is captured by <w:t> below.
-        }
-
         let Some(relative_end) = xml[start..].find('>') else {
             break;
         };
         let end = start + relative_end;
         let tag = &xml[start + 1..end];
 
-        if tag.starts_with("w:t") || tag.starts_with("w:t ") {
+        if tag.starts_with("w:t") {
             let text_start = end + 1;
             if let Some(close_rel) = xml[text_start..].find("</w:t>") {
                 let text_end = text_start + close_rel;
                 output.push_str(&decode_xml_entities(&xml[text_start..text_end]));
-                first_in_paragraph = false;
                 cursor = text_end + "</w:t>".len();
                 continue;
             }
@@ -62,13 +56,10 @@ pub(crate) fn extract_docx_text(xml: &str) -> String {
             if !output.ends_with('\n') {
                 output.push('\n');
             }
-            first_in_paragraph = true;
         } else if tag == "w:tab/" || tag == "w:tab /" {
             output.push('\t');
-            first_in_paragraph = false;
         } else if tag == "w:br/" || tag == "w:br /" || tag.starts_with("w:br ") {
             output.push('\n');
-            first_in_paragraph = false;
         }
 
         cursor = end + 1;
@@ -106,5 +97,11 @@ mod tests {
     fn preserves_tabs_and_line_breaks() {
         let xml = r#"<w:p><w:r><w:t>A</w:t></w:r><w:tab/><w:r><w:t>B</w:t></w:r><w:br/><w:r><w:t>C</w:t></w:r></w:p>"#;
         assert_eq!(extract_docx_text(xml), "A\tB\nC");
+    }
+
+    #[test]
+    fn accepts_text_nodes_with_xml_space_attribute() {
+        let xml = r#"<w:p><w:r><w:t xml:space="preserve"> spaced </w:t></w:r></w:p>"#;
+        assert_eq!(extract_docx_text(xml), "spaced");
     }
 }
