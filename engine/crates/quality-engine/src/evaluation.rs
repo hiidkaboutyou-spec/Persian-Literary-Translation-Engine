@@ -197,11 +197,7 @@ mod tests {
 
     #[test]
     fn persian_unicode_variants_do_not_trigger_false_terminology_warning() {
-        let result = evaluate_translation(
-            "book",
-            "كتاب",
-            &[TerminologyRule::new("book", "کتاب")],
-        );
+        let result = evaluate_translation("book", "كتاب", &[TerminologyRule::new("book", "کتاب")]);
         assert!(result.warnings.is_empty());
     }
 }
