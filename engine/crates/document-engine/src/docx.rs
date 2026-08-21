@@ -44,7 +44,7 @@ pub(crate) fn extract_docx_text(xml: &str) -> String {
         let end = start + relative_end;
         let tag = &xml[start + 1..end];
 
-        if tag.starts_with("w:t") {
+        if tag == "w:t" || tag.starts_with("w:t ") {
             let text_start = end + 1;
             if let Some(close_rel) = xml[text_start..].find("</w:t>") {
                 let text_end = text_start + close_rel;
@@ -103,5 +103,11 @@ mod tests {
     fn accepts_text_nodes_with_xml_space_attribute() {
         let xml = r#"<w:p><w:r><w:t xml:space="preserve"> spaced </w:t></w:r></w:p>"#;
         assert_eq!(extract_docx_text(xml), "spaced");
+    }
+
+    #[test]
+    fn does_not_confuse_table_tags_with_text_nodes() {
+        let xml = r#"<w:tbl><w:tr><w:tc><w:p><w:r><w:t>Cell text</w:t></w:r></w:p></w:tc></w:tr></w:tbl>"#;
+        assert_eq!(extract_docx_text(xml), "Cell text");
     }
 }
