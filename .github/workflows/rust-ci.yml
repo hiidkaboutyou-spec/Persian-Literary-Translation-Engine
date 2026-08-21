@@ -13,22 +13,47 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: rust-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: engine
     steps:
-      - uses: actions/checkout@v5
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+
       - name: Format check
         run: cargo fmt --all -- --check
+
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
-      - name: Test
+
+      - name: Test workspace
         run: cargo test --workspace
-      - name: Build CLI
-        run: cargo build -p literary-engine
+
+      - name: Build release CLI
+        run: cargo build --release -p literary-engine
+
+      - name: CLI smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo run --quiet -p literary-engine -- --help >/dev/null
+          cargo run --quiet -p literary-engine -- --version >/dev/null
+          printf 'Chapter 1\nHello world.\n\nChapter 2\nGoodbye world.\n' > /tmp/literary-engine-smoke.txt
+          cargo run --quiet -p literary-engine -- inspect /tmp/literary-engine-smoke.txt >/dev/null
+          rm -rf /tmp/literary-engine-output
+          cargo run --quiet -p literary-engine -- run /tmp/literary-engine-smoke.txt fa /tmp/literary-engine-output >/dev/null
+          test -f /tmp/literary-engine-output/manifest.txt
+          test "$(find /tmp/literary-engine-output -maxdepth 1 -name '*.txt' | wc -l)" -ge 2
