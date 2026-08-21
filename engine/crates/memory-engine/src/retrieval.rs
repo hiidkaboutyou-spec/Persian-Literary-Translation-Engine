@@ -229,8 +229,18 @@ mod tests {
     #[test]
     fn removes_duplicate_persian_wording_from_prompt_evidence() {
         let entries = vec![
-            entry("he whispered softly", "آرام زمزمه کرد", "intimate dialogue", &[]),
-            entry("she whispered softly", "آرام زمزمه کرد", "quiet dialogue", &[]),
+            entry(
+                "he whispered softly",
+                "آرام زمزمه کرد",
+                "intimate dialogue",
+                &[],
+            ),
+            entry(
+                "she whispered softly",
+                "آرام زمزمه کرد",
+                "quiet dialogue",
+                &[],
+            ),
             entry("a soft laugh", "خنده‌ای آرام", "tender moment", &[]),
         ];
 
@@ -254,8 +264,18 @@ mod tests {
     #[test]
     fn preserves_varied_examples_instead_of_near_duplicate_sources() {
         let entries = vec![
-            entry("he gave her a quiet smile", "لبخند آرامی به او زد", "tender", &[]),
-            entry("he gave him a quiet smile", "لبخند آرامی نثارش کرد", "tender", &[]),
+            entry(
+                "he gave her a quiet smile",
+                "لبخند آرامی به او زد",
+                "tender",
+                &[],
+            ),
+            entry(
+                "he gave him a quiet smile",
+                "لبخند آرامی نثارش کرد",
+                "tender",
+                &[],
+            ),
             entry("his voice softened", "صدایش نرم‌تر شد", "tender", &[]),
         ];
 
@@ -270,7 +290,9 @@ mod tests {
             },
         );
 
-        assert!(hits.iter().any(|hit| hit.entry.source == "his voice softened"));
+        assert!(hits
+            .iter()
+            .any(|hit| hit.entry.source == "his voice softened"));
         assert_eq!(
             hits.iter()
                 .filter(|hit| hit.entry.source.contains("quiet smile"))
