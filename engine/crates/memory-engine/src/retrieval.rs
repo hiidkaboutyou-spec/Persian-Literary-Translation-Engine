@@ -292,7 +292,10 @@ mod tests {
     fn normalizes_curly_and_straight_negation_contractions() {
         assert_eq!(normalize("I don't know"), normalize("I do not know"));
         assert_eq!(normalize("I don’t know"), normalize("I do not know"));
-        assert_eq!(normalize("She won't leave"), normalize("She will not leave"));
+        assert_eq!(
+            normalize("She won't leave"),
+            normalize("She will not leave")
+        );
     }
 
     #[test]
