@@ -1,4 +1,4 @@
-use document_engine::{load_text_file, split_into_chapters};
+use document_engine::{load_file, split_into_chapters};
 use std::env;
 use std::process::ExitCode;
 use translation_core::{prepare_translation, TranslationContext, TranslationRequest};
@@ -6,13 +6,12 @@ use translation_core::{prepare_translation, TranslationContext, TranslationReque
 fn usage() {
     eprintln!("Persian Literary Translation Engine v0.1");
     eprintln!("Usage:");
-    eprintln!("  literary-engine inspect <file.txt>");
-    eprintln!("  literary-engine prepare <file.txt> [target-language]");
+    eprintln!("  literary-engine inspect <file.txt|file.md|file.docx>");
+    eprintln!("  literary-engine prepare <file.txt|file.md|file.docx> [target-language]");
 }
 
 fn inspect(path: &str) -> Result<(), String> {
-    let document =
-        load_text_file(path).map_err(|error| format!("failed to read {path}: {error}"))?;
+    let document = load_file(path).map_err(|error| format!("failed to read {path}: {error}"))?;
     let chapters = split_into_chapters(&document.text);
 
     println!("title: {}", document.title);
@@ -25,8 +24,7 @@ fn inspect(path: &str) -> Result<(), String> {
 }
 
 fn prepare(path: &str, target_language: &str) -> Result<(), String> {
-    let document =
-        load_text_file(path).map_err(|error| format!("failed to read {path}: {error}"))?;
+    let document = load_file(path).map_err(|error| format!("failed to read {path}: {error}"))?;
     let chapters = split_into_chapters(&document.text);
 
     println!("document: {}", document.title);
