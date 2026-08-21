@@ -16,7 +16,9 @@ pub struct TranslationDecision {
 impl TranslationDecision {
     pub fn validate(&self) -> Result<(), LiteraryIntelligenceError> {
         if !(0.0..=1.0).contains(&self.confidence) {
-            return Err(LiteraryIntelligenceError::Validation("translation confidence must be between 0.0 and 1.0".into()));
+            return Err(LiteraryIntelligenceError::Validation(
+                "translation confidence must be between 0.0 and 1.0".into(),
+            ));
         }
         Ok(())
     }

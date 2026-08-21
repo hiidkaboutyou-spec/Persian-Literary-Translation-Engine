@@ -17,7 +17,9 @@ pub struct NovelContext {
 impl NovelContext {
     pub fn validate(&self) -> Result<(), LiteraryIntelligenceError> {
         if self.title.trim().is_empty() {
-            return Err(LiteraryIntelligenceError::Validation("novel title cannot be empty".into()));
+            return Err(LiteraryIntelligenceError::Validation(
+                "novel title cannot be empty".into(),
+            ));
         }
         Ok(())
     }

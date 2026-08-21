@@ -15,9 +15,15 @@ pub struct RelationshipState {
 
 impl RelationshipState {
     pub fn validate(&self) -> Result<(), LiteraryIntelligenceError> {
-        for (name, value) in [("trust_level", self.trust_level), ("conflict_level", self.conflict_level), ("emotional_distance", self.emotional_distance)] {
+        for (name, value) in [
+            ("trust_level", self.trust_level),
+            ("conflict_level", self.conflict_level),
+            ("emotional_distance", self.emotional_distance),
+        ] {
             if !(0.0..=1.0).contains(&value) {
-                return Err(LiteraryIntelligenceError::Validation(format!("{name} must be between 0.0 and 1.0")));
+                return Err(LiteraryIntelligenceError::Validation(format!(
+                    "{name} must be between 0.0 and 1.0"
+                )));
             }
         }
         Ok(())

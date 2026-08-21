@@ -16,7 +16,9 @@ pub struct SceneContext {
 impl SceneContext {
     pub fn validate(&self) -> Result<(), LiteraryIntelligenceError> {
         if !(0.0..=1.0).contains(&self.importance_score) {
-            return Err(LiteraryIntelligenceError::Validation("scene importance_score must be between 0.0 and 1.0".into()));
+            return Err(LiteraryIntelligenceError::Validation(
+                "scene importance_score must be between 0.0 and 1.0".into(),
+            ));
         }
         Ok(())
     }
