@@ -178,9 +178,8 @@ pub fn similarity(a: &str, b: &str) -> f32 {
     };
 
     // Negation can invert the emotional or factual meaning of an otherwise nearly
-    // identical line ("I trust you" vs "I don't trust you"). Translation memory
-    // should strongly prefer examples with matching polarity rather than anchoring
-    // the model on wording whose meaning points in the opposite direction.
+    // identical line. Translation memory should strongly prefer examples with
+    // matching polarity instead of anchoring the model on the opposite meaning.
     let polarity_factor = if has_negation(&a_norm) == has_negation(&b_norm) {
         1.0
     } else {
@@ -191,36 +190,47 @@ pub fn similarity(a: &str, b: &str) -> f32 {
 }
 
 fn has_negation(normalized: &str) -> bool {
-    normalized.split_whitespace().any(|token| {
-        matches!(
-            token,
-            "not"
-                | "no"
-                | "never"
-                | "neither"
-                | "nor"
-                | "without"
-                | "cannot"
-                | "ن"
-                | "نه"
-                | "نیست"
-                | "نیستم"
-                | "نیستی"
-                | "نیستیم"
-                | "نیستید"
-                | "نیستند"
-                | "نبود"
-                | "نبودم"
-                | "نبودی"
-                | "نبودیم"
-                | "نبودید"
-                | "نبودند"
-                | "هرگز"
-                | "هیچوقت"
-                | "هیچگاه"
-                | "بدون"
-        )
-    })
+    normalized.split_whitespace().any(is_negation_token)
+}
+
+fn is_negation_token(token: &str) -> bool {
+    matches!(
+        token,
+        "not"
+            | "no"
+            | "never"
+            | "neither"
+            | "nor"
+            | "without"
+            | "cannot"
+            | "ن"
+            | "نه"
+            | "نیست"
+            | "نیستم"
+            | "نیستی"
+            | "نیستیم"
+            | "نیستید"
+            | "نیستند"
+            | "نبود"
+            | "نبودم"
+            | "نبودی"
+            | "نبودیم"
+            | "نبودید"
+            | "نبودند"
+            | "هرگز"
+            | "هیچ"
+            | "هیچوقت"
+            | "هیچگاه"
+            | "بدون"
+    ) || token == "نمی"
+        || token.starts_with("نمی")
+        || token.starts_with("ندار")
+        || token.starts_with("نخواه")
+        || token.starts_with("نکرد")
+        || token.starts_with("نکن")
+        || token.starts_with("نباید")
+        || token.starts_with("نتوان")
+        || matches!(token, "نرو" | "نیا" | "نگو" | "نبین" | "نبر" | "نخور")
 }
 
 fn expand_english_negation_contractions(text: &str) -> String {
@@ -340,6 +350,30 @@ mod tests {
     fn polarity_mismatch_is_penalized() {
         let positive = similarity("I trust you", "I really trust you");
         let inverted = similarity("I trust you", "I don't trust you");
+        assert!(positive > inverted);
+        assert!(inverted < 0.30);
+    }
+
+    #[test]
+    fn persian_negative_prefixes_are_detected_after_normalization() {
+        for text in [
+            "نمی‌خوام برم",
+            "نمیتونم قبولش کنم",
+            "ندارمش",
+            "نکردم",
+            "نخواهم رفت",
+            "نکن این کارو",
+            "نگو که تموم شده",
+            "هیچ‌وقت فراموشت نمی‌کنم",
+        ] {
+            assert!(has_negation(&normalize(text)), "missed negation in: {text}");
+        }
+    }
+
+    #[test]
+    fn persian_positive_and_negative_lines_do_not_collapse_together() {
+        let positive = similarity("بهت اعتماد دارم", "من واقعاً بهت اعتماد دارم");
+        let inverted = similarity("بهت اعتماد دارم", "بهت اعتماد ندارم");
         assert!(positive > inverted);
         assert!(inverted < 0.30);
     }
