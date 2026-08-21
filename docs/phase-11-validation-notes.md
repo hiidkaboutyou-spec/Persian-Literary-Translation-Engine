@@ -26,4 +26,6 @@ Findings:
 - Validate docker build.
 - Re-run CI validation.
 
-This document tracks validation only and does not change engine architecture.
+## Boundary rule
+
+Phase 11 validation work must remain limited to infrastructure and CI readiness. It must not modify translation, memory, literary intelligence, or review domain behavior.
