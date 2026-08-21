@@ -5,6 +5,7 @@
 //!
 //! This crate intentionally does not own literary analysis.
 
+pub mod context;
 pub mod pipeline;
 
 pub trait TranslationProvider {
