@@ -1,9 +1,10 @@
 //! Document ingestion layer.
-//! V1 supports UTF-8 plain text, DOCX, and EPUB files, plus chapter segmentation.
+//! V1 supports UTF-8 plain text, DOCX, EPUB, and text-based PDF files, plus chapter segmentation.
 
 pub mod chapter;
 pub mod docx;
 pub mod epub;
+pub mod pdf;
 
 use std::fmt;
 use std::fs;
@@ -13,6 +14,7 @@ use std::path::{Path, PathBuf};
 pub use chapter::{split_into_chapters, Chapter};
 pub use docx::load_docx_file;
 pub use epub::load_epub_file;
+pub use pdf::load_pdf_file;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Document {
@@ -35,7 +37,7 @@ impl fmt::Display for DocumentError {
             Self::Zip(error) => write!(formatter, "document archive error: {error}"),
             Self::UnsupportedFormat(path) => write!(
                 formatter,
-                "unsupported document format for {} (supported: .txt, .md, .docx, .epub)",
+                "unsupported document format for {} (supported: .txt, .md, .docx, .epub, .pdf)",
                 path.display()
             ),
             Self::InvalidDocument(message) => write!(formatter, "invalid document: {message}"),
@@ -89,6 +91,7 @@ pub fn load_file(path: impl AsRef<Path>) -> Result<Document, DocumentError> {
         Some("txt") | Some("md") => load_text_file(path).map_err(DocumentError::Io),
         Some("docx") => load_docx_file(path),
         Some("epub") => load_epub_file(path),
+        Some("pdf") => load_pdf_file(path),
         _ => Err(DocumentError::UnsupportedFormat(path.to_path_buf())),
     }
 }
@@ -114,8 +117,10 @@ mod tests {
 
     #[test]
     fn rejects_unsupported_extensions() {
-        let error = load_file("story.pdf").expect_err("PDF is not supported yet");
+        let error = load_file("story.rtf").expect_err("RTF is not supported");
         assert!(matches!(error, DocumentError::UnsupportedFormat(_)));
-        assert!(error.to_string().contains(".txt, .md, .docx, .epub"));
+        assert!(error
+            .to_string()
+            .contains(".txt, .md, .docx, .epub, .pdf"));
     }
 }
