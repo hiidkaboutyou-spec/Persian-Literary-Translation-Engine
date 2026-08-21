@@ -1,5 +1,5 @@
 use character_engine::CharacterBible;
-use document_engine::{load_file, split_into_chapters};
+use document_engine::{export_persian_docx, load_file, split_into_chapters, Chapter};
 use memory_engine::glossary::Glossary;
 use memory_engine::{
     build_memory_context, load_glossary, load_translation_memory, MemoryContextConfig,
@@ -221,6 +221,7 @@ fn run_pipeline(path: &str, target_language: &str, output_dir: &Path) -> Result<
     let provider_name = provider.name().to_string();
     let runtime_memory = configured_runtime_memory()?;
     let pipeline = TranslationPipeline::default_literary_pipeline();
+    let mut translated_chapters = Vec::with_capacity(chapters.len());
     let mut manifest = String::new();
     manifest.push_str(&format!("document={}\n", document.title));
     manifest.push_str(&format!("target_language={target_language}\n"));
@@ -248,7 +249,7 @@ fn run_pipeline(path: &str, target_language: &str, output_dir: &Path) -> Result<
     );
 
     for chapter in chapters {
-        let source_text = chapter.content;
+        let source_text = chapter.content.clone();
         let context = chapter_context(
             &document.title,
             &chapter.title,
@@ -280,6 +281,11 @@ fn run_pipeline(path: &str, target_language: &str, output_dir: &Path) -> Result<
         let output_path = output_dir.join(format!("{stem}.txt"));
         fs::write(&output_path, &output.quality_review)
             .map_err(|error| format!("failed to write {}: {error}", output_path.display()))?;
+        translated_chapters.push(Chapter {
+            index: chapter.index,
+            title: chapter.title.clone(),
+            content: output.quality_review.clone(),
+        });
         manifest.push_str(&format!(
             "chapter.{}.file={}\n",
             chapter.index + 1,
@@ -313,6 +319,12 @@ fn run_pipeline(path: &str, target_language: &str, output_dir: &Path) -> Result<
             quality.score
         );
     }
+
+    let manuscript_path = output_dir.join("manuscript.docx");
+    export_persian_docx(&manuscript_path, &document.title, &translated_chapters)
+        .map_err(|error| format!("failed to export {}: {error}", manuscript_path.display()))?;
+    manifest.push_str(&format!("manuscript={}\n", manuscript_path.display()));
+    println!("manuscript -> {}", manuscript_path.display());
 
     let manifest_path = output_dir.join("manifest.txt");
     fs::write(&manifest_path, manifest)
