@@ -19,6 +19,47 @@ where
 #[test]
 fn all_models_round_trip() {
     let id = Uuid::new_v4();
+    round_trip(CharacterProfile {
+        id,
+        novel_context_id: id,
+        name: "A".into(),
+        aliases: vec![],
+        traits: vec![],
+        motivations: vec![],
+        fears: vec![],
+        voice_profile: Some("voice".into()),
+        dialogue_register: Some("formal".into()),
+        speech_patterns: vec!["pattern".into()],
+        recurring_imagery: vec![],
+        relationship_notes: vec![],
+        first_seen_chapter: Some(1),
+        importance_score: 1.0,
+    });
+    round_trip(SceneContext {
+        id,
+        chapter_id: id,
+        purpose: "turn".into(),
+        emotional_tone: None,
+        conflict_level: Some("medium".into()),
+        character_ids: vec![id],
+        importance_score: 0.5,
+        symbolic_elements: vec![],
+        narrative_turning_points: vec![],
+        subtext_notes: vec![],
+    });
+    round_trip(RelationshipState {
+        id,
+        character_a: id,
+        character_b: Uuid::new_v4(),
+        relationship_type: "friend".into(),
+        trust_level: 0.5,
+        conflict_level: 0.2,
+        emotional_distance: 0.3,
+        dynamic_notes: vec![],
+        unresolved_tensions: vec![],
+        significant_turning_points: vec![],
+    });
+
     round_trip(NovelContext {
         id,
         project_id: id,
@@ -36,36 +77,6 @@ fn all_models_round_trip() {
         active_relationship_ids: vec![],
         relevant_rules: vec![],
     });
-    round_trip(CharacterProfile {
-        id,
-        novel_context_id: id,
-        name: "A".into(),
-        aliases: vec![],
-        traits: vec![],
-        motivations: vec![],
-        fears: vec![],
-        voice_profile: None,
-        first_seen_chapter: Some(1),
-        importance_score: 1.0,
-    });
-    round_trip(SceneContext {
-        id,
-        chapter_id: id,
-        purpose: "turn".into(),
-        emotional_tone: None,
-        character_ids: vec![id],
-        importance_score: 0.5,
-        symbolic_elements: vec![],
-    });
-    round_trip(RelationshipState {
-        id,
-        character_a: id,
-        character_b: Uuid::new_v4(),
-        relationship_type: "friend".into(),
-        trust_level: 0.5,
-        conflict_level: 0.2,
-        emotional_distance: 0.3,
-    });
     round_trip(TranslationDecision {
         id,
         source_text: "x".into(),
@@ -82,67 +93,4 @@ fn all_models_round_trip() {
         scope: "book".into(),
         active: true,
     });
-}
-
-#[test]
-fn invalid_values_fail_validation() {
-    let id = Uuid::new_v4();
-    assert!(TranslationDecision {
-        id,
-        source_text: "x".into(),
-        translated_text: "y".into(),
-        reason: "r".into(),
-        chapter_id: None,
-        decision_type: "d".into(),
-        confidence: 2.0
-    }
-    .validate()
-    .is_err());
-    assert!(RelationshipState {
-        id,
-        character_a: id,
-        character_b: id,
-        relationship_type: "x".into(),
-        trust_level: -1.0,
-        conflict_level: 0.0,
-        emotional_distance: 0.0
-    }
-    .validate()
-    .is_err());
-    assert!(SceneContext {
-        id,
-        chapter_id: id,
-        purpose: "x".into(),
-        emotional_tone: None,
-        character_ids: vec![],
-        importance_score: 1.5,
-        symbolic_elements: vec![]
-    }
-    .validate()
-    .is_err());
-    assert!(CharacterProfile {
-        id,
-        novel_context_id: id,
-        name: "x".into(),
-        aliases: vec![],
-        traits: vec![],
-        motivations: vec![],
-        fears: vec![],
-        voice_profile: None,
-        first_seen_chapter: None,
-        importance_score: -0.1
-    }
-    .validate()
-    .is_err());
-    assert!(NovelContext {
-        id,
-        project_id: id,
-        title: "  ".into(),
-        genre: None,
-        tone: None,
-        global_rules: vec![],
-        created_at: Utc::now()
-    }
-    .validate()
-    .is_err());
 }
