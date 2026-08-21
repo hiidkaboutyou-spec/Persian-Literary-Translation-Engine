@@ -8,15 +8,19 @@ use translation_core::{
     TranslationRequest,
 };
 
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 fn usage() {
-    eprintln!("Persian Literary Translation Engine v0.1");
-    eprintln!("Usage:");
-    eprintln!("  literary-engine inspect <file.txt|file.md|file.docx|file.epub>");
-    eprintln!("  literary-engine prepare <file.txt|file.md|file.docx|file.epub> [target-language]");
-    eprintln!(
+    println!("Persian Literary Translation Engine v{VERSION}");
+    println!("Usage:");
+    println!("  literary-engine inspect <file.txt|file.md|file.docx|file.epub>");
+    println!("  literary-engine prepare <file.txt|file.md|file.docx|file.epub> [target-language]");
+    println!(
         "  literary-engine run <file.txt|file.md|file.docx|file.epub> [target-language] [output-dir]"
     );
-    eprintln!("\nThe run command currently uses the deterministic echo provider to validate the full runtime pipeline without API credentials.");
+    println!("  literary-engine --help");
+    println!("  literary-engine --version");
+    println!("\nThe run command currently uses the deterministic echo provider to validate the full runtime pipeline without API credentials.");
 }
 
 fn inspect(path: &str) -> Result<(), String> {
@@ -135,6 +139,14 @@ fn run_pipeline(path: &str, target_language: &str, output_dir: &Path) -> Result<
 fn run() -> Result<(), String> {
     let args: Vec<String> = env::args().collect();
     match args.as_slice() {
+        [_, flag] if flag == "--help" || flag == "-h" => {
+            usage();
+            Ok(())
+        }
+        [_, flag] if flag == "--version" || flag == "-V" => {
+            println!("literary-engine {VERSION}");
+            Ok(())
+        }
         [_, command, path] if command == "inspect" => inspect(path),
         [_, command, path] if command == "prepare" => prepare(path, "fa"),
         [_, command, path, target] if command == "prepare" => prepare(path, target),
