@@ -4,8 +4,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use translation_core::{
-    prepare_translation, EchoProvider, PipelineInput, TranslationContext, TranslationPipeline,
-    TranslationRequest,
+    prepare_translation, EchoProvider, OpenAIProvider, PipelineInput, TranslationContext,
+    TranslationPipeline, TranslationProvider, TranslationRequest,
 };
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -22,7 +22,12 @@ fn usage() {
     );
     println!("  literary-engine --help");
     println!("  literary-engine --version");
-    println!("\nThe run command currently uses the deterministic echo provider to validate the full runtime pipeline without API credentials.");
+    println!();
+    println!("Provider selection:");
+    println!("  - OPENAI_API_KEY set: run uses OpenAI by default");
+    println!("  - no OPENAI_API_KEY: run uses the deterministic echo provider");
+    println!("  - override with LITERARY_ENGINE_PROVIDER=openai|echo");
+    println!("  - override the OpenAI model with OPENAI_MODEL");
 }
 
 fn inspect(path: &str) -> Result<(), String> {
@@ -79,6 +84,33 @@ fn safe_file_stem(title: &str, index: usize) -> String {
     format!("{:03}-{}", index + 1, stem)
 }
 
+fn selected_provider_name(
+    explicit_provider: Option<&str>,
+    has_openai_key: bool,
+) -> Result<&'static str, String> {
+    match explicit_provider.map(str::trim).filter(|value| !value.is_empty()) {
+        Some(value) if value.eq_ignore_ascii_case("echo") => Ok("echo"),
+        Some(value) if value.eq_ignore_ascii_case("openai") => Ok("openai"),
+        Some(value) => Err(format!(
+            "unsupported provider '{value}'; expected openai or echo"
+        )),
+        None if has_openai_key => Ok("openai"),
+        None => Ok("echo"),
+    }
+}
+
+fn configured_provider() -> Result<Box<dyn TranslationProvider>, String> {
+    let explicit_provider = env::var("LITERARY_ENGINE_PROVIDER").ok();
+    let has_openai_key = env::var_os("OPENAI_API_KEY").is_some();
+    match selected_provider_name(explicit_provider.as_deref(), has_openai_key)? {
+        "openai" => OpenAIProvider::from_env()
+            .map(|provider| Box::new(provider) as Box<dyn TranslationProvider>)
+            .map_err(|error| error.to_string()),
+        "echo" => Ok(Box::new(EchoProvider)),
+        _ => unreachable!("provider selection only returns supported providers"),
+    }
+}
+
 fn run_pipeline(path: &str, target_language: &str, output_dir: &Path) -> Result<(), String> {
     let document = load_file(path).map_err(|error| format!("failed to read {path}: {error}"))?;
     let chapters = split_into_chapters(&document.text);
@@ -89,13 +121,16 @@ fn run_pipeline(path: &str, target_language: &str, output_dir: &Path) -> Result<
     fs::create_dir_all(output_dir)
         .map_err(|error| format!("failed to create {}: {error}", output_dir.display()))?;
 
-    let provider = EchoProvider;
+    let provider = configured_provider()?;
+    let provider_name = provider.name().to_string();
     let pipeline = TranslationPipeline::default_literary_pipeline();
     let mut manifest = String::new();
     manifest.push_str(&format!("document={}\n", document.title));
     manifest.push_str(&format!("target_language={target_language}\n"));
-    manifest.push_str("provider=echo\n");
+    manifest.push_str(&format!("provider={provider_name}\n"));
     manifest.push_str(&format!("chapters={}\n", chapters.len()));
+
+    println!("provider: {provider_name}");
 
     for chapter in chapters {
         let context = format!(
@@ -104,7 +139,7 @@ fn run_pipeline(path: &str, target_language: &str, output_dir: &Path) -> Result<
         );
         let output = pipeline
             .execute(
-                &provider,
+                provider.as_ref(),
                 PipelineInput {
                     source_text: chapter.content,
                     target_language: target_language.to_string(),
@@ -189,5 +224,26 @@ mod tests {
             "001-Chapter_1__Arrival"
         );
         assert_eq!(safe_file_stem("***", 1), "002-chapter-2");
+    }
+
+    #[test]
+    fn provider_selection_prefers_openai_when_key_is_available() {
+        assert_eq!(selected_provider_name(None, true).unwrap(), "openai");
+        assert_eq!(selected_provider_name(None, false).unwrap(), "echo");
+    }
+
+    #[test]
+    fn explicit_provider_overrides_automatic_selection() {
+        assert_eq!(selected_provider_name(Some("echo"), true).unwrap(), "echo");
+        assert_eq!(
+            selected_provider_name(Some("OpenAI"), false).unwrap(),
+            "openai"
+        );
+    }
+
+    #[test]
+    fn unsupported_provider_is_rejected() {
+        let error = selected_provider_name(Some("unknown"), true).unwrap_err();
+        assert!(error.contains("unsupported provider"));
     }
 }
