@@ -13,10 +13,12 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 fn usage() {
     println!("Persian Literary Translation Engine v{VERSION}");
     println!("Usage:");
-    println!("  literary-engine inspect <file.txt|file.md|file.docx|file.epub>");
-    println!("  literary-engine prepare <file.txt|file.md|file.docx|file.epub> [target-language]");
+    println!("  literary-engine inspect <file.txt|file.md|file.docx|file.epub|file.pdf>");
     println!(
-        "  literary-engine run <file.txt|file.md|file.docx|file.epub> [target-language] [output-dir]"
+        "  literary-engine prepare <file.txt|file.md|file.docx|file.epub|file.pdf> [target-language]"
+    );
+    println!(
+        "  literary-engine run <file.txt|file.md|file.docx|file.epub|file.pdf> [target-language] [output-dir]"
     );
     println!("  literary-engine --help");
     println!("  literary-engine --version");
