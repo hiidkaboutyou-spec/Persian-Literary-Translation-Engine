@@ -20,9 +20,7 @@ pub struct ConsistencyReport {
 }
 
 impl ConsistencyReport {
-    pub fn is_clean(&self) -> bool {
-        self.issues.is_empty()
-    }
+    pub fn is_clean(&self) -> bool { self.issues.is_empty() }
 
     pub fn score(&self) -> f32 {
         (1.0 - self.issues.len() as f32 * 0.1).max(0.0)
@@ -59,16 +57,16 @@ pub fn check_glossary_usage(
     report
 }
 
-pub fn find_translation_memory_conflicts(entries: &[TranslationMemoryEntry]) -> ConsistencyReport {
+pub fn find_translation_memory_conflicts(
+    entries: &[TranslationMemoryEntry],
+) -> ConsistencyReport {
     let mut report = ConsistencyReport::default();
     let mut seen: HashMap<String, String> = HashMap::new();
 
     for entry in entries {
         let source = normalize(&entry.source);
         let translation = normalize(&entry.translation);
-        if source.is_empty() || translation.is_empty() {
-            continue;
-        }
+        if source.is_empty() || translation.is_empty() { continue; }
 
         match seen.get(&source) {
             Some(existing) if existing != &translation => {
@@ -80,9 +78,7 @@ pub fn find_translation_memory_conflicts(entries: &[TranslationMemoryEntry]) -> 
                     ),
                 });
             }
-            None => {
-                seen.insert(source, translation);
-            }
+            None => { seen.insert(source, translation); }
             _ => {}
         }
     }
@@ -119,16 +115,8 @@ mod tests {
     #[test]
     fn flags_conflicting_memory_entries() {
         let entries = vec![
-            TranslationMemoryEntry {
-                source: "quiet smile".into(),
-                translation: "لبخند آرام".into(),
-                context: String::new(),
-            },
-            TranslationMemoryEntry {
-                source: "quiet smile".into(),
-                translation: "لبخند ساکت".into(),
-                context: String::new(),
-            },
+            TranslationMemoryEntry { source: "quiet smile".into(), translation: "لبخند آرام".into(), context: String::new() },
+            TranslationMemoryEntry { source: "quiet smile".into(), translation: "لبخند ساکت".into(), context: String::new() },
         ];
         let report = find_translation_memory_conflicts(&entries);
         assert_eq!(report.issues.len(), 1);
