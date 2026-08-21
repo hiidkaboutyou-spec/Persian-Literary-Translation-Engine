@@ -1,5 +1,7 @@
 use crate::provider::{PassKind, ProviderError, ProviderRequest, TranslationProvider};
 
+const DEFAULT_MAX_PASSAGE_CHARS: usize = 24_000;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PipelineStage {
     DocumentAnalysis,
@@ -13,6 +15,7 @@ pub enum PipelineStage {
 #[derive(Debug, Clone)]
 pub struct TranslationPipeline {
     pub stages: Vec<PipelineStage>,
+    max_passage_chars: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -41,51 +44,111 @@ impl TranslationPipeline {
                 PipelineStage::QualityReview,
                 PipelineStage::Export,
             ],
+            max_passage_chars: DEFAULT_MAX_PASSAGE_CHARS,
         }
     }
 
-    /// Execute the provider-facing literary passes in a deterministic order.
-    /// Document ingestion, memory retrieval and export remain separate layers and
-    /// can feed/consume this runtime without coupling the core to a vendor.
+    pub fn with_max_passage_chars(mut self, max_passage_chars: usize) -> Self {
+        self.max_passage_chars = max_passage_chars.max(1);
+        self
+    }
+
+    /// Execute all provider-facing literary passes while bounding the amount of
+    /// passage text sent in any single provider request. Oversized passages are
+    /// split on character boundaries, processed in order, and reassembled before
+    /// the next pass. This keeps long chapters from becoming one unbounded API
+    /// request while preserving deterministic chapter order.
     pub fn execute<P: TranslationProvider + ?Sized>(
         &self,
         provider: &P,
         input: PipelineInput,
     ) -> Result<PipelineOutput, ProviderError> {
-        let translated = provider.execute(&ProviderRequest {
-            pass: PassKind::Translate,
-            source_text: input.source_text,
-            target_language: input.target_language.clone(),
-            context: input.context.clone(),
-        })?;
+        let translated = self.execute_pass(
+            provider,
+            PassKind::Translate,
+            &input.source_text,
+            &input.target_language,
+            &input.context,
+        )?;
 
-        let revised = provider.execute(&ProviderRequest {
-            pass: PassKind::Revise,
-            source_text: translated.text.clone(),
-            target_language: input.target_language.clone(),
-            context: input.context.clone(),
-        })?;
+        let revised = self.execute_pass(
+            provider,
+            PassKind::Revise,
+            &translated,
+            &input.target_language,
+            &input.context,
+        )?;
 
-        let reviewed = provider.execute(&ProviderRequest {
-            pass: PassKind::QualityReview,
-            source_text: revised.text.clone(),
-            target_language: input.target_language,
-            context: input.context,
-        })?;
+        let quality_review = self.execute_pass(
+            provider,
+            PassKind::QualityReview,
+            &revised,
+            &input.target_language,
+            &input.context,
+        )?;
 
         Ok(PipelineOutput {
-            translated_text: translated.text,
-            revised_text: revised.text,
-            quality_review: reviewed.text,
-            provider: reviewed.provider,
+            translated_text: translated,
+            revised_text: revised,
+            quality_review,
+            provider: provider.name().to_owned(),
         })
     }
+
+    fn execute_pass<P: TranslationProvider + ?Sized>(
+        &self,
+        provider: &P,
+        pass: PassKind,
+        source_text: &str,
+        target_language: &str,
+        context: &str,
+    ) -> Result<String, ProviderError> {
+        let chunks = split_passage(source_text, self.max_passage_chars);
+        let mut outputs = Vec::with_capacity(chunks.len());
+
+        for chunk in chunks {
+            let response = provider.execute(&ProviderRequest {
+                pass: pass.clone(),
+                source_text: chunk,
+                target_language: target_language.to_owned(),
+                context: context.to_owned(),
+            })?;
+            outputs.push(response.text);
+        }
+
+        Ok(outputs.join(""))
+    }
+}
+
+fn split_passage(text: &str, max_chars: usize) -> Vec<String> {
+    if text.chars().count() <= max_chars {
+        return vec![text.to_owned()];
+    }
+
+    let mut chunks = Vec::new();
+    let mut current = String::new();
+    let mut current_chars = 0usize;
+
+    for character in text.chars() {
+        current.push(character);
+        current_chars += 1;
+        if current_chars == max_chars {
+            chunks.push(std::mem::take(&mut current));
+            current_chars = 0;
+        }
+    }
+
+    if !current.is_empty() {
+        chunks.push(current);
+    }
+    chunks
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::provider::EchoProvider;
+    use crate::provider::{EchoProvider, ProviderResponse};
+    use std::sync::Mutex;
 
     #[test]
     fn default_pipeline_runs_all_provider_passes() {
@@ -105,5 +168,59 @@ mod tests {
         assert_eq!(output.revised_text, "A chapter");
         assert_eq!(output.quality_review, "A chapter");
         assert_eq!(output.provider, "echo");
+    }
+
+    #[derive(Debug, Default)]
+    struct RecordingProvider {
+        request_sizes: Mutex<Vec<usize>>,
+    }
+
+    impl TranslationProvider for RecordingProvider {
+        fn name(&self) -> &str {
+            "recording"
+        }
+
+        fn execute(&self, request: &ProviderRequest) -> Result<ProviderResponse, ProviderError> {
+            self.request_sizes
+                .lock()
+                .unwrap()
+                .push(request.source_text.chars().count());
+            Ok(ProviderResponse {
+                text: request.source_text.clone(),
+                provider: self.name().to_owned(),
+                model: None,
+            })
+        }
+    }
+
+    #[test]
+    fn oversized_passages_are_bounded_for_every_provider_call() {
+        let provider = RecordingProvider::default();
+        let pipeline = TranslationPipeline::default_literary_pipeline().with_max_passage_chars(10);
+        let source = "1234567890abcdefghijXYZ";
+
+        let output = pipeline
+            .execute(
+                &provider,
+                PipelineInput {
+                    source_text: source.into(),
+                    target_language: "fa".into(),
+                    context: String::new(),
+                },
+            )
+            .unwrap();
+
+        assert_eq!(output.quality_review, source);
+        let request_sizes = provider.request_sizes.lock().unwrap();
+        assert_eq!(request_sizes.len(), 9);
+        assert!(request_sizes.iter().all(|size| *size <= 10));
+    }
+
+    #[test]
+    fn splitting_is_unicode_safe_and_lossless() {
+        let text = "سلام دنیا — یک متن آزمایشی";
+        let chunks = split_passage(text, 5);
+        assert!(chunks.iter().all(|chunk| chunk.chars().count() <= 5));
+        assert_eq!(chunks.concat(), text);
     }
 }
