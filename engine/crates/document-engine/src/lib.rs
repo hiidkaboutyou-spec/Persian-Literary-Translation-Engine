@@ -1,9 +1,10 @@
-//! Document ingestion layer.
+//! Document ingestion and publication-export layer.
 //! V1 supports UTF-8 plain text, DOCX, EPUB, and text-based PDF files, plus chapter segmentation.
 
 pub mod chapter;
 pub mod docx;
 pub mod epub;
+pub mod export;
 pub mod pdf;
 
 use std::fmt;
@@ -14,6 +15,7 @@ use std::path::{Path, PathBuf};
 pub use chapter::{split_into_chapters, Chapter};
 pub use docx::load_docx_file;
 pub use epub::load_epub_file;
+pub use export::export_persian_docx;
 pub use pdf::load_pdf_file;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
