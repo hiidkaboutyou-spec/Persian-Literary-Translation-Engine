@@ -7,4 +7,5 @@ edition = "2021"
 path = "src/lib.rs"
 
 [dependencies]
+pdf-extract = "0.12"
 zip = { version = "2", default-features = false, features = ["deflate"] }
