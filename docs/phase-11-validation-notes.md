@@ -1,12 +1,29 @@
 # Phase 11 Validation Notes
 
-Current validation findings:
+## Current validation findings
 
-- Pull Request validation failed because `cargo fmt --check` detected formatting differences in existing Rust files.
-- Dependency audit workflow failed and requires investigation before merge.
+- Pull Request validation failed because `cargo fmt --check` detected formatting differences.
+- Dependency audit workflow requires investigation before merge.
 
-Required before merge:
+## Workflow review
+
+Reviewed:
+
+- Rustfmt repair workflow
+- Dependency audit workflow
+
+Findings:
+
+- Rustfmt repair automation exists and should be used carefully because formatting changes must be reviewed before merge.
+- Dependency audit is enabled through rustsec audit checks.
+
+## Required before merge
 
 - Run cargo fmt and commit formatting changes.
 - Investigate cargo audit findings.
+- Run cargo clippy --workspace --all-targets -- -D warnings.
+- Run cargo test --workspace.
+- Validate docker build.
 - Re-run CI validation.
+
+This document tracks validation only and does not change engine architecture.
