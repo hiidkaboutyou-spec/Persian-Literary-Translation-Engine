@@ -32,8 +32,12 @@ pub struct ReferenceSource {
 
 impl ReferenceSource {
     pub fn validate(&self) -> Result<(), ReferenceValidationError> {
-        if self.title.trim().is_empty() { return Err(ReferenceValidationError::EmptyTitle); }
-        if self.author.trim().is_empty() { return Err(ReferenceValidationError::EmptyAuthor); }
+        if self.title.trim().is_empty() {
+            return Err(ReferenceValidationError::EmptyTitle);
+        }
+        if self.author.trim().is_empty() {
+            return Err(ReferenceValidationError::EmptyAuthor);
+        }
         Ok(())
     }
 }
@@ -49,8 +53,12 @@ pub struct LiteraryGuideline {
 
 impl LiteraryGuideline {
     pub fn validate(&self) -> Result<(), ReferenceValidationError> {
-        if self.source_id.is_nil() { return Err(ReferenceValidationError::MissingSource); }
-        if self.principle.trim().is_empty() { return Err(ReferenceValidationError::EmptyPrinciple); }
+        if self.source_id.is_nil() {
+            return Err(ReferenceValidationError::MissingSource);
+        }
+        if self.principle.trim().is_empty() {
+            return Err(ReferenceValidationError::EmptyPrinciple);
+        }
         Ok(())
     }
 }
@@ -82,8 +90,12 @@ pub struct EditorialRule {
 
 impl EditorialRule {
     pub fn validate(&self) -> Result<(), ReferenceValidationError> {
-        if self.guideline_id.is_nil() { return Err(ReferenceValidationError::MissingGuideline); }
-        if self.description.trim().is_empty() { return Err(ReferenceValidationError::UnsupportedValidationType); }
+        if self.guideline_id.is_nil() {
+            return Err(ReferenceValidationError::MissingGuideline);
+        }
+        if self.description.trim().is_empty() {
+            return Err(ReferenceValidationError::UnsupportedValidationType);
+        }
         Ok(())
     }
 }
@@ -93,11 +105,21 @@ mod tests {
     use super::*;
 
     fn source() -> ReferenceSource {
-        ReferenceSource { id: Uuid::new_v4(), title: "Literary Source".into(), author: "Author".into(), category: "editing".into(), description: "test".into(), usage_scope: vec!["voice".into()], created_at: Utc::now() }
+        ReferenceSource {
+            id: Uuid::new_v4(),
+            title: "Literary Source".into(),
+            author: "Author".into(),
+            category: "editing".into(),
+            description: "test".into(),
+            usage_scope: vec!["voice".into()],
+            created_at: Utc::now(),
+        }
     }
 
     #[test]
-    fn validates_reference_source() { assert!(source().validate().is_ok()); }
+    fn validates_reference_source() {
+        assert!(source().validate().is_ok());
+    }
 
     #[test]
     fn rejects_empty_source_fields() {
@@ -108,13 +130,25 @@ mod tests {
 
     #[test]
     fn validates_guideline_relationship() {
-        let guideline = LiteraryGuideline { id: Uuid::new_v4(), source_id: Uuid::new_v4(), category: "dialogue".into(), principle: "Preserve voice".into(), explanation: "Identity remains distinct".into() };
+        let guideline = LiteraryGuideline {
+            id: Uuid::new_v4(),
+            source_id: Uuid::new_v4(),
+            category: "dialogue".into(),
+            principle: "Preserve voice".into(),
+            explanation: "Identity remains distinct".into(),
+        };
         assert!(guideline.validate().is_ok());
     }
 
     #[test]
     fn validates_editorial_rule() {
-        let rule = EditorialRule { id: Uuid::new_v4(), guideline_id: Uuid::new_v4(), validation_type: ValidationType::VoicePreservation, severity: Severity::High, description: "Keep voice".into() };
+        let rule = EditorialRule {
+            id: Uuid::new_v4(),
+            guideline_id: Uuid::new_v4(),
+            validation_type: ValidationType::VoicePreservation,
+            severity: Severity::High,
+            description: "Keep voice".into(),
+        };
         assert!(rule.validate().is_ok());
     }
 
