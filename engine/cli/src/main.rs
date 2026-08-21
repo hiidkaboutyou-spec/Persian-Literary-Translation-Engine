@@ -6,8 +6,8 @@ use translation_core::{prepare_translation, TranslationContext, TranslationReque
 fn usage() {
     eprintln!("Persian Literary Translation Engine v0.1");
     eprintln!("Usage:");
-    eprintln!("  literary-engine inspect <file.txt|file.md|file.docx>");
-    eprintln!("  literary-engine prepare <file.txt|file.md|file.docx> [target-language]");
+    eprintln!("  literary-engine inspect <file.txt|file.md|file.docx|file.epub>");
+    eprintln!("  literary-engine prepare <file.txt|file.md|file.docx|file.epub> [target-language]");
 }
 
 fn inspect(path: &str) -> Result<(), String> {
