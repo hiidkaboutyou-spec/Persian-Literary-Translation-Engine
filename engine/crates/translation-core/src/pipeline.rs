@@ -47,7 +47,7 @@ impl TranslationPipeline {
     /// Execute the provider-facing literary passes in a deterministic order.
     /// Document ingestion, memory retrieval and export remain separate layers and
     /// can feed/consume this runtime without coupling the core to a vendor.
-    pub fn execute<P: TranslationProvider>(
+    pub fn execute<P: TranslationProvider + ?Sized>(
         &self,
         provider: &P,
         input: PipelineInput,
