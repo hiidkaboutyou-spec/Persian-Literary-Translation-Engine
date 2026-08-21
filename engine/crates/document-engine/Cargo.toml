@@ -5,3 +5,7 @@ edition = "2021"
 
 [lib]
 path = "src/lib.rs"
+
+[dependencies]
+quick-xml = "0.37"
+zip = { version = "2.2", default-features = false, features = ["deflate"] }
