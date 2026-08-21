@@ -5,10 +5,8 @@ use crate::models::{
 use uuid::Uuid;
 
 pub trait CharacterAnalyzer {
-    fn analyze(
-        &self,
-        chapter_id: Uuid,
-    ) -> Result<Vec<CharacterProfile>, LiteraryIntelligenceError>;
+    fn analyze(&self, chapter_id: Uuid)
+        -> Result<Vec<CharacterProfile>, LiteraryIntelligenceError>;
 }
 
 pub trait SceneAnalyzer {
