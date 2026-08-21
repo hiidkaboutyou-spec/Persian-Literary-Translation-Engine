@@ -1,4 +1,4 @@
-use crate::provider::{PassKind, ProviderError, ProviderRequest, ProviderResponse, TranslationProvider};
+use crate::provider::{PassKind, ProviderError, ProviderRequest, TranslationProvider};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PipelineStage {
@@ -60,7 +60,7 @@ impl TranslationPipeline {
         })?;
 
         let revised = provider.execute(&ProviderRequest {
-            pass: PassKind::Revision,
+            pass: PassKind::Revise,
             source_text: translated.text.clone(),
             target_language: input.target_language.clone(),
             context: input.context.clone(),
