@@ -177,11 +177,85 @@ pub fn similarity(a: &str, b: &str) -> f32 {
         0.0
     };
 
-    (jaccard + phrase_bonus).min(1.0)
+    // Negation can invert the emotional or factual meaning of an otherwise nearly
+    // identical line ("I trust you" vs "I don't trust you"). Translation memory
+    // should strongly prefer examples with matching polarity rather than anchoring
+    // the model on wording whose meaning points in the opposite direction.
+    let polarity_factor = if has_negation(&a_norm) == has_negation(&b_norm) {
+        1.0
+    } else {
+        0.35
+    };
+
+    ((jaccard + phrase_bonus) * polarity_factor).min(1.0)
+}
+
+fn has_negation(normalized: &str) -> bool {
+    normalized.split_whitespace().any(|token| {
+        matches!(
+            token,
+            "not"
+                | "no"
+                | "never"
+                | "neither"
+                | "nor"
+                | "without"
+                | "cannot"
+                | "ن"
+                | "نه"
+                | "نیست"
+                | "نیستم"
+                | "نیستی"
+                | "نیستیم"
+                | "نیستید"
+                | "نیستند"
+                | "نبود"
+                | "نبودم"
+                | "نبودی"
+                | "نبودیم"
+                | "نبودید"
+                | "نبودند"
+                | "هرگز"
+                | "هیچوقت"
+                | "هیچگاه"
+                | "بدون"
+        )
+    })
+}
+
+fn expand_english_negation_contractions(text: &str) -> String {
+    let mut expanded = text.to_lowercase().replace('’', "'");
+    // Explicit expansions preserve the lexical stem as well as polarity. A blanket
+    // `n't -> not` rewrite would turn "can't" into "ca not" and "won't" into
+    // "wo not", which hurts lexical matching.
+    for (contracted, full) in [
+        ("don't", "do not"),
+        ("doesn't", "does not"),
+        ("didn't", "did not"),
+        ("isn't", "is not"),
+        ("aren't", "are not"),
+        ("wasn't", "was not"),
+        ("weren't", "were not"),
+        ("can't", "cannot"),
+        ("couldn't", "could not"),
+        ("won't", "will not"),
+        ("wouldn't", "would not"),
+        ("shouldn't", "should not"),
+        ("hasn't", "has not"),
+        ("haven't", "have not"),
+        ("hadn't", "had not"),
+        ("mustn't", "must not"),
+        ("needn't", "need not"),
+    ] {
+        expanded = expanded.replace(contracted, full);
+    }
+    expanded
 }
 
 pub fn normalize(text: &str) -> String {
-    text.chars()
+    let expanded = expand_english_negation_contractions(text);
+    expanded
+        .chars()
         .map(|ch| match ch {
             'ي' | 'ى' => 'ی',
             'ك' => 'ک',
@@ -190,7 +264,6 @@ pub fn normalize(text: &str) -> String {
             _ => ' ',
         })
         .collect::<String>()
-        .to_lowercase()
         .split_whitespace()
         .collect::<Vec<_>>()
         .join(" ")
@@ -213,6 +286,13 @@ mod tests {
     fn normalizes_arabic_and_persian_letter_variants() {
         assert_eq!(normalize("مي‌رود"), normalize("می رود"));
         assert_eq!(normalize("كتاب"), normalize("کتاب"));
+    }
+
+    #[test]
+    fn normalizes_curly_and_straight_negation_contractions() {
+        assert_eq!(normalize("I don't know"), normalize("I do not know"));
+        assert_eq!(normalize("I don’t know"), normalize("I do not know"));
+        assert_eq!(normalize("She won't leave"), normalize("She will not leave"));
     }
 
     #[test]
@@ -251,6 +331,33 @@ mod tests {
         )];
         let hits = rank_memory(&entries, "I missed you", &RetrievalConfig::default());
         assert_eq!(hits[0].score, 1.0);
+    }
+
+    #[test]
+    fn polarity_mismatch_is_penalized() {
+        let positive = similarity("I trust you", "I really trust you");
+        let inverted = similarity("I trust you", "I don't trust you");
+        assert!(positive > inverted);
+        assert!(inverted < 0.30);
+    }
+
+    #[test]
+    fn retrieval_prefers_memory_with_matching_polarity() {
+        let entries = vec![
+            entry("I don't trust you", "بهت اعتماد ندارم", "argument", &[]),
+            entry("I trust you", "بهت اعتماد دارم", "confession", &[]),
+        ];
+        let hits = rank_memory(
+            &entries,
+            "I really trust you",
+            &RetrievalConfig {
+                min_score: 0.05,
+                ..Default::default()
+            },
+        );
+
+        assert!(!hits.is_empty());
+        assert_eq!(hits[0].entry.source, "I trust you");
     }
 
     #[test]
