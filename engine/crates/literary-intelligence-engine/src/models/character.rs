@@ -22,10 +22,14 @@ pub struct CharacterProfile {
 impl CharacterProfile {
     pub fn validate(&self) -> Result<(), LiteraryIntelligenceError> {
         if self.name.trim().is_empty() {
-            return Err(LiteraryIntelligenceError::Validation("character name cannot be empty".into()));
+            return Err(LiteraryIntelligenceError::Validation(
+                "character name cannot be empty".into(),
+            ));
         }
         if !(0.0..=1.0).contains(&self.importance_score) {
-            return Err(LiteraryIntelligenceError::Validation("character importance_score must be between 0.0 and 1.0".into()));
+            return Err(LiteraryIntelligenceError::Validation(
+                "character importance_score must be between 0.0 and 1.0".into(),
+            ));
         }
         Ok(())
     }
