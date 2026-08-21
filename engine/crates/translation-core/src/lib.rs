@@ -3,7 +3,8 @@ pub mod provider;
 
 pub use pipeline::{PipelineInput, PipelineOutput, PipelineStage, TranslationPipeline};
 pub use provider::{
-    EchoProvider, PassKind, ProviderError, ProviderRequest, ProviderResponse, TranslationProvider,
+    EchoProvider, OpenAIProvider, PassKind, ProviderError, ProviderRequest, ProviderResponse,
+    TranslationProvider,
 };
 
 #[derive(Debug, Clone)]
