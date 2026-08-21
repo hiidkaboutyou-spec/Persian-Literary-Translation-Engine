@@ -119,8 +119,6 @@ mod tests {
     fn rejects_unsupported_extensions() {
         let error = load_file("story.rtf").expect_err("RTF is not supported");
         assert!(matches!(error, DocumentError::UnsupportedFormat(_)));
-        assert!(error
-            .to_string()
-            .contains(".txt, .md, .docx, .epub, .pdf"));
+        assert!(error.to_string().contains(".txt, .md, .docx, .epub, .pdf"));
     }
 }
