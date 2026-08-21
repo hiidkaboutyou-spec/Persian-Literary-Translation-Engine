@@ -1,4 +1,9 @@
-#[derive(Debug, Clone, PartialEq, Eq)]
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::io;
+use std::path::Path;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CharacterProfile {
     pub name: String,
     pub voice_notes: String,
@@ -16,7 +21,7 @@ pub fn build_character_context(profile: &CharacterProfile) -> String {
     parts.join("\n")
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RelationshipProfile {
     pub character_a: String,
     pub character_b: String,
@@ -57,13 +62,13 @@ impl RelationshipProfile {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CharacterAlias {
     pub canonical_name: String,
     pub alias: String,
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CharacterBible {
     profiles: Vec<CharacterProfile>,
     aliases: Vec<CharacterAlias>,
@@ -112,6 +117,20 @@ impl CharacterBible {
 
     pub fn relationships(&self) -> &[RelationshipProfile] {
         &self.relationships
+    }
+
+    pub fn save_json(&self, path: impl AsRef<Path>) -> io::Result<()> {
+        let path = path.as_ref();
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        let json = serde_json::to_vec_pretty(self).map_err(io::Error::other)?;
+        fs::write(path, json)
+    }
+
+    pub fn load_json(path: impl AsRef<Path>) -> io::Result<Self> {
+        let bytes = fs::read(path)?;
+        serde_json::from_slice(&bytes).map_err(io::Error::other)
     }
 
     /// Returns characters explicitly present in the passage by canonical name
@@ -204,6 +223,7 @@ fn normalize_for_matching(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     fn profile(name: &str, voice: &str, personality: &str) -> CharacterProfile {
         CharacterProfile {
@@ -301,5 +321,28 @@ mod tests {
         bible.add_alias("Alexander Lightwood", "Alec");
         bible.add_alias("Alexander Lightwood", "Alec");
         assert_eq!(bible.aliases().len(), 1);
+    }
+
+    #[test]
+    fn character_bible_round_trips_as_json() {
+        let mut bible = CharacterBible::new();
+        bible.add(profile("Magnus", "witty", "warm"));
+        bible.add_alias("Magnus", "Bane");
+        let mut relationship = RelationshipProfile::new("Magnus", "Alec");
+        relationship.dynamic_notes = "affectionate banter".into();
+        bible.add_relationship(relationship);
+
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("character-bible-{nonce}.json"));
+
+        bible.save_json(&path).unwrap();
+        let loaded = CharacterBible::load_json(&path).unwrap();
+        let _ = fs::remove_file(&path);
+
+        assert_eq!(loaded, bible);
+        assert_eq!(loaded.context_for_text("Magnus smiled at Alec."), bible.context_for_text("Magnus smiled at Alec."));
     }
 }
