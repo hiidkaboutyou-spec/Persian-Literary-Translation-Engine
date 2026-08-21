@@ -2,7 +2,7 @@ use document_engine::{load_file, split_into_chapters};
 use project_engine::{ChapterRecord, ChapterState, ProjectManifest};
 use std::env;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::ExitCode;
 
 fn usage() {
@@ -22,7 +22,8 @@ fn source_fingerprint(text: &str) -> String {
 }
 
 fn init_project(source: &str, target_language: &str, project_dir: &Path) -> Result<(), String> {
-    let document = load_file(source).map_err(|error| format!("failed to read {source}: {error}"))?;
+    let document =
+        load_file(source).map_err(|error| format!("failed to read {source}: {error}"))?;
     let chapters = split_into_chapters(&document.text);
     if chapters.is_empty() {
         return Err("document contains no chapters".to_string());
@@ -38,7 +39,7 @@ fn init_project(source: &str, target_language: &str, project_dir: &Path) -> Resu
         document.title.clone(),
         source,
         target_language,
-        output_dir.to_string_lossy(),
+        output_dir.to_string_lossy().into_owned(),
     );
     manifest.memory.translation_memory_path = Some(
         project_dir
@@ -140,7 +141,13 @@ mod tests {
 
     #[test]
     fn fingerprints_are_stable_for_persian_text() {
-        assert_eq!(source_fingerprint("سلام دنیا"), source_fingerprint("سلام دنیا"));
-        assert_ne!(source_fingerprint("سلام دنیا"), source_fingerprint("سلام جهان"));
+        assert_eq!(
+            source_fingerprint("سلام دنیا"),
+            source_fingerprint("سلام دنیا")
+        );
+        assert_ne!(
+            source_fingerprint("سلام دنیا"),
+            source_fingerprint("سلام جهان")
+        );
     }
 }
