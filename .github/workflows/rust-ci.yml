@@ -13,9 +13,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: rust-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: engine
@@ -30,5 +35,9 @@ jobs:
         run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Test
         run: cargo test --workspace
-      - name: Build CLI
-        run: cargo build -p literary-engine
+      - name: Build release CLI
+        run: cargo build --release -p literary-engine
+      - name: CLI help smoke test
+        run: ./target/release/literary-engine --help
+      - name: CLI version smoke test
+        run: ./target/release/literary-engine --version
