@@ -39,7 +39,7 @@ fn normalize_extracted_pdf_text(text: &str) -> String {
         blank_run = 0;
     }
 
-    output.trim().to_string()
+    output.trim_end().to_string()
 }
 
 fn document_from_pdf_text(path: &Path, text: String) -> Result<Document, DocumentError> {
