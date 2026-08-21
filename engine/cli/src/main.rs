@@ -136,7 +136,10 @@ fn project_memory_paths() -> (PathBuf, PathBuf) {
     (memory, glossary)
 }
 
-fn load_project_memory(memory_path: &Path, glossary_path: &Path) -> Result<(TranslationMemory, Glossary), String> {
+fn load_project_memory(
+    memory_path: &Path,
+    glossary_path: &Path,
+) -> Result<(TranslationMemory, Glossary), String> {
     let memory = if memory_path.exists() {
         load_translation_memory(memory_path).map_err(|error| {
             format!(
@@ -150,7 +153,10 @@ fn load_project_memory(memory_path: &Path, glossary_path: &Path) -> Result<(Tran
 
     let glossary = if glossary_path.exists() {
         load_glossary(glossary_path).map_err(|error| {
-            format!("failed to load glossary {}: {error}", glossary_path.display())
+            format!(
+                "failed to load glossary {}: {error}",
+                glossary_path.display()
+            )
         })?
     } else {
         Glossary::default()
@@ -210,7 +216,10 @@ fn run_pipeline(path: &str, target_language: &str, output_dir: &Path) -> Result<
     manifest.push_str(&format!("chapters={}\n", chapters.len()));
     manifest.push_str(&format!("memory_path={}\n", memory_path.display()));
     manifest.push_str(&format!("glossary_path={}\n", glossary_path.display()));
-    manifest.push_str(&format!("memory_entries_before={}\n", memory.entries().len()));
+    manifest.push_str(&format!(
+        "memory_entries_before={}\n",
+        memory.entries().len()
+    ));
     manifest.push_str(&format!("glossary_entries={}\n", glossary.entries().len()));
 
     println!("provider: {provider_name}");
@@ -279,7 +288,10 @@ fn run_pipeline(path: &str, target_language: &str, output_dir: &Path) -> Result<
         );
     }
 
-    manifest.push_str(&format!("memory_entries_after={}\n", memory.entries().len()));
+    manifest.push_str(&format!(
+        "memory_entries_after={}\n",
+        memory.entries().len()
+    ));
     manifest.push_str(&format!("memory_persisted={}\n", persist_outputs));
     let manifest_path = output_dir.join("manifest.txt");
     fs::write(&manifest_path, manifest)
