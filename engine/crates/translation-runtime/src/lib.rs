@@ -13,5 +13,8 @@ pub trait TranslationProvider {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TranslationRuntimeError {
+    InvalidContext(String),
     ProviderFailure(String),
+    ExecutionFailure(String),
+    QualityRejected(String),
 }
