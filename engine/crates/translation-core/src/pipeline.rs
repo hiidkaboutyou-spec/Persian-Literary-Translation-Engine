@@ -1,4 +1,6 @@
-use crate::provider::{PassKind, ProviderError, ProviderRequest, ProviderResponse, TranslationProvider};
+use crate::provider::{
+    PassKind, ProviderError, ProviderRequest, ProviderResponse, TranslationProvider,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PipelineStage {
