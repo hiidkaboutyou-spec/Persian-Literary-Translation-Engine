@@ -1,7 +1,9 @@
+pub mod context;
 pub mod glossary;
 pub mod models;
 pub mod retrieval;
 
+pub use context::{build_memory_context, MemoryContext, MemoryContextConfig};
 pub use models::MemoryEntry;
 pub use retrieval::{rank_memory, RetrievalConfig, RetrievalHit};
 
