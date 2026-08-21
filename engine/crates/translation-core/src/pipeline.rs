@@ -54,10 +54,10 @@ impl TranslationPipeline {
     }
 
     /// Execute all provider-facing literary passes while bounding the amount of
-    /// passage text sent in any single provider request. Oversized passages are
-    /// split on character boundaries, processed in order, and reassembled before
-    /// the next pass. This keeps long chapters from becoming one unbounded API
-    /// request while preserving deterministic chapter order.
+    /// passage text sent in any single provider request. Oversized passages prefer
+    /// whitespace boundaries, fall back to Unicode-safe character boundaries, and
+    /// are reassembled before the next pass. This keeps long chapters from becoming
+    /// one unbounded API request while preserving deterministic chapter order.
     pub fn execute<P: TranslationProvider + ?Sized>(
         &self,
         provider: &P,
@@ -126,20 +126,29 @@ fn split_passage(text: &str, max_chars: usize) -> Vec<String> {
     }
 
     let mut chunks = Vec::new();
-    let mut current = String::new();
-    let mut current_chars = 0usize;
+    let mut remaining = text;
 
-    for character in text.chars() {
-        current.push(character);
-        current_chars += 1;
-        if current_chars == max_chars {
-            chunks.push(std::mem::take(&mut current));
-            current_chars = 0;
-        }
+    while remaining.chars().count() > max_chars {
+        let hard_end = remaining
+            .char_indices()
+            .nth(max_chars)
+            .map(|(index, _)| index)
+            .unwrap_or(remaining.len());
+        let candidate = &remaining[..hard_end];
+        let boundary = candidate
+            .char_indices()
+            .rev()
+            .find(|(_, character)| character.is_whitespace())
+            .map(|(index, character)| index + character.len_utf8())
+            .filter(|index| *index > 0)
+            .unwrap_or(hard_end);
+
+        chunks.push(remaining[..boundary].to_owned());
+        remaining = &remaining[boundary..];
     }
 
-    if !current.is_empty() {
-        chunks.push(current);
+    if !remaining.is_empty() {
+        chunks.push(remaining.to_owned());
     }
     chunks
 }
@@ -222,5 +231,11 @@ mod tests {
         let chunks = split_passage(text, 5);
         assert!(chunks.iter().all(|chunk| chunk.chars().count() <= 5));
         assert_eq!(chunks.concat(), text);
+    }
+
+    #[test]
+    fn splitting_prefers_whitespace_over_cutting_words() {
+        let chunks = split_passage("alpha beta gamma", 10);
+        assert_eq!(chunks, vec!["alpha ", "beta gamma"]);
     }
 }
