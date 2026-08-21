@@ -25,7 +25,7 @@ fn normalize_extracted_pdf_text(text: &str) -> String {
         let line = raw_line.trim_end_matches([' ', '\t', '\0']);
         if line.trim().is_empty() {
             blank_run += 1;
-            if blank_run <= 2 && !output.is_empty() {
+            if blank_run == 1 && !output.is_empty() {
                 output.push('\n');
             }
             continue;
