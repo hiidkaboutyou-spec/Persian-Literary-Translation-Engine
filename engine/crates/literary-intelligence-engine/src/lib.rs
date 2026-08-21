@@ -2,14 +2,16 @@
 //!
 //! Translation consumes understanding.
 //!
-//! This crate represents literary meaning before translation begins.
-//! It models narrative concepts such as characters, scenes, relationships,
-//! literary rules, and translation decisions.
+//! The Literary Understanding Pipeline provides structured literary context before translation.
+//! It models narrative concepts such as characters, scenes, relationships, literary rules,
+//! translation decisions, and the aggregate understanding state that future translation layers
+//! can consume.
 //!
 //! This crate does not:
 //! - translate text
+//! - generate translations
 //! - call AI providers
-//! - store persistence data
+//! - persist data
 //! - orchestrate workflows
 
 pub mod errors;
