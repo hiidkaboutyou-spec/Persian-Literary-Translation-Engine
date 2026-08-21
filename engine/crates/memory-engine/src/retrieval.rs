@@ -121,9 +121,7 @@ fn passage_similarity(passage: &str, candidate: &str) -> f32 {
         return best;
     }
 
-    for segment in
-        passage.split(|c: char| matches!(c, '.' | '!' | '?' | '…' | ';' | ':' | '\n' | '\r'))
-    {
+    for segment in passage.split(['.', '!', '?', '…', ';', ':', '\n', '\r']) {
         if segment.trim().is_empty() {
             continue;
         }
