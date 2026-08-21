@@ -107,7 +107,10 @@ impl OpenAIProvider {
         Self::new(api_key, model)
     }
 
-    pub fn new(api_key: impl Into<String>, model: impl Into<String>) -> Result<Self, ProviderError> {
+    pub fn new(
+        api_key: impl Into<String>,
+        model: impl Into<String>,
+    ) -> Result<Self, ProviderError> {
         let api_key = api_key.into();
         let model = model.into();
         if api_key.trim().is_empty() {
@@ -322,7 +325,10 @@ mod tests {
             ]
         });
 
-        assert_eq!(OpenAIProvider::extract_output_text(&value).unwrap(), "سلام دنیا");
+        assert_eq!(
+            OpenAIProvider::extract_output_text(&value).unwrap(),
+            "سلام دنیا"
+        );
     }
 
     #[test]
