@@ -182,7 +182,10 @@ mod tests {
 
     #[test]
     fn output_file_stems_are_deterministic_and_safe() {
-        assert_eq!(safe_file_stem("Chapter 1: Arrival", 0), "001-Chapter_1__Arrival");
+        assert_eq!(
+            safe_file_stem("Chapter 1: Arrival", 0),
+            "001-Chapter_1__Arrival"
+        );
         assert_eq!(safe_file_stem("***", 1), "002-chapter-2");
     }
 }
