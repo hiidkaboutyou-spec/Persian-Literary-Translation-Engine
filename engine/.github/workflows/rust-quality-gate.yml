@@ -1,0 +1,44 @@
+name: Rust Quality Gate
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/**"
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  quality:
+    name: Rust checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo
+            engine/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Format check
+        working-directory: engine
+        run: cargo fmt --check
+
+      - name: Test workspace
+        working-directory: engine
+        run: cargo test --workspace
+
+      - name: Clippy check
+        working-directory: engine
+        run: cargo clippy --workspace --all-targets -- -D warnings
