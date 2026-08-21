@@ -1,6 +1,7 @@
 use crate::retrieval::normalize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GlossaryEntry {
     pub source_term: String,
     pub preferred_translation: String,
