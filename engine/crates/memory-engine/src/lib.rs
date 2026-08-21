@@ -1,10 +1,15 @@
 pub mod context;
 pub mod glossary;
 pub mod models;
+pub mod persistence;
 pub mod retrieval;
 
 pub use context::{build_memory_context, MemoryContext, MemoryContextConfig};
 pub use models::MemoryEntry;
+pub use persistence::{
+    load_glossary, load_translation_memory, save_glossary, save_translation_memory,
+    PersistenceError,
+};
 pub use retrieval::{rank_memory, RetrievalConfig, RetrievalHit};
 
 #[derive(Debug, Default, Clone)]
