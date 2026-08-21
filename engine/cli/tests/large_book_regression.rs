@@ -36,7 +36,10 @@ fn processes_large_multi_chapter_book_end_to_end_with_echo_provider() {
         .status()
         .expect("run literary-engine");
 
-    assert!(status.success(), "large-book runtime must complete successfully");
+    assert!(
+        status.success(),
+        "large-book runtime must complete successfully"
+    );
 
     let manifest = fs::read_to_string(output_dir.join("manifest.txt"))
         .expect("runtime must emit a manifest");
