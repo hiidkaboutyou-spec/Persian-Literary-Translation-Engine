@@ -7,9 +7,7 @@ pub struct GlossaryEngine {
 
 impl GlossaryEngine {
     pub fn new() -> Self {
-        Self {
-            entries: Vec::new(),
-        }
+        Self { entries: Vec::new() }
     }
 
     pub fn add(&mut self, entry: GlossaryEntry) {
