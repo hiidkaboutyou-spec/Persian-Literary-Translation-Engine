@@ -1,4 +1,10 @@
+use character_engine::CharacterBible;
 use document_engine::{load_file, split_into_chapters};
+use memory_engine::glossary::Glossary;
+use memory_engine::{
+    build_memory_context, load_glossary, load_translation_memory, MemoryContextConfig,
+    TranslationMemory,
+};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -9,6 +15,13 @@ use translation_core::{
 };
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+#[derive(Debug, Default)]
+struct RuntimeMemory {
+    translation: TranslationMemory,
+    glossary: Glossary,
+    characters: CharacterBible,
+}
 
 fn usage() {
     println!("Persian Literary Translation Engine v{VERSION}");
@@ -28,6 +41,11 @@ fn usage() {
     println!("  - no OPENAI_API_KEY: run uses the deterministic echo provider");
     println!("  - override with LITERARY_ENGINE_PROVIDER=openai|echo");
     println!("  - override the OpenAI model with OPENAI_MODEL");
+    println!();
+    println!("Optional persisted project memory:");
+    println!("  - LITERARY_ENGINE_MEMORY_FILE=/path/to/translation-memory.json");
+    println!("  - LITERARY_ENGINE_GLOSSARY_FILE=/path/to/glossary.json");
+    println!("  - LITERARY_ENGINE_CHARACTER_BIBLE_FILE=/path/to/character-bible.json");
 }
 
 fn inspect(path: &str) -> Result<(), String> {
@@ -114,6 +132,62 @@ fn configured_provider() -> Result<Box<dyn TranslationProvider>, String> {
     }
 }
 
+fn configured_runtime_memory() -> Result<RuntimeMemory, String> {
+    let translation = match env::var("LITERARY_ENGINE_MEMORY_FILE") {
+        Ok(path) if !path.trim().is_empty() => load_translation_memory(&path)
+            .map_err(|error| format!("failed to load translation memory {path}: {error}"))?,
+        _ => TranslationMemory::new(),
+    };
+
+    let glossary = match env::var("LITERARY_ENGINE_GLOSSARY_FILE") {
+        Ok(path) if !path.trim().is_empty() => load_glossary(&path)
+            .map_err(|error| format!("failed to load glossary {path}: {error}"))?,
+        _ => Glossary::default(),
+    };
+
+    let characters = match env::var("LITERARY_ENGINE_CHARACTER_BIBLE_FILE") {
+        Ok(path) if !path.trim().is_empty() => CharacterBible::load_json(&path)
+            .map_err(|error| format!("failed to load character bible {path}: {error}"))?,
+        _ => CharacterBible::new(),
+    };
+
+    Ok(RuntimeMemory {
+        translation,
+        glossary,
+        characters,
+    })
+}
+
+fn chapter_context(
+    document_title: &str,
+    chapter_title: &str,
+    source_text: &str,
+    memory: &RuntimeMemory,
+) -> String {
+    let mut sections = vec![format!(
+        "document_title={document_title}\nchapter_title={chapter_title}"
+    )];
+
+    let character_context = memory.characters.context_for_text(source_text);
+    if !character_context.trim().is_empty() {
+        sections.push(format!(
+            "CHARACTER BIBLE — preserve voice and relationship continuity:\n{character_context}"
+        ));
+    }
+
+    let memory_context = build_memory_context(
+        source_text,
+        &memory.translation,
+        &memory.glossary,
+        &MemoryContextConfig::default(),
+    );
+    if !memory_context.text.trim().is_empty() {
+        sections.push(memory_context.text);
+    }
+
+    sections.join("\n\n")
+}
+
 fn run_pipeline(path: &str, target_language: &str, output_dir: &Path) -> Result<(), String> {
     let document = load_file(path).map_err(|error| format!("failed to read {path}: {error}"))?;
     let chapters = split_into_chapters(&document.text);
@@ -126,19 +200,40 @@ fn run_pipeline(path: &str, target_language: &str, output_dir: &Path) -> Result<
 
     let provider = configured_provider()?;
     let provider_name = provider.name().to_string();
+    let runtime_memory = configured_runtime_memory()?;
     let pipeline = TranslationPipeline::default_literary_pipeline();
     let mut manifest = String::new();
     manifest.push_str(&format!("document={}\n", document.title));
     manifest.push_str(&format!("target_language={target_language}\n"));
     manifest.push_str(&format!("provider={provider_name}\n"));
     manifest.push_str(&format!("chapters={}\n", chapters.len()));
+    manifest.push_str(&format!(
+        "translation_memory_entries={}\n",
+        runtime_memory.translation.entries().len()
+    ));
+    manifest.push_str(&format!(
+        "glossary_entries={}\n",
+        runtime_memory.glossary.entries().len()
+    ));
+    manifest.push_str(&format!(
+        "character_profiles={}\n",
+        runtime_memory.characters.profiles().len()
+    ));
 
     println!("provider: {provider_name}");
+    println!(
+        "memory: {} translation entries, {} glossary entries, {} character profiles",
+        runtime_memory.translation.entries().len(),
+        runtime_memory.glossary.entries().len(),
+        runtime_memory.characters.profiles().len()
+    );
 
     for chapter in chapters {
-        let context = format!(
-            "document_title={}\nchapter_title={}\nglossary_enabled=true\ncharacter_memory_enabled=true",
-            document.title, chapter.title
+        let context = chapter_context(
+            &document.title,
+            &chapter.title,
+            &chapter.content,
+            &runtime_memory,
         );
         let output = pipeline
             .execute(
@@ -219,6 +314,9 @@ fn main() -> ExitCode {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use character_engine::{CharacterProfile, RelationshipProfile};
+    use memory_engine::glossary::GlossaryEntry;
+    use memory_engine::MemoryEntry;
 
     #[test]
     fn output_file_stems_are_deterministic_and_safe() {
@@ -248,5 +346,47 @@ mod tests {
     fn unsupported_provider_is_rejected() {
         let error = selected_provider_name(Some("unknown"), true).unwrap_err();
         assert!(error.contains("unsupported provider"));
+    }
+
+    #[test]
+    fn chapter_context_combines_character_glossary_and_translation_memory() {
+        let mut runtime = RuntimeMemory::default();
+        runtime.translation.add(MemoryEntry::new(
+            "Magnus whispered softly".into(),
+            "مگنوس آرام زمزمه کرد".into(),
+            "intimate dialogue".into(),
+        ));
+        runtime.glossary.add(GlossaryEntry {
+            source_term: "High Warlock".into(),
+            preferred_translation: "جادوگر اعظم".into(),
+            context: "title".into(),
+        });
+        runtime.characters.add(CharacterProfile {
+            name: "Magnus".into(),
+            voice_notes: "witty and affectionate".into(),
+            personality_notes: "confident".into(),
+        });
+        let mut relationship = RelationshipProfile::new("Magnus", "Alec");
+        relationship.dynamic_notes = "tender banter".into();
+        runtime.characters.add(CharacterProfile {
+            name: "Alec".into(),
+            voice_notes: "restrained".into(),
+            personality_notes: "loyal".into(),
+        });
+        runtime.characters.add_relationship(relationship);
+
+        let context = chapter_context(
+            "Book",
+            "Chapter 1",
+            "Magnus, the High Warlock, whispered softly to Alec.",
+            &runtime,
+        );
+
+        assert!(context.contains("CHARACTER BIBLE"));
+        assert!(context.contains("witty and affectionate"));
+        assert!(context.contains("tender banter"));
+        assert!(context.contains("High Warlock => جادوگر اعظم"));
+        assert!(context.contains("TRANSLATION MEMORY"));
+        assert!(context.contains("مگنوس آرام زمزمه کرد"));
     }
 }
