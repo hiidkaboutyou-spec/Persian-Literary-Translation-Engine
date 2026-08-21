@@ -173,9 +173,27 @@ mod tests {
     fn chapter_counts_track_workflow_state() {
         let mut manifest = ProjectManifest::new("x", "book.txt", "fa", "out");
         manifest.chapters = vec![
-            ChapterRecord { index: 1, title: "1".into(), state: ChapterState::Approved, source_fingerprint: None, last_error: None },
-            ChapterRecord { index: 2, title: "2".into(), state: ChapterState::Pending, source_fingerprint: None, last_error: None },
-            ChapterRecord { index: 3, title: "3".into(), state: ChapterState::Blocked, source_fingerprint: None, last_error: Some("provider timeout".into()) },
+            ChapterRecord {
+                index: 1,
+                title: "1".into(),
+                state: ChapterState::Approved,
+                source_fingerprint: None,
+                last_error: None,
+            },
+            ChapterRecord {
+                index: 2,
+                title: "2".into(),
+                state: ChapterState::Pending,
+                source_fingerprint: None,
+                last_error: None,
+            },
+            ChapterRecord {
+                index: 3,
+                title: "3".into(),
+                state: ChapterState::Blocked,
+                source_fingerprint: None,
+                last_error: Some("provider timeout".into()),
+            },
         ];
         let counts = manifest.chapter_counts();
         assert_eq!(counts.approved, 1);
