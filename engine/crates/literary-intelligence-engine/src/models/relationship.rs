@@ -11,6 +11,9 @@ pub struct RelationshipState {
     pub trust_level: f32,
     pub conflict_level: f32,
     pub emotional_distance: f32,
+    pub dynamic_notes: Vec<String>,
+    pub unresolved_tensions: Vec<String>,
+    pub significant_turning_points: Vec<String>,
 }
 
 impl RelationshipState {
