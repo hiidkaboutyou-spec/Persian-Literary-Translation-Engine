@@ -56,3 +56,38 @@ jobs:
           path: engine/release/${{ matrix.binary }}
           if-no-files-found: error
           retention-days: 14
+
+  publish:
+    name: Publish GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v5
+        with:
+          path: dist
+      - name: Normalize release filenames
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          cp dist/literary-engine-linux-x86_64/literary-engine release/literary-engine-linux-x86_64
+          cp dist/literary-engine-macos-arm64/literary-engine release/literary-engine-macos-arm64
+          cp dist/literary-engine-windows-x86_64/literary-engine.exe release/literary-engine-windows-x86_64.exe
+          sha256sum release/* > release/SHA256SUMS.txt
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            release/literary-engine-linux-x86_64 \
+            release/literary-engine-macos-arm64 \
+            release/literary-engine-windows-x86_64.exe \
+            release/SHA256SUMS.txt \
+            --verify-tag \
+            --generate-notes \
+            --title "Persian Literary Translation Engine ${GITHUB_REF_NAME}"
