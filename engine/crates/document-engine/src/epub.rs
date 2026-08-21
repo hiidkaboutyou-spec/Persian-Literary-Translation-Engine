@@ -66,10 +66,7 @@ struct ManifestItem {
     href: String,
 }
 
-fn read_zip_entry(
-    archive: &mut ZipArchive<File>,
-    name: &str,
-) -> Result<String, DocumentError> {
+fn read_zip_entry(archive: &mut ZipArchive<File>, name: &str) -> Result<String, DocumentError> {
     let mut entry = archive.by_name(name).map_err(DocumentError::Zip)?;
     let mut content = String::new();
     entry.read_to_string(&mut content)?;
@@ -185,7 +182,10 @@ pub(crate) fn extract_html_text(html: &str) -> String {
                     .next()
                     .unwrap_or("")
                     .trim_end_matches('/');
-                if matches!(name, "p" | "div" | "br" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "li") {
+                if matches!(
+                    name,
+                    "p" | "div" | "br" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "li"
+                ) {
                     flush_text(&mut output, &mut text);
                     if !output.ends_with('\n') {
                         output.push('\n');
@@ -208,7 +208,9 @@ pub(crate) fn extract_html_text(html: &str) -> String {
     let mut cleaned = String::new();
     let mut previous_blank = false;
     for line in output.lines() {
-        let line = collapse_whitespace(&decode_entities(line)).trim().to_string();
+        let line = collapse_whitespace(&decode_entities(line))
+            .trim()
+            .to_string();
         if line.is_empty() {
             if !previous_blank && !cleaned.is_empty() {
                 cleaned.push('\n');
@@ -261,24 +263,39 @@ mod tests {
     #[test]
     fn extracts_rootfile_path() {
         let xml = r#"<container><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>"#;
-        assert_eq!(extract_rootfile_path(xml).as_deref(), Some("OEBPS/content.opf"));
+        assert_eq!(
+            extract_rootfile_path(xml).as_deref(),
+            Some("OEBPS/content.opf")
+        );
     }
 
     #[test]
     fn extracts_manifest_and_spine() {
         let xml = r#"<package><manifest><item id="c1" href="chapter1.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="c1"/></spine></package>"#;
-        assert_eq!(extract_manifest_items(xml), vec![ManifestItem { id: "c1".into(), href: "chapter1.xhtml".into() }]);
+        assert_eq!(
+            extract_manifest_items(xml),
+            vec![ManifestItem {
+                id: "c1".into(),
+                href: "chapter1.xhtml".into()
+            }]
+        );
         assert_eq!(extract_spine_ids(xml), vec!["c1"]);
     }
 
     #[test]
     fn extracts_html_as_readable_text() {
         let html = r#"<html><body><h1>Chapter 1</h1><p>Hello <em>world</em> &amp; friends.</p><p>Second paragraph.</p></body></html>"#;
-        assert_eq!(extract_html_text(html), "Chapter 1\nHello world & friends.\nSecond paragraph.");
+        assert_eq!(
+            extract_html_text(html),
+            "Chapter 1\nHello world & friends.\nSecond paragraph."
+        );
     }
 
     #[test]
     fn normalizes_relative_archive_paths() {
-        assert_eq!(normalize_archive_path(Path::new("OEBPS/text"), "../chapter1.xhtml"), "OEBPS/chapter1.xhtml");
+        assert_eq!(
+            normalize_archive_path(Path::new("OEBPS/text"), "../chapter1.xhtml"),
+            "OEBPS/chapter1.xhtml"
+        );
     }
 }
