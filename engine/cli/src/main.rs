@@ -88,7 +88,10 @@ fn selected_provider_name(
     explicit_provider: Option<&str>,
     has_openai_key: bool,
 ) -> Result<&'static str, String> {
-    match explicit_provider.map(str::trim).filter(|value| !value.is_empty()) {
+    match explicit_provider
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
         Some(value) if value.eq_ignore_ascii_case("echo") => Ok("echo"),
         Some(value) if value.eq_ignore_ascii_case("openai") => Ok("openai"),
         Some(value) => Err(format!(
