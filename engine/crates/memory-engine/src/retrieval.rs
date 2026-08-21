@@ -93,8 +93,7 @@ pub fn rank_memory<'a>(
         // for exact duplicate source examples, which have similarity 1.0.
         let too_similar = diversity_threshold < 1.0
             && selected.iter().any(|existing| {
-                similarity(&candidate.entry.source, &existing.entry.source)
-                    >= diversity_threshold
+                similarity(&candidate.entry.source, &existing.entry.source) >= diversity_threshold
             });
         if too_similar {
             continue;
@@ -122,9 +121,9 @@ fn passage_similarity(passage: &str, candidate: &str) -> f32 {
         return best;
     }
 
-    for segment in passage.split(|c: char| {
-        matches!(c, '.' | '!' | '?' | '…' | ';' | ':' | '\n' | '\r')
-    }) {
+    for segment in
+        passage.split(|c: char| matches!(c, '.' | '!' | '?' | '…' | ';' | ':' | '\n' | '\r'))
+    {
         if segment.trim().is_empty() {
             continue;
         }
@@ -259,12 +258,7 @@ mod tests {
     #[test]
     fn retrieves_a_local_line_from_a_long_literary_passage() {
         let entries = vec![
-            entry(
-                "his hands were shaking",
-                "دست‌هایش می‌لرزید",
-                "fear",
-                &[],
-            ),
+            entry("his hands were shaking", "دست‌هایش می‌لرزید", "fear", &[]),
             entry(
                 "sunlight filled the kitchen",
                 "نور آفتاب آشپزخانه را پر کرده بود",
