@@ -12,7 +12,13 @@ External clients
 
 ## Infrastructure Responsibilities
 
-Infrastructure supports deployment, validation, configuration, and operations.
+Infrastructure supports:
+
+- deployment
+- validation
+- configuration
+- observability
+- operations
 
 Infrastructure does not own:
 
@@ -21,6 +27,15 @@ Infrastructure does not own:
 - memory mutation
 - quality decisions
 - human review decisions
+
+## Container Boundary
+
+Production containers should:
+
+- run with least privilege
+- expose only required ports
+- receive configuration through environment variables
+- keep runtime concerns separate from domain behavior
 
 ## Environment Strategy
 
@@ -34,9 +49,16 @@ Configuration is supplied through environment variables and configuration files.
 
 ## CI/CD Flow
 
-Pull requests validate formatting, linting, and tests.
+Pull requests validate:
 
-Main branch validates release builds and container builds.
+- formatting
+- linting
+- tests
+
+Main branch validates:
+
+- release builds
+- container builds
 
 ## Scaling Preparation
 
