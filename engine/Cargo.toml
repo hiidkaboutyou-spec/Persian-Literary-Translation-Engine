@@ -6,7 +6,10 @@ members = [
   "crates/character-engine",
   "crates/quality-engine",
   "crates/document-engine",
+  "crates/document-intelligence",
   "crates/project-engine",
   "crates/literary-intelligence-engine",
+  "crates/long-novel-memory",
+  "crates/human-review-workflow",
   "cli"
 ]
