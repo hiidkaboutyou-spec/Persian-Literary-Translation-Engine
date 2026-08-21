@@ -1,7 +1,5 @@
 use literary_intelligence_engine::models::{
-    character::CharacterProfile,
-    relationship::RelationshipState,
-    scene::SceneContext,
+    character::CharacterProfile, relationship::RelationshipState, scene::SceneContext,
 };
 use uuid::Uuid;
 
@@ -29,7 +27,10 @@ fn character_voice_profile_survives_serialization() {
     let json = serde_json::to_string(&character).unwrap();
     let restored: CharacterProfile = serde_json::from_str(&json).unwrap();
 
-    assert_eq!(restored.voice_profile.as_deref(), Some("quiet but sarcastic"));
+    assert_eq!(
+        restored.voice_profile.as_deref(),
+        Some("quiet but sarcastic")
+    );
     assert_eq!(restored.speech_patterns, vec!["short replies"]);
 }
 
