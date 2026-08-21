@@ -83,10 +83,7 @@ mod tests {
         let text = "Chapter 1\r\nFirst line   \r\n\r\n\r\n\u{000c}Chapter 2\0\nSecond line\t";
         let normalized = normalize_extracted_pdf_text(text);
 
-        assert_eq!(
-            normalized,
-            "Chapter 1\nFirst line\n\nChapter 2\nSecond line"
-        );
+        assert_eq!(normalized, "Chapter 1\nFirst line\n\nChapter 2\nSecond line");
     }
 
     #[test]
