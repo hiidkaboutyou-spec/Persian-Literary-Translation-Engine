@@ -8,7 +8,7 @@ pub struct GlossaryEntry {
     pub context: String,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct Glossary {
     entries: Vec<GlossaryEntry>,
 }
