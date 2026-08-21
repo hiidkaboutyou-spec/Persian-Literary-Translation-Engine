@@ -276,7 +276,7 @@ mod tests {
             extract_manifest_items(xml),
             vec![ManifestItem {
                 id: "c1".into(),
-                href: "chapter1.xhtml".into()
+                href: "chapter1.xhtml".into(),
             }]
         );
         assert_eq!(extract_spine_ids(xml), vec!["c1"]);
