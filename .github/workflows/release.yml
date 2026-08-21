@@ -35,7 +35,7 @@ jobs:
         working-directory: engine
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
       - name: Install Rust target
         uses: dtolnay/rust-toolchain@stable
         with:
