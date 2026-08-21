@@ -16,17 +16,20 @@ Implemented:
 - chapter segmentation
 - provider-neutral translation pipeline
 - deterministic `EchoProvider` for credential-free end-to-end testing
-- translation-memory / glossary / character-memory foundations
+- production `OpenAIProvider` using the Responses API with credentials supplied only through environment variables
+- automatic provider selection (`OpenAI` when `OPENAI_API_KEY` is set, otherwise `Echo`), with explicit override support
+- durable local JSON persistence for translation memory and glossary
+- character-memory and relationship-context foundations
 - consistency-quality foundations
 - Rust CI, dependency audit, Dependabot, and cross-platform release builds
 
 Not production-complete yet:
 
-- real translation-provider integration
-- durable persistence/retrieval for translation, glossary, and character memory
-- end-to-end literary quality evaluation
+- durable Character Bible / relationship-memory persistence and runtime retrieval wiring
+- end-to-end literary quality evaluation and regression fixtures
 - professional Persian DOCX export with RTL typography and book layout
 - large-book bounded-memory/performance regression coverage
+- versioned release process
 
 ## Build
 
@@ -67,13 +70,21 @@ Prepare chapter translation requests:
 cargo run -p literary-engine -- prepare ../input/original_files/story.epub fa
 ```
 
-Exercise the current end-to-end runtime pipeline:
+Run the end-to-end pipeline:
 
 ```bash
 cargo run -p literary-engine -- run ../input/original_files/story.epub fa ../output/runtime
 ```
 
-The `run` command currently uses the deterministic `EchoProvider`; this validates ingestion → chapter segmentation → pipeline → quality stage → exported chapter files without requiring API credentials.
+Provider selection for `run`:
+
+- set `OPENAI_API_KEY` to use the production OpenAI provider automatically
+- optionally set `OPENAI_MODEL` to override the default model
+- set `LITERARY_ENGINE_PROVIDER=openai` to require OpenAI explicitly
+- set `LITERARY_ENGINE_PROVIDER=echo` for deterministic local/offline testing
+- without an OpenAI key or explicit provider override, the CLI falls back to `EchoProvider`
+
+The OpenAI provider disables response storage in its API requests. Secrets are not committed to repository files.
 
 ## Runtime Flow
 
