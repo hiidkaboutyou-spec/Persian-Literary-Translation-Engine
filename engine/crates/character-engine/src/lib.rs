@@ -48,7 +48,10 @@ impl RelationshipProfile {
             parts.push(format!("Forms of address: {}", self.address_notes.trim()));
         }
         if !self.boundaries_notes.trim().is_empty() {
-            parts.push(format!("Continuity constraints: {}", self.boundaries_notes.trim()));
+            parts.push(format!(
+                "Continuity constraints: {}",
+                self.boundaries_notes.trim()
+            ));
         }
         parts.join("\n")
     }
@@ -83,7 +86,8 @@ impl CharacterBible {
             return;
         }
         if self.aliases.iter().any(|existing| {
-            normalize_for_matching(&existing.canonical_name) == normalize_for_matching(&canonical_name)
+            normalize_for_matching(&existing.canonical_name)
+                == normalize_for_matching(&canonical_name)
                 && normalize_for_matching(&existing.alias) == normalize_for_matching(&alias)
         }) {
             return;
