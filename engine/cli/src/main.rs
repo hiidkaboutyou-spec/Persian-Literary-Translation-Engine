@@ -34,14 +34,22 @@ fn usage() {
     println!(
         "  literary-engine run <file.txt|file.md|file.docx|file.epub|file.pdf> [target-language] [output-dir]"
     );
+    println!(
+        "  literary-engine resume <file.txt|file.md|file.docx|file.epub|file.pdf> [target-language] [output-dir]"
+    );
     println!("  literary-engine --help");
     println!("  literary-engine --version");
     println!();
     println!("Provider selection:");
-    println!("  - OPENAI_API_KEY set: run uses OpenAI by default");
-    println!("  - no OPENAI_API_KEY: run uses the deterministic echo provider");
+    println!("  - OPENAI_API_KEY set: run/resume uses OpenAI by default");
+    println!("  - no OPENAI_API_KEY: run/resume uses the deterministic echo provider");
     println!("  - override with LITERARY_ENGINE_PROVIDER=openai|echo");
     println!("  - override the OpenAI model with OPENAI_MODEL");
+    println!();
+    println!("Resume behavior:");
+    println!("  - resume reuses only chapter outputs with a matching source fingerprint");
+    println!("  - reused output must still pass the current quality gate");
+    println!("  - changed or invalid chapters are translated again automatically");
     println!();
     println!("Optional persisted project memory:");
     println!("  - LITERARY_ENGINE_MEMORY_FILE=/path/to/translation-memory.json");
@@ -101,6 +109,36 @@ fn safe_file_stem(title: &str, index: usize) -> String {
         stem = format!("chapter-{}", index + 1);
     }
     format!("{:03}-{}", index + 1, stem)
+}
+
+fn source_fingerprint(text: &str) -> String {
+    const FNV_OFFSET_BASIS: u64 = 0xcbf29ce484222325;
+    const FNV_PRIME: u64 = 0x100000001b3;
+    let hash = text.as_bytes().iter().fold(FNV_OFFSET_BASIS, |hash, byte| {
+        (hash ^ u64::from(*byte)).wrapping_mul(FNV_PRIME)
+    });
+    format!("fnv1a64-{hash:016x}")
+}
+
+fn resumable_translation(
+    output_path: &Path,
+    checkpoint_path: &Path,
+    source_text: &str,
+) -> Result<Option<String>, String> {
+    if !output_path.is_file() || !checkpoint_path.is_file() {
+        return Ok(None);
+    }
+
+    let expected = source_fingerprint(source_text);
+    let stored = fs::read_to_string(checkpoint_path)
+        .map_err(|error| format!("failed to read {}: {error}", checkpoint_path.display()))?;
+    if stored.trim() != expected {
+        return Ok(None);
+    }
+
+    let translated = fs::read_to_string(output_path)
+        .map_err(|error| format!("failed to read {}: {error}", output_path.display()))?;
+    Ok(Some(translated))
 }
 
 fn selected_provider_name(
@@ -207,7 +245,12 @@ fn manifest_value(value: &str) -> String {
     value.replace(['\r', '\n'], " ")
 }
 
-fn run_pipeline(path: &str, target_language: &str, output_dir: &Path) -> Result<(), String> {
+fn run_pipeline(
+    path: &str,
+    target_language: &str,
+    output_dir: &Path,
+    resume: bool,
+) -> Result<(), String> {
     let document = load_file(path).map_err(|error| format!("failed to read {path}: {error}"))?;
     let chapters = split_into_chapters(&document.text);
     if chapters.is_empty() {
@@ -226,6 +269,7 @@ fn run_pipeline(path: &str, target_language: &str, output_dir: &Path) -> Result<
     manifest.push_str(&format!("document={}\n", document.title));
     manifest.push_str(&format!("target_language={target_language}\n"));
     manifest.push_str(&format!("provider={provider_name}\n"));
+    manifest.push_str(&format!("resume={}\n", resume));
     manifest.push_str(&format!("chapters={}\n", chapters.len()));
     manifest.push_str(&format!(
         "translation_memory_entries={}\n",
@@ -250,6 +294,70 @@ fn run_pipeline(path: &str, target_language: &str, output_dir: &Path) -> Result<
 
     for chapter in chapters {
         let source_text = chapter.content.clone();
+        let rules = terminology_rules(&runtime_memory, &source_text);
+        let stem = safe_file_stem(&chapter.title, chapter.index);
+        let output_path = output_dir.join(format!("{stem}.txt"));
+        let checkpoint_path = output_dir.join(format!("{stem}.source-fingerprint"));
+        let fingerprint = source_fingerprint(&source_text);
+
+        if resume {
+            if let Some(existing) =
+                resumable_translation(&output_path, &checkpoint_path, &source_text)?
+            {
+                let quality = evaluate_translation(&source_text, &existing, &rules);
+                if quality.passes() {
+                    translated_chapters.push(Chapter {
+                        index: chapter.index,
+                        title: chapter.title.clone(),
+                        content: existing.clone(),
+                    });
+                    manifest.push_str(&format!(
+                        "chapter.{}.file={}\n",
+                        chapter.index + 1,
+                        output_path.display()
+                    ));
+                    manifest.push_str(&format!(
+                        "chapter.{}.source_fingerprint={}\n",
+                        chapter.index + 1,
+                        fingerprint
+                    ));
+                    manifest.push_str(&format!("chapter.{}.resumed=true\n", chapter.index + 1));
+                    manifest.push_str(&format!(
+                        "chapter.{}.quality_score={:.2}\n",
+                        chapter.index + 1,
+                        quality.score
+                    ));
+                    manifest.push_str(&format!(
+                        "chapter.{}.quality_warnings={}\n",
+                        chapter.index + 1,
+                        quality.warnings.len()
+                    ));
+                    for (warning_index, warning) in quality.warnings.iter().enumerate() {
+                        manifest.push_str(&format!(
+                            "chapter.{}.warning.{}={}\n",
+                            chapter.index + 1,
+                            warning_index + 1,
+                            manifest_value(warning)
+                        ));
+                        eprintln!("quality warning [{}]: {}", chapter.title, warning);
+                    }
+                    println!(
+                        "{} -> {} (reused checkpoint, {} bytes, quality={:.2})",
+                        chapter.title,
+                        output_path.display(),
+                        existing.len(),
+                        quality.score
+                    );
+                    continue;
+                }
+
+                eprintln!(
+                    "resume checkpoint [{}] no longer passes quality; translating again",
+                    chapter.title
+                );
+            }
+        }
+
         let context = chapter_context(
             &document.title,
             &chapter.title,
@@ -267,7 +375,6 @@ fn run_pipeline(path: &str, target_language: &str, output_dir: &Path) -> Result<
             )
             .map_err(|error| format!("pipeline failed for {}: {error}", chapter.title))?;
 
-        let rules = terminology_rules(&runtime_memory, &source_text);
         let quality = evaluate_translation(&source_text, &output.quality_review, &rules);
         if !quality.passes() {
             return Err(format!(
@@ -277,10 +384,10 @@ fn run_pipeline(path: &str, target_language: &str, output_dir: &Path) -> Result<
             ));
         }
 
-        let stem = safe_file_stem(&chapter.title, chapter.index);
-        let output_path = output_dir.join(format!("{stem}.txt"));
         fs::write(&output_path, &output.quality_review)
             .map_err(|error| format!("failed to write {}: {error}", output_path.display()))?;
+        fs::write(&checkpoint_path, format!("{fingerprint}\n"))
+            .map_err(|error| format!("failed to write {}: {error}", checkpoint_path.display()))?;
         translated_chapters.push(Chapter {
             index: chapter.index,
             title: chapter.title.clone(),
@@ -291,6 +398,12 @@ fn run_pipeline(path: &str, target_language: &str, output_dir: &Path) -> Result<
             chapter.index + 1,
             output_path.display()
         ));
+        manifest.push_str(&format!(
+            "chapter.{}.source_fingerprint={}\n",
+            chapter.index + 1,
+            fingerprint
+        ));
+        manifest.push_str(&format!("chapter.{}.resumed=false\n", chapter.index + 1));
         manifest.push_str(&format!(
             "chapter.{}.quality_score={:.2}\n",
             chapter.index + 1,
@@ -348,13 +461,22 @@ fn run() -> Result<(), String> {
         [_, command, path] if command == "prepare" => prepare(path, "fa"),
         [_, command, path, target] if command == "prepare" => prepare(path, target),
         [_, command, path] if command == "run" => {
-            run_pipeline(path, "fa", &PathBuf::from("output/runtime"))
+            run_pipeline(path, "fa", &PathBuf::from("output/runtime"), false)
         }
         [_, command, path, target] if command == "run" => {
-            run_pipeline(path, target, &PathBuf::from("output/runtime"))
+            run_pipeline(path, target, &PathBuf::from("output/runtime"), false)
         }
         [_, command, path, target, output] if command == "run" => {
-            run_pipeline(path, target, Path::new(output))
+            run_pipeline(path, target, Path::new(output), false)
+        }
+        [_, command, path] if command == "resume" => {
+            run_pipeline(path, "fa", &PathBuf::from("output/runtime"), true)
+        }
+        [_, command, path, target] if command == "resume" => {
+            run_pipeline(path, target, &PathBuf::from("output/runtime"), true)
+        }
+        [_, command, path, target, output] if command == "resume" => {
+            run_pipeline(path, target, Path::new(output), true)
         }
         _ => {
             usage();
@@ -387,6 +509,18 @@ mod tests {
             "001-Chapter_1__Arrival"
         );
         assert_eq!(safe_file_stem("***", 1), "002-chapter-2");
+    }
+
+    #[test]
+    fn source_fingerprint_is_stable_and_sensitive_to_changes() {
+        assert_eq!(
+            source_fingerprint("سلام دنیا"),
+            source_fingerprint("سلام دنیا")
+        );
+        assert_ne!(
+            source_fingerprint("سلام دنیا"),
+            source_fingerprint("سلام دنیا!")
+        );
     }
 
     #[test]
