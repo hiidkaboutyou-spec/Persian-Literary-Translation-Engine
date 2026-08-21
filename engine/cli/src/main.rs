@@ -386,9 +386,8 @@ fn run_pipeline(
 
         fs::write(&output_path, &output.quality_review)
             .map_err(|error| format!("failed to write {}: {error}", output_path.display()))?;
-        fs::write(&checkpoint_path, format!("{fingerprint}\n")).map_err(|error| {
-            format!("failed to write {}: {error}", checkpoint_path.display())
-        })?;
+        fs::write(&checkpoint_path, format!("{fingerprint}\n"))
+            .map_err(|error| format!("failed to write {}: {error}", checkpoint_path.display()))?;
         translated_chapters.push(Chapter {
             index: chapter.index,
             title: chapter.title.clone(),
