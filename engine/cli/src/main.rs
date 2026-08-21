@@ -1,4 +1,9 @@
 use document_engine::{load_file, split_into_chapters};
+use memory_engine::glossary::Glossary;
+use memory_engine::{
+    build_memory_context, load_glossary, load_translation_memory, save_translation_memory,
+    MemoryContextConfig, MemoryEntry, TranslationMemory,
+};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -9,6 +14,8 @@ use translation_core::{
 };
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+const DEFAULT_MEMORY_PATH: &str = "translation_memory/runtime.json";
+const DEFAULT_GLOSSARY_PATH: &str = "glossary/runtime.json";
 
 fn usage() {
     println!("Persian Literary Translation Engine v{VERSION}");
@@ -28,6 +35,11 @@ fn usage() {
     println!("  - no OPENAI_API_KEY: run uses the deterministic echo provider");
     println!("  - override with LITERARY_ENGINE_PROVIDER=openai|echo");
     println!("  - override the OpenAI model with OPENAI_MODEL");
+    println!();
+    println!("Project memory:");
+    println!("  - translation memory: {DEFAULT_MEMORY_PATH}");
+    println!("  - glossary: {DEFAULT_GLOSSARY_PATH}");
+    println!("  - override with LITERARY_ENGINE_MEMORY_PATH and LITERARY_ENGINE_GLOSSARY_PATH");
 }
 
 fn inspect(path: &str) -> Result<(), String> {
@@ -114,6 +126,66 @@ fn configured_provider() -> Result<Box<dyn TranslationProvider>, String> {
     }
 }
 
+fn project_memory_paths() -> (PathBuf, PathBuf) {
+    let memory = env::var_os("LITERARY_ENGINE_MEMORY_PATH")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(DEFAULT_MEMORY_PATH));
+    let glossary = env::var_os("LITERARY_ENGINE_GLOSSARY_PATH")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(DEFAULT_GLOSSARY_PATH));
+    (memory, glossary)
+}
+
+fn load_project_memory(memory_path: &Path, glossary_path: &Path) -> Result<(TranslationMemory, Glossary), String> {
+    let memory = if memory_path.exists() {
+        load_translation_memory(memory_path).map_err(|error| {
+            format!(
+                "failed to load translation memory {}: {error}",
+                memory_path.display()
+            )
+        })?
+    } else {
+        TranslationMemory::new()
+    };
+
+    let glossary = if glossary_path.exists() {
+        load_glossary(glossary_path).map_err(|error| {
+            format!("failed to load glossary {}: {error}", glossary_path.display())
+        })?
+    } else {
+        Glossary::default()
+    };
+
+    Ok((memory, glossary))
+}
+
+fn runtime_context(
+    document_title: &str,
+    chapter_title: &str,
+    source_text: &str,
+    memory: &TranslationMemory,
+    glossary: &Glossary,
+) -> (String, usize, usize) {
+    let memory_context = build_memory_context(
+        source_text,
+        memory,
+        glossary,
+        &MemoryContextConfig::default(),
+    );
+    let mut context = format!(
+        "document_title={document_title}\nchapter_title={chapter_title}\nglossary_enabled=true\ncharacter_memory_enabled=true"
+    );
+    if !memory_context.text.is_empty() {
+        context.push_str("\n\n");
+        context.push_str(&memory_context.text);
+    }
+    (
+        context,
+        memory_context.memory_hits,
+        memory_context.glossary_hits,
+    )
+}
+
 fn run_pipeline(path: &str, target_language: &str, output_dir: &Path) -> Result<(), String> {
     let document = load_file(path).map_err(|error| format!("failed to read {path}: {error}"))?;
     let chapters = split_into_chapters(&document.text);
@@ -127,24 +199,38 @@ fn run_pipeline(path: &str, target_language: &str, output_dir: &Path) -> Result<
     let provider = configured_provider()?;
     let provider_name = provider.name().to_string();
     let pipeline = TranslationPipeline::default_literary_pipeline();
+    let (memory_path, glossary_path) = project_memory_paths();
+    let (mut memory, glossary) = load_project_memory(&memory_path, &glossary_path)?;
+    let persist_outputs = provider_name != "echo";
+
     let mut manifest = String::new();
     manifest.push_str(&format!("document={}\n", document.title));
     manifest.push_str(&format!("target_language={target_language}\n"));
     manifest.push_str(&format!("provider={provider_name}\n"));
     manifest.push_str(&format!("chapters={}\n", chapters.len()));
+    manifest.push_str(&format!("memory_path={}\n", memory_path.display()));
+    manifest.push_str(&format!("glossary_path={}\n", glossary_path.display()));
+    manifest.push_str(&format!("memory_entries_before={}\n", memory.entries().len()));
+    manifest.push_str(&format!("glossary_entries={}\n", glossary.entries().len()));
 
     println!("provider: {provider_name}");
+    println!("memory: {} entries", memory.entries().len());
+    println!("glossary: {} entries", glossary.entries().len());
 
     for chapter in chapters {
-        let context = format!(
-            "document_title={}\nchapter_title={}\nglossary_enabled=true\ncharacter_memory_enabled=true",
-            document.title, chapter.title
+        let (context, memory_hits, glossary_hits) = runtime_context(
+            &document.title,
+            &chapter.title,
+            &chapter.content,
+            &memory,
+            &glossary,
         );
+        let source_text = chapter.content;
         let output = pipeline
             .execute(
                 provider.as_ref(),
                 PipelineInput {
-                    source_text: chapter.content,
+                    source_text: source_text.clone(),
                     target_language: target_language.to_string(),
                     context,
                 },
@@ -155,20 +241,46 @@ fn run_pipeline(path: &str, target_language: &str, output_dir: &Path) -> Result<
         let output_path = output_dir.join(format!("{stem}.txt"));
         fs::write(&output_path, &output.quality_review)
             .map_err(|error| format!("failed to write {}: {error}", output_path.display()))?;
+
+        if persist_outputs {
+            memory.add(MemoryEntry::new(
+                source_text,
+                output.quality_review.clone(),
+                format!(
+                    "document={} | chapter={} | provider={}",
+                    document.title, chapter.title, provider_name
+                ),
+            ));
+            save_translation_memory(&memory_path, &memory).map_err(|error| {
+                format!(
+                    "failed to save translation memory {}: {error}",
+                    memory_path.display()
+                )
+            })?;
+        }
+
         manifest.push_str(&format!(
-            "chapter.{}.file={}\n",
+            "chapter.{}.file={}\nchapter.{}.memory_hits={}\nchapter.{}.glossary_hits={}\n",
             chapter.index + 1,
-            output_path.display()
+            output_path.display(),
+            chapter.index + 1,
+            memory_hits,
+            chapter.index + 1,
+            glossary_hits
         ));
         println!(
-            "{} -> {} ({} bytes, provider={})",
+            "{} -> {} ({} bytes, provider={}, memory_hits={}, glossary_hits={})",
             chapter.title,
             output_path.display(),
             output.quality_review.len(),
-            output.provider
+            output.provider,
+            memory_hits,
+            glossary_hits
         );
     }
 
+    manifest.push_str(&format!("memory_entries_after={}\n", memory.entries().len()));
+    manifest.push_str(&format!("memory_persisted={}\n", persist_outputs));
     let manifest_path = output_dir.join("manifest.txt");
     fs::write(&manifest_path, manifest)
         .map_err(|error| format!("failed to write {}: {error}", manifest_path.display()))?;
@@ -219,6 +331,7 @@ fn main() -> ExitCode {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use memory_engine::glossary::GlossaryEntry;
 
     #[test]
     fn output_file_stems_are_deterministic_and_safe() {
@@ -248,5 +361,35 @@ mod tests {
     fn unsupported_provider_is_rejected() {
         let error = selected_provider_name(Some("unknown"), true).unwrap_err();
         assert!(error.contains("unsupported provider"));
+    }
+
+    #[test]
+    fn runtime_context_includes_relevant_memory_and_glossary() {
+        let mut memory = TranslationMemory::new();
+        memory.add(MemoryEntry::new(
+            "The High Warlock whispered softly.".into(),
+            "جادوگر اعظم آرام زمزمه کرد.".into(),
+            "voice reference".into(),
+        ));
+        let mut glossary = Glossary::default();
+        glossary.add(GlossaryEntry {
+            source_term: "High Warlock".into(),
+            preferred_translation: "جادوگر اعظم".into(),
+            context: "title".into(),
+        });
+
+        let (context, memory_hits, glossary_hits) = runtime_context(
+            "Book",
+            "Chapter 2",
+            "The High Warlock whispered softly.",
+            &memory,
+            &glossary,
+        );
+
+        assert_eq!(memory_hits, 1);
+        assert_eq!(glossary_hits, 1);
+        assert!(context.contains("GLOSSARY"));
+        assert!(context.contains("TRANSLATION MEMORY"));
+        assert!(context.contains("جادوگر اعظم"));
     }
 }
