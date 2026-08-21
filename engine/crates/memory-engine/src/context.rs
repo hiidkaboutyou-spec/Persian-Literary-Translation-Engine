@@ -165,7 +165,10 @@ mod tests {
 
         assert_eq!(context.glossary_hits, 1);
         assert_eq!(context.memory_hits, 1);
-        assert!(context.text.find("GLOSSARY").unwrap() < context.text.find("TRANSLATION MEMORY").unwrap());
+        assert!(
+            context.text.find("GLOSSARY").unwrap()
+                < context.text.find("TRANSLATION MEMORY").unwrap()
+        );
     }
 
     #[test]
