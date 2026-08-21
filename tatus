@@ -1,0 +1,163 @@
+[1mdiff --git a/src/consistency.rs b/src/consistency.rs[m
+[1mindex 4bebdc8..97b31ff 100644[m
+[1m--- a/src/consistency.rs[m
+[1m+++ b/src/consistency.rs[m
+[36m@@ -20,7 +20,9 @@[m [mpub struct ConsistencyReport {[m
+ }[m
+ [m
+ impl ConsistencyReport {[m
+[31m-    pub fn is_clean(&self) -> bool { self.issues.is_empty() }[m
+[32m+[m[32m    pub fn is_clean(&self) -> bool {[m
+[32m+[m[32m        self.issues.is_empty()[m
+[32m+[m[32m    }[m
+ [m
+     pub fn score(&self) -> f32 {[m
+         (1.0 - self.issues.len() as f32 * 0.1).max(0.0)[m
+[36m@@ -57,16 +59,16 @@[m [mpub fn check_glossary_usage([m
+     report[m
+ }[m
+ [m
+[31m-pub fn find_translation_memory_conflicts([m
+[31m-    entries: &[TranslationMemoryEntry],[m
+[31m-) -> ConsistencyReport {[m
+[32m+[m[32mpub fn find_translation_memory_conflicts(entries: &[TranslationMemoryEntry]) -> ConsistencyReport {[m
+     let mut report = ConsistencyReport::default();[m
+     let mut seen: HashMap<String, String> = HashMap::new();[m
+ [m
+     for entry in entries {[m
+         let source = normalize(&entry.source);[m
+         let translation = normalize(&entry.translation);[m
+[31m-        if source.is_empty() || translation.is_empty() { continue; }[m
+[32m+[m[32m        if source.is_empty() || translation.is_empty() {[m
+[32m+[m[32m            continue;[m
+[32m+[m[32m        }[m
+ [m
+         match seen.get(&source) {[m
+             Some(existing) if existing != &translation => {[m
+[36m@@ -78,7 +80,9 @@[m [mpub fn find_translation_memory_conflicts([m
+                     ),[m
+                 });[m
+             }[m
+[31m-            None => { seen.insert(source, translation); }[m
+[32m+[m[32m            None => {[m
+[32m+[m[32m                seen.insert(source, translation);[m
+[32m+[m[32m            }[m
+             _ => {}[m
+         }[m
+     }[m
+[36m@@ -115,8 +119,16 @@[m [mmod tests {[m
+     #[test][m
+     fn flags_conflicting_memory_entries() {[m
+         let entries = vec![[m
+[31m-            TranslationMemoryEntry { source: "quiet smile".into(), translation: "لبخند آرام".into(), context: String::new() },[m
+[31m-            TranslationMemoryEntry { source: "quiet smile".into(), translation: "لبخند ساکت".into(), context: String::new() },[m
+[32m+[m[32m            TranslationMemoryEntry {[m
+[32m+[m[32m                source: "quiet smile".into(),[m
+[32m+[m[32m                translation: "لبخند آرام".into(),[m
+[32m+[m[32m                context: String::new(),[m
+[32m+[m[32m            },[m
+[32m+[m[32m            TranslationMemoryEntry {[m
+[32m+[m[32m                source: "quiet smile".into(),[m
+[32m+[m[32m                translation: "لبخند ساکت".into(),[m
+[32m+[m[32m                context: String::new(),[m
+[32m+[m[32m            },[m
+         ];[m
+         let report = find_translation_memory_conflicts(&entries);[m
+         assert_eq!(report.issues.len(), 1);[m
+[1mdiff --git a/src/glossary.rs b/src/glossary.rs[m
+[1mindex bdf2250..468bcfb 100644[m
+[1m--- a/src/glossary.rs[m
+[1m+++ b/src/glossary.rs[m
+[36m@@ -7,7 +7,9 @@[m [mpub struct GlossaryEngine {[m
+ [m
+ impl GlossaryEngine {[m
+     pub fn new() -> Self {[m
+[31m-        Self { entries: Vec::new() }[m
+[32m+[m[32m        Self {[m
+[32m+[m[32m            entries: Vec::new(),[m
+[32m+[m[32m        }[m
+     }[m
+ [m
+     pub fn add(&mut self, entry: GlossaryEntry) {[m
+[1mdiff --git a/src/lib.rs b/src/lib.rs[m
+[1mindex ab026bc..340fd11 100644[m
+[1m--- a/src/lib.rs[m
+[1m+++ b/src/lib.rs[m
+[36m@@ -6,5 +6,5 @@[m [mpub use consistency::{[m
+     check_glossary_usage, find_translation_memory_conflicts, ConsistencyIssue,[m
+     ConsistencyIssueKind, ConsistencyReport,[m
+ };[m
+[31m-pub use models::{Character, Chapter, GlossaryEntry, RelationshipMemory, TranslationMemoryEntry};[m
+[32m+[m[32mpub use models::{Chapter, Character, GlossaryEntry, RelationshipMemory, TranslationMemoryEntry};[m
+ pub use retrieval::{LiteraryMemory, RetrievalContext, ScoredMemory};[m
+[1mdiff --git a/src/retrieval.rs b/src/retrieval.rs[m
+[1mindex ce15627..99dcae5 100644[m
+[1m--- a/src/retrieval.rs[m
+[1m+++ b/src/retrieval.rs[m
+[36m@@ -18,20 +18,36 @@[m [mpub struct LiteraryMemory {[m
+ }[m
+ [m
+ impl LiteraryMemory {[m
+[31m-    pub fn new() -> Self { Self::default() }[m
+[31m-    pub fn add_translation(&mut self, entry: TranslationMemoryEntry) { self.translation_memory.push(entry); }[m
+[31m-    pub fn add_glossary_entry(&mut self, entry: GlossaryEntry) { self.glossary.push(entry); }[m
+[31m-    pub fn add_character(&mut self, character: Character) { self.characters.push(character); }[m
+[31m-    pub fn add_relationship(&mut self, relationship: RelationshipMemory) { self.relationships.push(relationship); }[m
+[32m+[m[32m    pub fn new() -> Self {[m
+[32m+[m[32m        Self::default()[m
+[32m+[m[32m    }[m
+[32m+[m[32m    pub fn add_translation(&mut self, entry: TranslationMemoryEntry) {[m
+[32m+[m[32m        self.translation_memory.push(entry);[m
+[32m+[m[32m    }[m
+[32m+[m[32m    pub fn add_glossary_entry(&mut self, entry: GlossaryEntry) {[m
+[32m+[m[32m        self.glossary.push(entry);[m
+[32m+[m[32m    }[m
+[32m+[m[32m    pub fn add_character(&mut self, character: Character) {[m
+[32m+[m[32m        self.characters.push(character);[m
+[32m+[m[32m    }[m
+[32m+[m[32m    pub fn add_relationship(&mut self, relationship: RelationshipMemory) {[m
+[32m+[m[32m        self.relationships.push(relationship);[m
+[32m+[m[32m    }[m
+ [m
+     pub fn search_translation_memory(&self, query: &str, limit: usize) -> Vec<ScoredMemory<'_>> {[m
+[31m-        if query.trim().is_empty() || limit == 0 { return Vec::new(); }[m
+[31m-        let mut hits: Vec<_> = self.translation_memory.iter().filter_map(|entry| {[m
+[31m-            let source_score = text_similarity(query, &entry.source);[m
+[31m-            let context_score = text_similarity(query, &entry.context) * 0.35;[m
+[31m-            let score = (source_score + context_score).min(1.0);[m
+[31m-            (score > 0.0).then_some(ScoredMemory { entry, score })[m
+[31m-        }).collect();[m
+[32m+[m[32m        if query.trim().is_empty() || limit == 0 {[m
+[32m+[m[32m            return Vec::new();[m
+[32m+[m[32m        }[m
+[32m+[m[32m        let mut hits: Vec<_> = self[m
+[32m+[m[32m            .translation_memory[m
+[32m+[m[32m            .iter()[m
+[32m+[m[32m            .filter_map(|entry| {[m
+[32m+[m[32m                let source_score = text_similarity(query, &entry.source);[m
+[32m+[m[32m                let context_score = text_similarity(query, &entry.context) * 0.35;[m
+[32m+[m[32m                let score = (source_score + context_score).min(1.0);[m
+[32m+[m[32m                (score > 0.0).then_some(ScoredMemory { entry, score })[m
+[32m+[m[32m            })[m
+[32m+[m[32m            .collect();[m
+         hits.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(Ordering::Equal));[m
+         hits.truncate(limit);[m
+         hits[m
+[36m@@ -39,21 +55,38 @@[m [mimpl LiteraryMemory {[m
+ [m
+     pub fn glossary_for_text(&self, source_text: &str) -> Vec<&GlossaryEntry> {[m
+         let normalized = normalize(source_text);[m
+[31m-        self.glossary.iter().filter(|entry| contains_phrase(&normalized, &normalize(&entry.source))).collect()[m
+[32m+[m[32m        self.glossary[m
+[32m+[m[32m            .iter()[m
+[32m+[m[32m            .filter(|entry| contains_phrase(&normalized, &normalize(&entry.source)))[m
+[32m+[m[32m            .collect()[m
+     }[m
+ [m
+     pub fn characters_for_text(&self, source_text: &str) -> Vec<&Character> {[m
+         let normalized = normalize(source_text);[m
+[31m-        self.characters.iter().filter(|character| {[m
+[31m-            contains_phrase(&normalized, &normalize(&character.name)) || character.aliases.iter().any(|alias| contains_phrase(&normalized, &normalize(alias)))[m
+[31m-        }).collect()[m
+[32m+[m[32m        self.characters[m
+[32m+

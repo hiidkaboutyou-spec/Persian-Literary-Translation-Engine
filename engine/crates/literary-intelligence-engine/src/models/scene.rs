@@ -11,12 +11,22 @@ pub struct SceneContext {
     pub character_ids: Vec<Uuid>,
     pub importance_score: f32,
     pub symbolic_elements: Vec<String>,
+    pub conflict_level: f32,
+    pub character_goals: Vec<String>,
+    pub narrative_events: Vec<String>,
 }
 
 impl SceneContext {
     pub fn validate(&self) -> Result<(), LiteraryIntelligenceError> {
-        if !(0.0..=1.0).contains(&self.importance_score) {
-            return Err(LiteraryIntelligenceError::Validation("scene importance_score must be between 0.0 and 1.0".into()));
+        for (name, value) in [
+            ("importance_score", self.importance_score),
+            ("conflict_level", self.conflict_level),
+        ] {
+            if !(0.0..=1.0).contains(&value) {
+                return Err(LiteraryIntelligenceError::Validation(format!(
+                    "{name} must be between 0.0 and 1.0"
+                )));
+            }
         }
         Ok(())
     }
