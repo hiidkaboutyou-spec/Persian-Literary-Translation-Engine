@@ -133,9 +133,6 @@ impl CharacterBible {
         serde_json::from_slice(&bytes).map_err(io::Error::other)
     }
 
-    /// Returns characters explicitly present in the passage by canonical name
-    /// or by a registered nickname/title/alias. This keeps prompts compact
-    /// while preserving character voice when prose uses non-canonical names.
     pub fn relevant_to_text(&self, text: &str) -> Vec<&CharacterProfile> {
         let normalized_text = normalize_for_matching(text);
         self.profiles
@@ -144,9 +141,6 @@ impl CharacterBible {
             .collect()
     }
 
-    /// Returns relationship memories only when both participants are present.
-    /// This prevents unrelated romantic/familial dynamics from leaking into a
-    /// scene while retaining forms of address and continuity constraints.
     pub fn relevant_relationships(&self, text: &str) -> Vec<&RelationshipProfile> {
         let normalized_text = normalize_for_matching(text);
         self.relationships
@@ -158,9 +152,6 @@ impl CharacterBible {
             .collect()
     }
 
-    /// Builds prompt-ready scene context containing only present characters and
-    /// relationships. Character context is emitted before relationship context
-    /// so voice remains the primary invariant and scene dynamics refine it.
     pub fn context_for_text(&self, text: &str) -> String {
         let mut sections = self
             .relevant_to_text(text)
@@ -343,6 +334,9 @@ mod tests {
         let _ = fs::remove_file(&path);
 
         assert_eq!(loaded, bible);
-        assert_eq!(loaded.context_for_text("Magnus smiled at Alec."), bible.context_for_text("Magnus smiled at Alec."));
+        assert_eq!(
+            loaded.context_for_text("Magnus smiled at Alec."),
+            bible.context_for_text("Magnus smiled at Alec.")
+        );
     }
 }
