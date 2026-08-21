@@ -1,9 +1,11 @@
 pub mod consistency;
+pub mod evaluation;
 
 pub use consistency::{
     audit_consistency, check_consistency, ConsistencyConflict, ConsistencyObservation,
     ConsistencyResult,
 };
+pub use evaluation::{evaluate_translation, QualityEvaluation, TerminologyRule};
 
 #[derive(Debug, Clone)]
 pub struct QualityReport {
