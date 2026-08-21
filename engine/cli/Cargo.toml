@@ -11,4 +11,5 @@ path = "src/main.rs"
 character-engine = { path = "../crates/character-engine" }
 document-engine = { path = "../crates/document-engine" }
 memory-engine = { path = "../crates/memory-engine" }
+quality-engine = { path = "../crates/quality-engine" }
 translation-core = { path = "../crates/translation-core" }

@@ -5,6 +5,7 @@ use memory_engine::{
     build_memory_context, load_glossary, load_translation_memory, MemoryContextConfig,
     TranslationMemory,
 };
+use quality_engine::{evaluate_translation, TerminologyRule};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -188,6 +189,24 @@ fn chapter_context(
     sections.join("\n\n")
 }
 
+fn terminology_rules(memory: &RuntimeMemory, source_text: &str) -> Vec<TerminologyRule> {
+    memory
+        .glossary
+        .relevant_to_text(source_text)
+        .into_iter()
+        .map(|entry| {
+            TerminologyRule::new(
+                entry.source_term.clone(),
+                entry.preferred_translation.clone(),
+            )
+        })
+        .collect()
+}
+
+fn manifest_value(value: &str) -> String {
+    value.replace(['\r', '\n'], " ")
+}
+
 fn run_pipeline(path: &str, target_language: &str, output_dir: &Path) -> Result<(), String> {
     let document = load_file(path).map_err(|error| format!("failed to read {path}: {error}"))?;
     let chapters = split_into_chapters(&document.text);
@@ -229,22 +248,33 @@ fn run_pipeline(path: &str, target_language: &str, output_dir: &Path) -> Result<
     );
 
     for chapter in chapters {
+        let source_text = chapter.content;
         let context = chapter_context(
             &document.title,
             &chapter.title,
-            &chapter.content,
+            &source_text,
             &runtime_memory,
         );
         let output = pipeline
             .execute(
                 provider.as_ref(),
                 PipelineInput {
-                    source_text: chapter.content,
+                    source_text: source_text.clone(),
                     target_language: target_language.to_string(),
                     context,
                 },
             )
             .map_err(|error| format!("pipeline failed for {}: {error}", chapter.title))?;
+
+        let rules = terminology_rules(&runtime_memory, &source_text);
+        let quality = evaluate_translation(&source_text, &output.quality_review, &rules);
+        if !quality.passes() {
+            return Err(format!(
+                "quality gate blocked {}: {}",
+                chapter.title,
+                quality.blocking_errors.join("; ")
+            ));
+        }
 
         let stem = safe_file_stem(&chapter.title, chapter.index);
         let output_path = output_dir.join(format!("{stem}.txt"));
@@ -255,12 +285,32 @@ fn run_pipeline(path: &str, target_language: &str, output_dir: &Path) -> Result<
             chapter.index + 1,
             output_path.display()
         ));
+        manifest.push_str(&format!(
+            "chapter.{}.quality_score={:.2}\n",
+            chapter.index + 1,
+            quality.score
+        ));
+        manifest.push_str(&format!(
+            "chapter.{}.quality_warnings={}\n",
+            chapter.index + 1,
+            quality.warnings.len()
+        ));
+        for (warning_index, warning) in quality.warnings.iter().enumerate() {
+            manifest.push_str(&format!(
+                "chapter.{}.warning.{}={}\n",
+                chapter.index + 1,
+                warning_index + 1,
+                manifest_value(warning)
+            ));
+            eprintln!("quality warning [{}]: {}", chapter.title, warning);
+        }
         println!(
-            "{} -> {} ({} bytes, provider={})",
+            "{} -> {} ({} bytes, provider={}, quality={:.2})",
             chapter.title,
             output_path.display(),
             output.quality_review.len(),
-            output.provider
+            output.provider,
+            quality.score
         );
     }
 
@@ -388,5 +438,25 @@ mod tests {
         assert!(context.contains("High Warlock => جادوگر اعظم"));
         assert!(context.contains("TRANSLATION MEMORY"));
         assert!(context.contains("مگنوس آرام زمزمه کرد"));
+    }
+
+    #[test]
+    fn terminology_rules_only_include_terms_present_in_source() {
+        let mut runtime = RuntimeMemory::default();
+        runtime.glossary.add(GlossaryEntry {
+            source_term: "High Warlock".into(),
+            preferred_translation: "جادوگر اعظم".into(),
+            context: "title".into(),
+        });
+        runtime.glossary.add(GlossaryEntry {
+            source_term: "Parabatai".into(),
+            preferred_translation: "پاراباتای".into(),
+            context: "title".into(),
+        });
+
+        let rules = terminology_rules(&runtime, "The High Warlock smiled.");
+        assert_eq!(rules.len(), 1);
+        assert_eq!(rules[0].source_term, "High Warlock");
+        assert_eq!(rules[0].preferred_translation, "جادوگر اعظم");
     }
 }
