@@ -1,9 +1,9 @@
 name: Validate First Release
 
 on:
-  push:
+  pull_request:
     branches:
-      - 'automation/release-v0.1.0'
+      - main
     paths:
       - '.github/workflows/validate-first-release.yml'
 
