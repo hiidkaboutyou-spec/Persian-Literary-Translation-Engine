@@ -1,11 +1,6 @@
 //! Chapter extraction for prose documents.
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Chapter {
-    pub index: usize,
-    pub title: String,
-    pub content: String,
-}
+use crate::models::Chapter;
 
 fn is_heading(line: &str) -> bool {
     let trimmed = line.trim();
@@ -29,15 +24,15 @@ pub fn split_into_chapters(text: &str) -> Vec<Chapter> {
         if is_heading(line) {
             if !current_lines.iter().all(|line| line.trim().is_empty()) {
                 let index = chapters.len();
-                chapters.push(Chapter {
+                chapters.push(Chapter::translated(
                     index,
-                    title: if current_title.is_empty() {
+                    if current_title.is_empty() {
                         format!("Chapter {}", index + 1)
                     } else {
                         current_title.clone()
                     },
-                    content: current_lines.join("\n").trim().to_string(),
-                });
+                    current_lines.join("\n").trim().to_string(),
+                ));
             }
             current_title = line.trim().to_string();
             current_lines.clear();
@@ -48,23 +43,19 @@ pub fn split_into_chapters(text: &str) -> Vec<Chapter> {
 
     if !current_lines.iter().all(|line| line.trim().is_empty()) || !current_title.is_empty() {
         let index = chapters.len();
-        chapters.push(Chapter {
+        chapters.push(Chapter::translated(
             index,
-            title: if current_title.is_empty() {
+            if current_title.is_empty() {
                 format!("Chapter {}", index + 1)
             } else {
                 current_title
             },
-            content: current_lines.join("\n").trim().to_string(),
-        });
+            current_lines.join("\n").trim().to_string(),
+        ));
     }
 
     if chapters.is_empty() && !text.trim().is_empty() {
-        chapters.push(Chapter {
-            index: 0,
-            title: "Chapter 1".to_string(),
-            content: text.trim().to_string(),
-        });
+        chapters.push(Chapter::translated(0, "Chapter 1", text.trim()));
     }
 
     chapters

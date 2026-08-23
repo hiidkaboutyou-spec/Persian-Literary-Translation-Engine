@@ -13,7 +13,7 @@ pub fn export_persian_docx(
     chapters: &[Chapter],
 ) -> Result<(), DocumentError> {
     if chapters.is_empty() {
-        return Err(DocumentError::InvalidDocument(
+        return Err(DocumentError::InvalidStructure(
             "cannot export a DOCX without chapters".to_string(),
         ));
     }
@@ -213,16 +213,8 @@ mod tests {
     fn exported_docx_round_trips_persian_chapters() {
         let path = temp_docx();
         let chapters = vec![
-            Chapter {
-                index: 0,
-                title: "فصل ۱".into(),
-                content: "این پاراگراف اول است.\n\nاین پاراگراف دوم است.".into(),
-            },
-            Chapter {
-                index: 1,
-                title: "فصل ۲".into(),
-                content: "پایان داستان.".into(),
-            },
+            Chapter::translated(0, "فصل ۱", "این پاراگراف اول است.\n\nاین پاراگراف دوم است."),
+            Chapter::translated(1, "فصل ۲", "پایان داستان."),
         ];
 
         export_persian_docx(&path, "رمان آزمایشی", &chapters).unwrap();

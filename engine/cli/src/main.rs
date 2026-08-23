@@ -1,5 +1,5 @@
 use character_engine::CharacterBible;
-use document_engine::{export_persian_docx, load_file, split_into_chapters, Chapter};
+use document_engine::{export_persian_docx, ingest_file, Chapter};
 use memory_engine::glossary::Glossary;
 use memory_engine::{
     build_memory_context, load_glossary, load_translation_memory, MemoryContextConfig,
@@ -58,26 +58,38 @@ fn usage() {
 }
 
 fn inspect(path: &str) -> Result<(), String> {
-    let document = load_file(path).map_err(|error| format!("failed to read {path}: {error}"))?;
-    let chapters = split_into_chapters(&document.text);
+    let manuscript =
+        ingest_file(path).map_err(|error| format!("failed to read {path}: {error}"))?;
 
-    println!("title: {}", document.title);
-    println!("bytes: {}", document.text.len());
-    println!("chapters: {}", chapters.len());
-    for chapter in chapters {
+    println!("title: {}", manuscript.book.title);
+    println!(
+        "author: {}",
+        manuscript.book.author.as_deref().unwrap_or("unknown")
+    );
+    println!(
+        "bytes: {}",
+        manuscript
+            .chapters
+            .iter()
+            .map(|chapter| chapter.content.len())
+            .sum::<usize>()
+    );
+    println!("chapters: {}", manuscript.chapters.len());
+    println!("paragraphs: {}", manuscript.paragraph_count());
+    for chapter in manuscript.chapters {
         println!("- {}: {} bytes", chapter.title, chapter.content.len());
     }
     Ok(())
 }
 
 fn prepare(path: &str, target_language: &str) -> Result<(), String> {
-    let document = load_file(path).map_err(|error| format!("failed to read {path}: {error}"))?;
-    let chapters = split_into_chapters(&document.text);
+    let manuscript =
+        ingest_file(path).map_err(|error| format!("failed to read {path}: {error}"))?;
 
-    println!("document: {}", document.title);
-    println!("chapters: {}", chapters.len());
+    println!("document: {}", manuscript.book.title);
+    println!("chapters: {}", manuscript.chapters.len());
 
-    for chapter in chapters {
+    for chapter in manuscript.chapters {
         let result = prepare_translation(
             TranslationRequest {
                 source: chapter.content,
@@ -251,8 +263,10 @@ fn run_pipeline(
     output_dir: &Path,
     resume: bool,
 ) -> Result<(), String> {
-    let document = load_file(path).map_err(|error| format!("failed to read {path}: {error}"))?;
-    let chapters = split_into_chapters(&document.text);
+    let manuscript =
+        ingest_file(path).map_err(|error| format!("failed to read {path}: {error}"))?;
+    let document_title = manuscript.book.title;
+    let chapters = manuscript.chapters;
     if chapters.is_empty() {
         return Err("document contains no translatable chapters".to_string());
     }
@@ -266,7 +280,7 @@ fn run_pipeline(
     let pipeline = TranslationPipeline::default_literary_pipeline();
     let mut translated_chapters = Vec::with_capacity(chapters.len());
     let mut manifest = String::new();
-    manifest.push_str(&format!("document={}\n", document.title));
+    manifest.push_str(&format!("document={}\n", document_title));
     manifest.push_str(&format!("target_language={target_language}\n"));
     manifest.push_str(&format!("provider={provider_name}\n"));
     manifest.push_str(&format!("resume={}\n", resume));
@@ -306,11 +320,11 @@ fn run_pipeline(
             {
                 let quality = evaluate_translation(&source_text, &existing, &rules);
                 if quality.passes() {
-                    translated_chapters.push(Chapter {
-                        index: chapter.index,
-                        title: chapter.title.clone(),
-                        content: existing.clone(),
-                    });
+                    translated_chapters.push(Chapter::translated(
+                        chapter.index,
+                        chapter.title.clone(),
+                        existing.clone(),
+                    ));
                     manifest.push_str(&format!(
                         "chapter.{}.file={}\n",
                         chapter.index + 1,
@@ -359,7 +373,7 @@ fn run_pipeline(
         }
 
         let context = chapter_context(
-            &document.title,
+            &document_title,
             &chapter.title,
             &source_text,
             &runtime_memory,
@@ -388,11 +402,11 @@ fn run_pipeline(
             .map_err(|error| format!("failed to write {}: {error}", output_path.display()))?;
         fs::write(&checkpoint_path, format!("{fingerprint}\n"))
             .map_err(|error| format!("failed to write {}: {error}", checkpoint_path.display()))?;
-        translated_chapters.push(Chapter {
-            index: chapter.index,
-            title: chapter.title.clone(),
-            content: output.quality_review.clone(),
-        });
+        translated_chapters.push(Chapter::translated(
+            chapter.index,
+            chapter.title.clone(),
+            output.quality_review.clone(),
+        ));
         manifest.push_str(&format!(
             "chapter.{}.file={}\n",
             chapter.index + 1,
@@ -434,7 +448,7 @@ fn run_pipeline(
     }
 
     let manuscript_path = output_dir.join("manuscript.docx");
-    export_persian_docx(&manuscript_path, &document.title, &translated_chapters)
+    export_persian_docx(&manuscript_path, &document_title, &translated_chapters)
         .map_err(|error| format!("failed to export {}: {error}", manuscript_path.display()))?;
     manifest.push_str(&format!("manuscript={}\n", manuscript_path.display()));
     println!("manuscript -> {}", manuscript_path.display());
