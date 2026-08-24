@@ -42,6 +42,11 @@ jobs:
       - name: Test workspace
         run: cargo test --workspace
 
+      - name: Security audit
+        run: |
+          cargo install cargo-audit --locked 2>/dev/null || true
+          cargo audit
+
       - name: Build release CLI
         run: cargo build --release -p literary-engine
 
@@ -53,7 +58,9 @@ jobs:
           cargo run --quiet -p literary-engine -- --version >/dev/null
           printf 'Chapter 1\nHello world.\n\nChapter 2\nGoodbye world.\n' > /tmp/literary-engine-smoke.txt
           cargo run --quiet -p literary-engine -- inspect /tmp/literary-engine-smoke.txt >/dev/null
+          cargo run --quiet -p literary-engine -- inspect /tmp/literary-engine-smoke.txt --format json | python3 -c "import json,sys; d=json.load(sys.stdin); assert 'title' in d"
           rm -rf /tmp/literary-engine-output
           cargo run --quiet -p literary-engine -- run /tmp/literary-engine-smoke.txt fa /tmp/literary-engine-output >/dev/null
           test -f /tmp/literary-engine-output/manifest.txt
+          test -f /tmp/literary-engine-output/manifest.json
           test "$(find /tmp/literary-engine-output -maxdepth 1 -name '*.txt' | wc -l)" -ge 2
