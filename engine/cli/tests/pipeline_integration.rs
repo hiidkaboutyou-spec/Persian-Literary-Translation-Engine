@@ -157,8 +157,7 @@ fn json_output_produces_valid_manifest() {
 
     assert!(output.status.success());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let json: serde_json::Value =
-        serde_json::from_str(&stdout).expect("stdout must be valid JSON");
+    let json: serde_json::Value = serde_json::from_str(&stdout).expect("stdout must be valid JSON");
     assert_eq!(json["document"], "story");
     assert_eq!(json["provider"], "echo");
     assert_eq!(json["resume"], false);
@@ -184,11 +183,7 @@ fn inspect_json_output_matches_text_fields() {
     let input_path = workspace.join("story.txt");
     fs::create_dir_all(&workspace).expect("create workspace");
 
-    fs::write(
-        &input_path,
-        "Chapter 1\nFirst.\n\nChapter 2\nSecond.\n",
-    )
-    .expect("write source");
+    fs::write(&input_path, "Chapter 1\nFirst.\n\nChapter 2\nSecond.\n").expect("write source");
 
     let text_output = Command::new(env!("CARGO_BIN_EXE_literary-engine"))
         .arg("inspect")
