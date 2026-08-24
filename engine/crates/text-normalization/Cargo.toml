@@ -1,0 +1,8 @@
+[package]
+name = "text-normalization"
+version = "0.1.0"
+edition = "2021"
+description = "Shared Persian/Arabic text normalization, negation detection, and comparison utilities"
+
+[lib]
+path = "src/lib.rs"

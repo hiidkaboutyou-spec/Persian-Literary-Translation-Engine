@@ -2,6 +2,7 @@ use std::cmp::Ordering;
 use std::collections::HashSet;
 
 use crate::models::MemoryEntry;
+pub use text_normalization::{has_negation, normalize, similarity};
 
 #[derive(Debug, Clone, Copy)]
 pub struct RetrievalHit<'a> {
@@ -150,135 +151,6 @@ fn passage_similarity(passage: &str, candidate: &str) -> f32 {
     best
 }
 
-pub fn similarity(a: &str, b: &str) -> f32 {
-    let a_norm = normalize(a);
-    let b_norm = normalize(b);
-
-    if a_norm.is_empty() || b_norm.is_empty() {
-        return 0.0;
-    }
-    if a_norm == b_norm {
-        return 1.0;
-    }
-
-    let a_tokens: HashSet<&str> = a_norm.split_whitespace().collect();
-    let b_tokens: HashSet<&str> = b_norm.split_whitespace().collect();
-    let intersection = a_tokens.intersection(&b_tokens).count() as f32;
-    let union = a_tokens.union(&b_tokens).count() as f32;
-    let jaccard = if union == 0.0 {
-        0.0
-    } else {
-        intersection / union
-    };
-
-    let phrase_bonus = if a_norm.contains(&b_norm) || b_norm.contains(&a_norm) {
-        0.20
-    } else {
-        0.0
-    };
-
-    // Negation can invert the emotional or factual meaning of an otherwise nearly
-    // identical line. Translation memory should strongly prefer examples with
-    // matching polarity instead of anchoring the model on the opposite meaning.
-    let polarity_factor = if has_negation(&a_norm) == has_negation(&b_norm) {
-        1.0
-    } else {
-        0.35
-    };
-
-    ((jaccard + phrase_bonus) * polarity_factor).min(1.0)
-}
-
-fn has_negation(normalized: &str) -> bool {
-    normalized.split_whitespace().any(is_negation_token)
-}
-
-fn is_negation_token(token: &str) -> bool {
-    matches!(
-        token,
-        "not"
-            | "no"
-            | "never"
-            | "neither"
-            | "nor"
-            | "without"
-            | "cannot"
-            | "ن"
-            | "نه"
-            | "نیست"
-            | "نیستم"
-            | "نیستی"
-            | "نیستیم"
-            | "نیستید"
-            | "نیستند"
-            | "نبود"
-            | "نبودم"
-            | "نبودی"
-            | "نبودیم"
-            | "نبودید"
-            | "نبودند"
-            | "هرگز"
-            | "هیچ"
-            | "هیچوقت"
-            | "هیچگاه"
-            | "بدون"
-    ) || token == "نمی"
-        || token.starts_with("نمی")
-        || token.starts_with("ندار")
-        || token.starts_with("نخواه")
-        || token.starts_with("نکرد")
-        || token.starts_with("نکن")
-        || token.starts_with("نباید")
-        || token.starts_with("نتوان")
-        || matches!(token, "نرو" | "نیا" | "نگو" | "نبین" | "نبر" | "نخور")
-}
-
-fn expand_english_negation_contractions(text: &str) -> String {
-    let mut expanded = text.to_lowercase().replace('’', "'");
-    // Explicit expansions preserve the lexical stem as well as polarity. A blanket
-    // `n't -> not` rewrite would turn "can't" into "ca not" and "won't" into
-    // "wo not", which hurts lexical matching.
-    for (contracted, full) in [
-        ("don't", "do not"),
-        ("doesn't", "does not"),
-        ("didn't", "did not"),
-        ("isn't", "is not"),
-        ("aren't", "are not"),
-        ("wasn't", "was not"),
-        ("weren't", "were not"),
-        ("can't", "cannot"),
-        ("couldn't", "could not"),
-        ("won't", "will not"),
-        ("wouldn't", "would not"),
-        ("shouldn't", "should not"),
-        ("hasn't", "has not"),
-        ("haven't", "have not"),
-        ("hadn't", "had not"),
-        ("mustn't", "must not"),
-        ("needn't", "need not"),
-    ] {
-        expanded = expanded.replace(contracted, full);
-    }
-    expanded
-}
-
-pub fn normalize(text: &str) -> String {
-    let expanded = expand_english_negation_contractions(text);
-    expanded
-        .chars()
-        .map(|ch| match ch {
-            'ي' | 'ى' => 'ی',
-            'ك' => 'ک',
-            '\u{200c}' | '\u{200d}' | '\u{00a0}' => ' ',
-            c if c.is_alphanumeric() => c,
-            _ => ' ',
-        })
-        .collect::<String>()
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ")
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -301,7 +173,7 @@ mod tests {
     #[test]
     fn normalizes_curly_and_straight_negation_contractions() {
         assert_eq!(normalize("I don't know"), normalize("I do not know"));
-        assert_eq!(normalize("I don’t know"), normalize("I do not know"));
+        assert_eq!(normalize("I don\u{2019}t know"), normalize("I do not know"));
         assert_eq!(
             normalize("She won't leave"),
             normalize("She will not leave")

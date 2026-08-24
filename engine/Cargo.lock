@@ -160,6 +160,7 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
+ "text-normalization",
 ]
 
 [[package]]
@@ -945,6 +946,7 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
+ "text-normalization",
 ]
 
 [[package]]
@@ -1089,6 +1091,9 @@ dependencies = [
 [[package]]
 name = "quality-engine"
 version = "0.1.0"
+dependencies = [
+ "text-normalization",
+]
 
 [[package]]
 name = "quinn"
@@ -1510,6 +1515,10 @@ dependencies = [
  "rustix",
  "windows-sys 0.61.2",
 ]
+
+[[package]]
+name = "text-normalization"
+version = "0.1.0"
 
 [[package]]
 name = "thiserror"
