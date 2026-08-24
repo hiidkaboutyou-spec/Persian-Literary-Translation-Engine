@@ -6,6 +6,7 @@ use memory_engine::{
     TranslationMemory,
 };
 use quality_engine::{evaluate_translation, TerminologyRule};
+use serde::Serialize;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -17,6 +18,24 @@ use translation_core::{
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum OutputFormat {
+    Text,
+    Json,
+}
+
+impl OutputFormat {
+    fn from_arg(value: &str) -> Result<Self, String> {
+        match value.to_ascii_lowercase().as_str() {
+            "text" | "txt" => Ok(Self::Text),
+            "json" => Ok(Self::Json),
+            _ => Err(format!(
+                "unsupported output format '{value}'; expected text or json"
+            )),
+        }
+    }
+}
+
 #[derive(Debug, Default)]
 struct RuntimeMemory {
     translation: TranslationMemory,
@@ -24,21 +43,74 @@ struct RuntimeMemory {
     characters: CharacterBible,
 }
 
+#[derive(Serialize)]
+struct InspectOutput {
+    title: String,
+    author: Option<String>,
+    total_bytes: usize,
+    chapters: Vec<InspectChapter>,
+}
+
+#[derive(Serialize)]
+struct InspectChapter {
+    title: String,
+    bytes: usize,
+}
+
+#[derive(Serialize)]
+struct PrepareOutput {
+    document: String,
+    chapters: Vec<PrepareChapter>,
+}
+
+#[derive(Serialize)]
+struct PrepareChapter {
+    title: String,
+    prepared: String,
+}
+
+#[derive(Serialize)]
+struct RunManifestOutput {
+    document: String,
+    target_language: String,
+    provider: String,
+    resume: bool,
+    chapters: Vec<RunChapterOutput>,
+    manuscript: Option<String>,
+}
+
+#[derive(Serialize)]
+struct RunChapterOutput {
+    index: usize,
+    title: String,
+    file: String,
+    source_fingerprint: String,
+    resumed: bool,
+    quality_score: f32,
+    quality_warnings: Vec<String>,
+}
+
 fn usage() {
     println!("Persian Literary Translation Engine v{VERSION}");
     println!("Usage:");
-    println!("  literary-engine inspect <file.txt|file.md|file.docx|file.epub|file.pdf>");
     println!(
-        "  literary-engine prepare <file.txt|file.md|file.docx|file.epub|file.pdf> [target-language]"
+        "  literary-engine inspect <file.txt|file.md|file.docx|file.epub|file.pdf> [--format json]"
     );
     println!(
-        "  literary-engine run <file.txt|file.md|file.docx|file.epub|file.pdf> [target-language] [output-dir]"
+        "  literary-engine prepare <file.txt|file.md|file.docx|file.epub|file.pdf> [target-language] [--format json]"
     );
     println!(
-        "  literary-engine resume <file.txt|file.md|file.docx|file.epub|file.pdf> [target-language] [output-dir]"
+        "  literary-engine run <file.txt|file.md|file.docx|file.epub|file.pdf> [target-language] [output-dir] [--format json]"
+    );
+    println!(
+        "  literary-engine resume <file.txt|file.md|file.docx|file.epub|file.pdf> [target-language] [output-dir] [--format json]"
     );
     println!("  literary-engine --help");
     println!("  literary-engine --version");
+    println!();
+    println!("Output format:");
+    println!("  --format text  Human-readable output (default)");
+    println!("  --format json  Machine-readable JSON output");
     println!();
     println!("Provider selection:");
     println!("  - OPENAI_API_KEY set: run/resume uses OpenAI by default");
@@ -57,50 +129,100 @@ fn usage() {
     println!("  - LITERARY_ENGINE_CHARACTER_BIBLE_FILE=/path/to/character-bible.json");
 }
 
-fn inspect(path: &str) -> Result<(), String> {
+fn inspect(path: &str, format: &OutputFormat) -> Result<(), String> {
     let manuscript =
         ingest_file(path).map_err(|error| format!("failed to read {path}: {error}"))?;
 
-    println!("title: {}", manuscript.book.title);
-    println!(
-        "author: {}",
-        manuscript.book.author.as_deref().unwrap_or("unknown")
-    );
-    println!(
-        "bytes: {}",
-        manuscript
-            .chapters
-            .iter()
-            .map(|chapter| chapter.content.len())
-            .sum::<usize>()
-    );
-    println!("chapters: {}", manuscript.chapters.len());
-    println!("paragraphs: {}", manuscript.paragraph_count());
-    for chapter in manuscript.chapters {
-        println!("- {}: {} bytes", chapter.title, chapter.content.len());
+    match format {
+        OutputFormat::Text => {
+            println!("title: {}", manuscript.book.title);
+            println!(
+                "author: {}",
+                manuscript.book.author.as_deref().unwrap_or("unknown")
+            );
+            println!(
+                "bytes: {}",
+                manuscript
+                    .chapters
+                    .iter()
+                    .map(|chapter| chapter.content.len())
+                    .sum::<usize>()
+            );
+            println!("chapters: {}", manuscript.chapters.len());
+            println!("paragraphs: {}", manuscript.paragraph_count());
+            for chapter in &manuscript.chapters {
+                println!("- {}: {} bytes", chapter.title, chapter.content.len());
+            }
+        }
+        OutputFormat::Json => {
+            let output = InspectOutput {
+                title: manuscript.book.title,
+                author: manuscript.book.author,
+                total_bytes: manuscript.chapters.iter().map(|c| c.content.len()).sum(),
+                chapters: manuscript
+                    .chapters
+                    .into_iter()
+                    .map(|c| InspectChapter {
+                        title: c.title,
+                        bytes: c.content.len(),
+                    })
+                    .collect(),
+            };
+            println!("{}", serde_json::to_string_pretty(&output).unwrap());
+        }
     }
     Ok(())
 }
 
-fn prepare(path: &str, target_language: &str) -> Result<(), String> {
+fn prepare(path: &str, target_language: &str, format: &OutputFormat) -> Result<(), String> {
     let manuscript =
         ingest_file(path).map_err(|error| format!("failed to read {path}: {error}"))?;
 
-    println!("document: {}", manuscript.book.title);
-    println!("chapters: {}", manuscript.chapters.len());
-
-    for chapter in manuscript.chapters {
-        let result = prepare_translation(
-            TranslationRequest {
-                source: chapter.content,
-                target_language: target_language.to_string(),
-            },
-            TranslationContext {
-                glossary_enabled: true,
-                character_memory_enabled: true,
-            },
-        );
-        println!("{} -> {}", chapter.title, result);
+    match format {
+        OutputFormat::Text => {
+            println!("document: {}", manuscript.book.title);
+            println!("chapters: {}", manuscript.chapters.len());
+            for chapter in manuscript.chapters {
+                let result = prepare_translation(
+                    TranslationRequest {
+                        source: chapter.content,
+                        target_language: target_language.to_string(),
+                    },
+                    TranslationContext {
+                        glossary_enabled: true,
+                        character_memory_enabled: true,
+                    },
+                );
+                println!("{} -> {}", chapter.title, result);
+            }
+        }
+        OutputFormat::Json => {
+            let chapters: Vec<PrepareChapter> = manuscript
+                .chapters
+                .into_iter()
+                .map(|chapter| {
+                    let prepared = prepare_translation(
+                        TranslationRequest {
+                            source: chapter.content,
+                            target_language: target_language.to_string(),
+                        },
+                        TranslationContext {
+                            glossary_enabled: true,
+                            character_memory_enabled: true,
+                        },
+                    );
+                    PrepareChapter {
+                        title: chapter.title,
+                        prepared,
+                    }
+                })
+                .collect();
+            let output = PrepareOutput {
+                document: manuscript.book.title,
+                chapters,
+            };
+            println!("{}", serde_json::to_string_pretty(&output).unwrap());
+        }
     }
     Ok(())
 }
@@ -262,6 +384,7 @@ fn run_pipeline(
     target_language: &str,
     output_dir: &Path,
     resume: bool,
+    format: &OutputFormat,
 ) -> Result<(), String> {
     let manuscript =
         ingest_file(path).map_err(|error| format!("failed to read {path}: {error}"))?;
@@ -279,34 +402,37 @@ fn run_pipeline(
     let runtime_memory = configured_runtime_memory()?;
     let pipeline = TranslationPipeline::default_literary_pipeline();
     let mut translated_chapters = Vec::with_capacity(chapters.len());
-    let mut manifest = String::new();
-    manifest.push_str(&format!("document={}\n", document_title));
-    manifest.push_str(&format!("target_language={target_language}\n"));
-    manifest.push_str(&format!("provider={provider_name}\n"));
-    manifest.push_str(&format!("resume={}\n", resume));
-    manifest.push_str(&format!("chapters={}\n", chapters.len()));
-    manifest.push_str(&format!(
+    let mut manifest_chapters: Vec<RunChapterOutput> = Vec::with_capacity(chapters.len());
+    let mut manifest_text = String::new();
+    manifest_text.push_str(&format!("document={}\n", document_title));
+    manifest_text.push_str(&format!("target_language={target_language}\n"));
+    manifest_text.push_str(&format!("provider={provider_name}\n"));
+    manifest_text.push_str(&format!("resume={resume}\n"));
+    manifest_text.push_str(&format!("chapters={}\n", chapters.len()));
+    manifest_text.push_str(&format!(
         "translation_memory_entries={}\n",
         runtime_memory.translation.entries().len()
     ));
-    manifest.push_str(&format!(
+    manifest_text.push_str(&format!(
         "glossary_entries={}\n",
         runtime_memory.glossary.entries().len()
     ));
-    manifest.push_str(&format!(
+    manifest_text.push_str(&format!(
         "character_profiles={}\n",
         runtime_memory.characters.profiles().len()
     ));
 
-    println!("provider: {provider_name}");
-    println!(
-        "memory: {} translation entries, {} glossary entries, {} character profiles",
-        runtime_memory.translation.entries().len(),
-        runtime_memory.glossary.entries().len(),
-        runtime_memory.characters.profiles().len()
-    );
+    if *format == OutputFormat::Text {
+        println!("provider: {provider_name}");
+        println!(
+            "memory: {} translation entries, {} glossary entries, {} character profiles",
+            runtime_memory.translation.entries().len(),
+            runtime_memory.glossary.entries().len(),
+            runtime_memory.characters.profiles().len()
+        );
+    }
 
-    for chapter in chapters {
+    for chapter in &chapters {
         let source_text = chapter.content.clone();
         let rules = terminology_rules(&runtime_memory, &source_text);
         let stem = safe_file_stem(&chapter.title, chapter.index);
@@ -325,29 +451,40 @@ fn run_pipeline(
                         chapter.title.clone(),
                         existing.clone(),
                     ));
-                    manifest.push_str(&format!(
+                    let chapter_output = RunChapterOutput {
+                        index: chapter.index,
+                        title: chapter.title.clone(),
+                        file: output_path.display().to_string(),
+                        source_fingerprint: fingerprint.clone(),
+                        resumed: true,
+                        quality_score: quality.score,
+                        quality_warnings: quality.warnings.clone(),
+                    };
+                    manifest_chapters.push(chapter_output);
+                    manifest_text.push_str(&format!(
                         "chapter.{}.file={}\n",
                         chapter.index + 1,
                         output_path.display()
                     ));
-                    manifest.push_str(&format!(
+                    manifest_text.push_str(&format!(
                         "chapter.{}.source_fingerprint={}\n",
                         chapter.index + 1,
                         fingerprint
                     ));
-                    manifest.push_str(&format!("chapter.{}.resumed=true\n", chapter.index + 1));
-                    manifest.push_str(&format!(
+                    manifest_text
+                        .push_str(&format!("chapter.{}.resumed=true\n", chapter.index + 1));
+                    manifest_text.push_str(&format!(
                         "chapter.{}.quality_score={:.2}\n",
                         chapter.index + 1,
                         quality.score
                     ));
-                    manifest.push_str(&format!(
+                    manifest_text.push_str(&format!(
                         "chapter.{}.quality_warnings={}\n",
                         chapter.index + 1,
                         quality.warnings.len()
                     ));
                     for (warning_index, warning) in quality.warnings.iter().enumerate() {
-                        manifest.push_str(&format!(
+                        manifest_text.push_str(&format!(
                             "chapter.{}.warning.{}={}\n",
                             chapter.index + 1,
                             warning_index + 1,
@@ -355,13 +492,15 @@ fn run_pipeline(
                         ));
                         eprintln!("quality warning [{}]: {}", chapter.title, warning);
                     }
-                    println!(
-                        "{} -> {} (reused checkpoint, {} bytes, quality={:.2})",
-                        chapter.title,
-                        output_path.display(),
-                        existing.len(),
-                        quality.score
-                    );
+                    if *format == OutputFormat::Text {
+                        println!(
+                            "{} -> {} (reused checkpoint, {} bytes, quality={:.2})",
+                            chapter.title,
+                            output_path.display(),
+                            existing.len(),
+                            quality.score
+                        );
+                    }
                     continue;
                 }
 
@@ -407,29 +546,39 @@ fn run_pipeline(
             chapter.title.clone(),
             output.quality_review.clone(),
         ));
-        manifest.push_str(&format!(
+        let chapter_output = RunChapterOutput {
+            index: chapter.index,
+            title: chapter.title.clone(),
+            file: output_path.display().to_string(),
+            source_fingerprint: fingerprint.clone(),
+            resumed: false,
+            quality_score: quality.score,
+            quality_warnings: quality.warnings.clone(),
+        };
+        manifest_chapters.push(chapter_output);
+        manifest_text.push_str(&format!(
             "chapter.{}.file={}\n",
             chapter.index + 1,
             output_path.display()
         ));
-        manifest.push_str(&format!(
+        manifest_text.push_str(&format!(
             "chapter.{}.source_fingerprint={}\n",
             chapter.index + 1,
             fingerprint
         ));
-        manifest.push_str(&format!("chapter.{}.resumed=false\n", chapter.index + 1));
-        manifest.push_str(&format!(
+        manifest_text.push_str(&format!("chapter.{}.resumed=false\n", chapter.index + 1));
+        manifest_text.push_str(&format!(
             "chapter.{}.quality_score={:.2}\n",
             chapter.index + 1,
             quality.score
         ));
-        manifest.push_str(&format!(
+        manifest_text.push_str(&format!(
             "chapter.{}.quality_warnings={}\n",
             chapter.index + 1,
             quality.warnings.len()
         ));
         for (warning_index, warning) in quality.warnings.iter().enumerate() {
-            manifest.push_str(&format!(
+            manifest_text.push_str(&format!(
                 "chapter.{}.warning.{}={}\n",
                 chapter.index + 1,
                 warning_index + 1,
@@ -437,60 +586,143 @@ fn run_pipeline(
             ));
             eprintln!("quality warning [{}]: {}", chapter.title, warning);
         }
-        println!(
-            "{} -> {} ({} bytes, provider={}, quality={:.2})",
-            chapter.title,
-            output_path.display(),
-            output.quality_review.len(),
-            output.provider,
-            quality.score
-        );
+        if *format == OutputFormat::Text {
+            println!(
+                "{} -> {} ({} bytes, provider={}, quality={:.2})",
+                chapter.title,
+                output_path.display(),
+                output.quality_review.len(),
+                output.provider,
+                quality.score
+            );
+        }
     }
 
     let manuscript_path = output_dir.join("manuscript.docx");
     export_persian_docx(&manuscript_path, &document_title, &translated_chapters)
         .map_err(|error| format!("failed to export {}: {error}", manuscript_path.display()))?;
-    manifest.push_str(&format!("manuscript={}\n", manuscript_path.display()));
-    println!("manuscript -> {}", manuscript_path.display());
+    manifest_text.push_str(&format!("manuscript={}\n", manuscript_path.display()));
+    if *format == OutputFormat::Text {
+        println!("manuscript -> {}", manuscript_path.display());
+    }
 
-    let manifest_path = output_dir.join("manifest.txt");
-    fs::write(&manifest_path, manifest)
-        .map_err(|error| format!("failed to write {}: {error}", manifest_path.display()))?;
-    println!("manifest -> {}", manifest_path.display());
+    let manuscript_path_string = manuscript_path.display().to_string();
+
+    match format {
+        OutputFormat::Text => {
+            let manifest_path = output_dir.join("manifest.txt");
+            fs::write(&manifest_path, manifest_text)
+                .map_err(|error| format!("failed to write {}: {error}", manifest_path.display()))?;
+            println!("manifest -> {}", manifest_path.display());
+        }
+        OutputFormat::Json => {
+            let json_manifest = RunManifestOutput {
+                document: document_title,
+                target_language: target_language.to_string(),
+                provider: provider_name,
+                resume,
+                chapters: manifest_chapters,
+                manuscript: Some(manuscript_path_string),
+            };
+            let json_path = output_dir.join("manifest.json");
+            let json = serde_json::to_string_pretty(&json_manifest).unwrap();
+            fs::write(&json_path, &json)
+                .map_err(|error| format!("failed to write {}: {error}", json_path.display()))?;
+            println!("{json}");
+
+            // Also write text manifest for backward compatibility
+            let text_path = output_dir.join("manifest.txt");
+            fs::write(&text_path, manifest_text)
+                .map_err(|error| format!("failed to write {}: {error}", text_path.display()))?;
+        }
+    }
+
     Ok(())
 }
 
-fn run() -> Result<(), String> {
+fn parse_args() -> (String, Vec<String>, OutputFormat) {
     let args: Vec<String> = env::args().collect();
-    match args.as_slice() {
-        [_, flag] if flag == "--help" || flag == "-h" => {
+    let mut format = OutputFormat::Text;
+    let mut positional: Vec<String> = Vec::new();
+
+    for arg in &args[1..] {
+        if arg == "--format" || arg == "-f" {
+            // handled below via peek
+            continue;
+        }
+        if let Some(prev) = args.iter().position(|a| a == arg) {
+            if prev > 0 && (args[prev - 1] == "--format" || args[prev - 1] == "-f") {
+                format = OutputFormat::from_arg(arg).unwrap_or_else(|error| {
+                    eprintln!("error: {error}");
+                    std::process::exit(1);
+                });
+                continue;
+            }
+        }
+        positional.push(arg.clone());
+    }
+
+    // Handle --format that appears after its value
+    if positional.iter().any(|a| a == "--format" || a == "-f") {
+        let pos = positional.iter().position(|a| a == "--format" || a == "-f");
+        if let Some(idx) = pos {
+            if idx + 1 < positional.len() {
+                let value = positional.remove(idx + 1);
+                positional.remove(idx);
+                format = OutputFormat::from_arg(&value).unwrap_or_else(|error| {
+                    eprintln!("error: {error}");
+                    std::process::exit(1);
+                });
+            }
+        }
+    }
+
+    // Reconstruct the command name
+    let command = positional.first().cloned().unwrap_or_default();
+    let rest: Vec<String> = positional.into_iter().skip(1).collect();
+
+    (command, rest, format)
+}
+
+fn run() -> Result<(), String> {
+    let (command, args, format) = parse_args();
+    match (command.as_str(), args.as_slice()) {
+        ("--help", _) | ("-h", _) => {
             usage();
             Ok(())
         }
-        [_, flag] if flag == "--version" || flag == "-V" => {
+        ("--version", _) | ("-V", _) => {
             println!("literary-engine {VERSION}");
             Ok(())
         }
-        [_, command, path] if command == "inspect" => inspect(path),
-        [_, command, path] if command == "prepare" => prepare(path, "fa"),
-        [_, command, path, target] if command == "prepare" => prepare(path, target),
-        [_, command, path] if command == "run" => {
-            run_pipeline(path, "fa", &PathBuf::from("output/runtime"), false)
+        ("inspect", [path, ..]) => inspect(path, &format),
+        ("prepare", [path]) => prepare(path, "fa", &format),
+        ("prepare", [path, target]) => prepare(path, target, &format),
+        ("run", [path]) => {
+            run_pipeline(path, "fa", &PathBuf::from("output/runtime"), false, &format)
         }
-        [_, command, path, target] if command == "run" => {
-            run_pipeline(path, target, &PathBuf::from("output/runtime"), false)
+        ("run", [path, target]) => run_pipeline(
+            path,
+            target,
+            &PathBuf::from("output/runtime"),
+            false,
+            &format,
+        ),
+        ("run", [path, target, output]) => {
+            run_pipeline(path, target, Path::new(output), false, &format)
         }
-        [_, command, path, target, output] if command == "run" => {
-            run_pipeline(path, target, Path::new(output), false)
+        ("resume", [path]) => {
+            run_pipeline(path, "fa", &PathBuf::from("output/runtime"), true, &format)
         }
-        [_, command, path] if command == "resume" => {
-            run_pipeline(path, "fa", &PathBuf::from("output/runtime"), true)
-        }
-        [_, command, path, target] if command == "resume" => {
-            run_pipeline(path, target, &PathBuf::from("output/runtime"), true)
-        }
-        [_, command, path, target, output] if command == "resume" => {
-            run_pipeline(path, target, Path::new(output), true)
+        ("resume", [path, target]) => run_pipeline(
+            path,
+            target,
+            &PathBuf::from("output/runtime"),
+            true,
+            &format,
+        ),
+        ("resume", [path, target, output]) => {
+            run_pipeline(path, target, Path::new(output), true, &format)
         }
         _ => {
             usage();
@@ -618,5 +850,13 @@ mod tests {
         assert_eq!(rules.len(), 1);
         assert_eq!(rules[0].source_term, "High Warlock");
         assert_eq!(rules[0].preferred_translation, "جادوگر اعظم");
+    }
+
+    #[test]
+    fn output_format_parses_correctly() {
+        assert_eq!(OutputFormat::from_arg("json").unwrap(), OutputFormat::Json);
+        assert_eq!(OutputFormat::from_arg("text").unwrap(), OutputFormat::Text);
+        assert_eq!(OutputFormat::from_arg("txt").unwrap(), OutputFormat::Text);
+        assert!(OutputFormat::from_arg("yaml").is_err());
     }
 }

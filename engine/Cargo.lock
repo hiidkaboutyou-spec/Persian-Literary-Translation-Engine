@@ -856,6 +856,8 @@ dependencies = [
  "document-engine",
  "memory-engine",
  "quality-engine",
+ "serde",
+ "serde_json",
  "translation-core",
 ]
 
