@@ -9,5 +9,6 @@ members = [
   "crates/project-engine",
   "crates/literary-intelligence-engine",
   "crates/literary-reference-knowledge",
+  "crates/text-normalization",
   "cli"
 ]

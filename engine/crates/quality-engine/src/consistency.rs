@@ -117,17 +117,7 @@ fn normalize_key(text: &str) -> String {
 }
 
 fn normalize_value(text: &str) -> String {
-    text.chars()
-        .map(|ch| match ch {
-            'ي' | 'ى' => 'ی',
-            'ك' => 'ک',
-            '\u{200c}' | '\u{200d}' | '\u{00a0}' => ' ',
-            c => c,
-        })
-        .collect::<String>()
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ")
+    text_normalization::normalize(text)
 }
 
 #[cfg(test)]

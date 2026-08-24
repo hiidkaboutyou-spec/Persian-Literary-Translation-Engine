@@ -196,19 +196,7 @@ fn contains_name(normalized_text: &str, name: &str) -> bool {
 }
 
 fn normalize_for_matching(text: &str) -> String {
-    text.chars()
-        .map(|ch| match ch {
-            'ي' | 'ى' => 'ی',
-            'ك' => 'ک',
-            '\u{200c}' | '\u{200d}' | '\u{00a0}' => ' ',
-            c if c.is_alphanumeric() => c,
-            _ => ' ',
-        })
-        .collect::<String>()
-        .to_lowercase()
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ")
+    text_normalization::normalize_case_insensitive(text)
 }
 
 #[cfg(test)]

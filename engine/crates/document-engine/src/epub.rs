@@ -3,6 +3,10 @@ use std::io::Read;
 use std::path::Path;
 use zip::ZipArchive;
 
+use crate::models::DocumentFormat;
+use crate::parser::{
+    base_source, file_stem_title as parser_file_stem_title, BlockKind, ParsedBlock, ParsedDocument,
+};
 use crate::{load_document, Document, DocumentError};
 
 pub fn load_epub_file(path: impl AsRef<Path>) -> Result<Document, DocumentError> {
@@ -12,7 +16,7 @@ pub fn load_epub_file(path: impl AsRef<Path>) -> Result<Document, DocumentError>
 
     let container_xml = read_zip_entry(&mut archive, "META-INF/container.xml")?;
     let opf_path = extract_rootfile_path(&container_xml).ok_or_else(|| {
-        DocumentError::InvalidDocument("EPUB container has no rootfile".to_string())
+        DocumentError::InvalidStructure("EPUB container has no rootfile".to_string())
     })?;
     let opf_xml = read_zip_entry(&mut archive, &opf_path)?;
     let base_dir = Path::new(&opf_path)
@@ -27,7 +31,7 @@ pub fn load_epub_file(path: impl AsRef<Path>) -> Result<Document, DocumentError>
     let manifest = extract_manifest_items(&opf_xml);
     let spine = extract_spine_ids(&opf_xml);
     if spine.is_empty() {
-        return Err(DocumentError::InvalidDocument(
+        return Err(DocumentError::InvalidStructure(
             "EPUB package has an empty spine".to_string(),
         ));
     }
@@ -52,12 +56,123 @@ pub fn load_epub_file(path: impl AsRef<Path>) -> Result<Document, DocumentError>
 
     let text = sections.join("\n\n");
     if text.trim().is_empty() {
-        return Err(DocumentError::InvalidDocument(
-            "EPUB contains no readable spine text".to_string(),
-        ));
+        return Err(DocumentError::EmptyDocument(path.to_path_buf()));
     }
 
     Ok(load_document(title, text))
+}
+
+pub(crate) fn parse_epub(path: &Path) -> Result<ParsedDocument, DocumentError> {
+    let file = File::open(path)?;
+    let mut archive = ZipArchive::new(file).map_err(|error| {
+        DocumentError::CorruptedFile(format!(
+            "{} is not a readable EPUB archive: {error}",
+            path.display()
+        ))
+    })?;
+    let container = read_zip_entry(&mut archive, "META-INF/container.xml")
+        .map_err(|error| DocumentError::CorruptedFile(error.to_string()))?;
+    let opf_path = extract_rootfile_path(&container)
+        .ok_or_else(|| DocumentError::InvalidStructure("EPUB container has no rootfile".into()))?;
+    let opf = read_zip_entry(&mut archive, &opf_path)
+        .map_err(|error| DocumentError::CorruptedFile(error.to_string()))?;
+    let base_dir = Path::new(&opf_path)
+        .parent()
+        .unwrap_or_else(|| Path::new(""));
+    let title = extract_metadata_title(&opf)
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| parser_file_stem_title(path));
+    let author =
+        extract_element_text(&opf, "dc:creator").or_else(|| extract_element_text(&opf, "creator"));
+    let language = extract_element_text(&opf, "dc:language")
+        .or_else(|| extract_element_text(&opf, "language"));
+    let manifest = extract_manifest_items(&opf);
+    let spine = extract_spine_ids(&opf);
+    if spine.is_empty() {
+        return Err(DocumentError::InvalidStructure(
+            "EPUB package has an empty spine".into(),
+        ));
+    }
+    let root = base_source(path, DocumentFormat::Epub);
+    let mut blocks = Vec::new();
+    for idref in spine {
+        let Some(href) = manifest
+            .iter()
+            .find(|item| item.id == idref)
+            .map(|item| item.href.as_str())
+        else {
+            continue;
+        };
+        let resource = normalize_archive_path(base_dir, href);
+        let html = read_zip_entry(&mut archive, &resource).map_err(|error| {
+            DocumentError::CorruptedFile(format!(
+                "failed to read EPUB spine resource {resource}: {error}"
+            ))
+        })?;
+        let text = extract_html_text(&html);
+        if text.trim().is_empty() {
+            continue;
+        }
+        let mut location = root.clone();
+        location.resource = Some(resource.clone());
+        let lines = text
+            .lines()
+            .filter(|line| !line.trim().is_empty())
+            .collect::<Vec<_>>();
+        let has_explicit_heading = lines
+            .first()
+            .is_some_and(|line| crate::parser::looks_like_chapter_heading(line));
+        if !has_explicit_heading {
+            let mut source = location.clone();
+            source.paragraph = Some(1);
+            let section_title = Path::new(href)
+                .file_stem()
+                .and_then(|value| value.to_str())
+                .unwrap_or("Chapter")
+                .replace(['-', '_'], " ");
+            blocks.push(ParsedBlock {
+                kind: BlockKind::Heading(1),
+                text: section_title,
+                source,
+            });
+        }
+        for (index, line) in lines.into_iter().enumerate() {
+            let mut source = location.clone();
+            source.paragraph = Some(index + 1);
+            let value = line.trim().to_string();
+            let kind = if index == 0 && has_explicit_heading {
+                BlockKind::Heading(1)
+            } else if matches!(value.as_str(), "***" | "---" | "* * *") {
+                BlockKind::SceneBreak
+            } else {
+                BlockKind::Paragraph
+            };
+            blocks.push(ParsedBlock {
+                kind,
+                text: value,
+                source,
+            });
+        }
+    }
+    if blocks.is_empty() {
+        return Err(DocumentError::EmptyDocument(path.to_path_buf()));
+    }
+    let mut metadata = std::collections::BTreeMap::new();
+    metadata.insert("package_path".into(), opf_path);
+    if let Some(value) = &author {
+        metadata.insert("author".into(), value.clone());
+    }
+    if let Some(value) = &language {
+        metadata.insert("language".into(), value.clone());
+    }
+    Ok(ParsedDocument {
+        title,
+        author,
+        language,
+        metadata,
+        source: root,
+        blocks,
+    })
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

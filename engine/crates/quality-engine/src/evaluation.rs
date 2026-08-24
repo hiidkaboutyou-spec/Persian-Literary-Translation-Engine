@@ -115,20 +115,7 @@ fn contains_term(normalized_text: &str, normalized_term: &str) -> bool {
     format!(" {normalized_text} ").contains(&format!(" {normalized_term} "))
 }
 
-fn normalize(text: &str) -> String {
-    text.chars()
-        .map(|ch| match ch {
-            'ي' | 'ى' => 'ی',
-            'ك' => 'ک',
-            '\u{200c}' | '\u{200d}' | '\u{00a0}' => ' ',
-            c if c.is_alphanumeric() => c.to_ascii_lowercase(),
-            _ => ' ',
-        })
-        .collect::<String>()
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ")
-}
+use text_normalization::normalize_case_insensitive as normalize;
 
 #[cfg(test)]
 mod tests {

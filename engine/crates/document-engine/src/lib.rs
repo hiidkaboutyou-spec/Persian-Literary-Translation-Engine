@@ -5,17 +5,24 @@ pub mod chapter;
 pub mod docx;
 pub mod epub;
 pub mod export;
+pub mod models;
+pub mod parser;
 pub mod pdf;
+mod text;
 
 use std::fmt;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-pub use chapter::{split_into_chapters, Chapter};
+pub use chapter::split_into_chapters;
 pub use docx::load_docx_file;
 pub use epub::load_epub_file;
 pub use export::export_persian_docx;
+pub use models::{
+    Book, Chapter, DocumentFormat, ImportanceMetadata, Manuscript, Paragraph, Scene, SourceLocation,
+};
+pub use parser::{DocumentIngestor, ManuscriptParser};
 pub use pdf::load_pdf_file;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -29,7 +36,10 @@ pub enum DocumentError {
     Io(io::Error),
     Zip(zip::result::ZipError),
     UnsupportedFormat(PathBuf),
-    InvalidDocument(String),
+    CorruptedFile(String),
+    EmptyDocument(PathBuf),
+    ParsingFailure(String),
+    InvalidStructure(String),
 }
 
 impl fmt::Display for DocumentError {
@@ -42,7 +52,14 @@ impl fmt::Display for DocumentError {
                 "unsupported document format for {} (supported: .txt, .md, .docx, .epub, .pdf)",
                 path.display()
             ),
-            Self::InvalidDocument(message) => write!(formatter, "invalid document: {message}"),
+            Self::CorruptedFile(message) => write!(formatter, "corrupted document: {message}"),
+            Self::EmptyDocument(path) => write!(formatter, "document is empty: {}", path.display()),
+            Self::ParsingFailure(message) => {
+                write!(formatter, "document parsing failed: {message}")
+            }
+            Self::InvalidStructure(message) => {
+                write!(formatter, "invalid document structure: {message}")
+            }
         }
     }
 }
@@ -52,7 +69,11 @@ impl std::error::Error for DocumentError {
         match self {
             Self::Io(error) => Some(error),
             Self::Zip(error) => Some(error),
-            Self::UnsupportedFormat(_) | Self::InvalidDocument(_) => None,
+            Self::UnsupportedFormat(_)
+            | Self::CorruptedFile(_)
+            | Self::EmptyDocument(_)
+            | Self::ParsingFailure(_)
+            | Self::InvalidStructure(_) => None,
         }
     }
 }
@@ -96,6 +117,10 @@ pub fn load_file(path: impl AsRef<Path>) -> Result<Document, DocumentError> {
         Some("pdf") => load_pdf_file(path),
         _ => Err(DocumentError::UnsupportedFormat(path.to_path_buf())),
     }
+}
+
+pub fn ingest_file(path: impl AsRef<Path>) -> Result<Manuscript, DocumentError> {
+    DocumentIngestor::default().ingest(path)
 }
 
 #[cfg(test)]

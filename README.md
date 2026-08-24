@@ -14,6 +14,9 @@ Implemented and validated:
 - EPUB ingestion
 - text-based PDF ingestion with explicit OCR limitation for scanned/image-only files
 - chapter segmentation
+- unified serializable `Manuscript -> Book -> Chapter -> Scene -> Paragraph` model
+- source provenance on every extracted chapter, scene, and paragraph (including PDF page, EPUB resource, and DOCX paragraph)
+- extensible format-parser registry with explicit corrupted, empty, unsupported, parsing, and structure errors
 - provider-neutral literary translation pipeline
 - deterministic `EchoProvider` for credential-free end-to-end testing
 - production `OpenAIProvider` using the Responses API with credentials supplied only through environment variables
@@ -116,6 +119,18 @@ Chapter artifacts + manifest
       ↓
 Persian RTL manuscript.docx
 ```
+
+## Structured Manuscript Contract
+
+`document_engine::ingest_file` is the canonical ingestion entry point for TXT, Markdown, DOCX,
+EPUB, and text-based PDF files. It returns a JSON-serializable `Manuscript`; its ordered chapters
+feed the existing translation, project-memory, and quality-gate flow directly. Scene separators
+such as `***` are preserved as scene boundaries, while stable IDs and `SourceLocation` values make
+each paragraph traceable to its source file, format, page or archive resource, chapter, scene, and
+paragraph position.
+
+New formats can be added by implementing `ManuscriptParser` and registering the parser with
+`DocumentIngestor`, without changing the manuscript model or downstream translation pipeline.
 
 ## Repository Map
 

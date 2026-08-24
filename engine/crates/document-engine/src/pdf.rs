@@ -1,11 +1,16 @@
 use std::path::Path;
 
+use crate::models::DocumentFormat;
+use crate::parser::{
+    base_source, file_stem_title, looks_like_chapter_heading, split_paragraph_text, BlockKind,
+    ParsedBlock, ParsedDocument,
+};
 use crate::{load_document, Document, DocumentError};
 
 pub fn load_pdf_file(path: impl AsRef<Path>) -> Result<Document, DocumentError> {
     let path = path.as_ref();
     let text = pdf_extract::extract_text(path).map_err(|error| {
-        DocumentError::InvalidDocument(format!(
+        DocumentError::ParsingFailure(format!(
             "failed to extract text from PDF {}: {error}",
             path.display()
         ))
@@ -45,7 +50,7 @@ fn normalize_extracted_pdf_text(text: &str) -> String {
 fn document_from_pdf_text(path: &Path, text: String) -> Result<Document, DocumentError> {
     let text = normalize_extracted_pdf_text(&text);
     if text.trim().is_empty() {
-        return Err(DocumentError::InvalidDocument(format!(
+        return Err(DocumentError::ParsingFailure(format!(
             "PDF {} contains no extractable text; scanned/image-only PDFs require OCR before ingestion",
             path.display()
         )));
@@ -58,6 +63,70 @@ fn document_from_pdf_text(path: &Path, text: String) -> Result<Document, Documen
         .to_string();
 
     Ok(load_document(title, text))
+}
+
+pub(crate) fn parse_pdf(path: &Path) -> Result<ParsedDocument, DocumentError> {
+    let pages = pdf_extract::extract_text_by_pages(path).map_err(|error| {
+        DocumentError::ParsingFailure(format!("failed to extract PDF {}: {error}", path.display()))
+    })?;
+    let root = base_source(path, DocumentFormat::Pdf);
+    let mut blocks = Vec::new();
+    for (page_index, page) in pages.into_iter().enumerate() {
+        let normalized = normalize_extracted_pdf_text(&page);
+        for (paragraph_index, text) in split_paragraph_text(&normalized).into_iter().enumerate() {
+            let kind = if looks_like_chapter_heading(&text) {
+                BlockKind::Heading(1)
+            } else if matches!(text.as_str(), "***" | "---" | "* * *") {
+                BlockKind::SceneBreak
+            } else {
+                BlockKind::Paragraph
+            };
+            let mut source = root.clone();
+            source.page = Some((page_index + 1) as u32);
+            source.paragraph = Some(paragraph_index + 1);
+            blocks.push(ParsedBlock { kind, text, source });
+        }
+    }
+    if blocks.is_empty() {
+        return Err(DocumentError::ParsingFailure(format!("PDF {} contains no extractable text; scanned/image-only PDFs require OCR before ingestion", path.display())));
+    }
+    let mut title = file_stem_title(path);
+    let mut author = None;
+    let mut metadata = std::collections::BTreeMap::new();
+    if let Ok(document) = lopdf::Document::load(path) {
+        if let Ok(reference) = document
+            .trailer
+            .get(b"Info")
+            .and_then(lopdf::Object::as_reference)
+        {
+            if let Ok(info) = document.get_dictionary(reference) {
+                if let Some(value) = pdf_string(info.get(b"Title").ok()) {
+                    if !value.trim().is_empty() {
+                        title = value.clone();
+                        metadata.insert("title".into(), value);
+                    }
+                }
+                if let Some(value) = pdf_string(info.get(b"Author").ok()) {
+                    author = Some(value.clone());
+                    metadata.insert("author".into(), value);
+                }
+            }
+        }
+    }
+    Ok(ParsedDocument {
+        title,
+        author,
+        language: None,
+        metadata,
+        source: root,
+        blocks,
+    })
+}
+
+fn pdf_string(value: Option<&lopdf::Object>) -> Option<String> {
+    value
+        .and_then(|object| object.as_str().ok())
+        .map(|bytes| String::from_utf8_lossy(bytes).trim().to_string())
 }
 
 #[cfg(test)]
