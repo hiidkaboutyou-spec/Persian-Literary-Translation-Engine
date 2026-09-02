@@ -9,7 +9,7 @@ use memory_engine::{
     TranslationMemory,
 };
 use quality_engine::{evaluate_translation, TerminologyRule};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -19,10 +19,12 @@ use translation_core::{
     TranslationPipeline, TranslationProvider, TranslationRequest,
 };
 
+mod review;
+
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum OutputFormat {
+pub(crate) enum OutputFormat {
     Text,
     Json,
 }
@@ -88,9 +90,17 @@ struct RunChapterOutput {
     title: String,
     file: String,
     source_fingerprint: String,
+    context_fingerprint: String,
     resumed: bool,
     quality_score: f32,
     quality_warnings: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct ChapterCheckpoint {
+    schema_version: u32,
+    source_fingerprint: String,
+    context_fingerprint: String,
 }
 
 fn usage() {
@@ -102,6 +112,7 @@ fn usage() {
     println!(
         "  literary-engine analyze <file.txt|file.md|file.docx|file.epub|file.pdf> [--format json]"
     );
+    println!("  literary-engine review <sync|list|show|approve|edit|reject|defer|reopen|promote> ... [--format json]");
     println!(
         "  literary-engine prepare <file.txt|file.md|file.docx|file.epub|file.pdf> [target-language] [--format json]"
     );
@@ -133,6 +144,7 @@ fn usage() {
     println!("  - LITERARY_ENGINE_MEMORY_FILE=/path/to/translation-memory.json");
     println!("  - LITERARY_ENGINE_GLOSSARY_FILE=/path/to/glossary.json");
     println!("  - LITERARY_ENGINE_CHARACTER_BIBLE_FILE=/path/to/character-bible.json");
+    println!("  - LITERARY_ENGINE_REVIEW_FILE=/path/to/intelligence-review.json");
 }
 
 fn analyze(path: &str, format: &OutputFormat) -> Result<(), String> {
@@ -313,15 +325,38 @@ fn resumable_translation(
     output_path: &Path,
     checkpoint_path: &Path,
     source_text: &str,
+    expected_context_fingerprint: &str,
 ) -> Result<Option<String>, String> {
     if !output_path.is_file() || !checkpoint_path.is_file() {
         return Ok(None);
     }
 
-    let expected = source_fingerprint(source_text);
+    let expected_source = source_fingerprint(source_text);
     let stored = fs::read_to_string(checkpoint_path)
         .map_err(|error| format!("failed to read {}: {error}", checkpoint_path.display()))?;
-    if stored.trim() != expected {
+    let checkpoint = match serde_json::from_str::<ChapterCheckpoint>(&stored) {
+        Ok(checkpoint) if checkpoint.schema_version == 1 => checkpoint,
+        Ok(checkpoint) => {
+            eprintln!(
+                "resume checkpoint {} uses unsupported schema {}; translating again",
+                checkpoint_path.display(),
+                checkpoint.schema_version
+            );
+            return Ok(None);
+        }
+        Err(_) => {
+            if stored.trim() == expected_source {
+                eprintln!(
+                    "legacy resume checkpoint {} has no context fingerprint; translating again",
+                    checkpoint_path.display()
+                );
+            }
+            return Ok(None);
+        }
+    };
+    if checkpoint.source_fingerprint != expected_source
+        || checkpoint.context_fingerprint != expected_context_fingerprint
+    {
         return Ok(None);
     }
 
@@ -518,11 +553,22 @@ fn run_pipeline(
         let output_path = output_dir.join(format!("{stem}.txt"));
         let checkpoint_path = output_dir.join(format!("{stem}.source-fingerprint"));
         let fingerprint = source_fingerprint(&source_text);
+        let context = chapter_context(
+            &document_title,
+            &chapter.title,
+            &source_text,
+            &runtime_memory,
+            intelligence.initialization.context_for_chapter(&chapter.id),
+        );
+        let context_fingerprint = source_fingerprint(&context);
 
         if resume {
-            if let Some(existing) =
-                resumable_translation(&output_path, &checkpoint_path, &source_text)?
-            {
+            if let Some(existing) = resumable_translation(
+                &output_path,
+                &checkpoint_path,
+                &source_text,
+                &context_fingerprint,
+            )? {
                 let quality = evaluate_translation(&source_text, &existing, &rules);
                 if quality.passes() {
                     translated_chapters.push(Chapter::translated(
@@ -535,6 +581,7 @@ fn run_pipeline(
                         title: chapter.title.clone(),
                         file: output_path.display().to_string(),
                         source_fingerprint: fingerprint.clone(),
+                        context_fingerprint: context_fingerprint.clone(),
                         resumed: true,
                         quality_score: quality.score,
                         quality_warnings: quality.warnings.clone(),
@@ -549,6 +596,11 @@ fn run_pipeline(
                         "chapter.{}.source_fingerprint={}\n",
                         chapter.index + 1,
                         fingerprint
+                    ));
+                    manifest_text.push_str(&format!(
+                        "chapter.{}.context_fingerprint={}\n",
+                        chapter.index + 1,
+                        context_fingerprint
                     ));
                     manifest_text
                         .push_str(&format!("chapter.{}.resumed=true\n", chapter.index + 1));
@@ -590,13 +642,6 @@ fn run_pipeline(
             }
         }
 
-        let context = chapter_context(
-            &document_title,
-            &chapter.title,
-            &source_text,
-            &runtime_memory,
-            intelligence.initialization.context_for_chapter(&chapter.id),
-        );
         let output = pipeline
             .execute(
                 provider.as_ref(),
@@ -619,7 +664,13 @@ fn run_pipeline(
 
         fs::write(&output_path, &output.quality_review)
             .map_err(|error| format!("failed to write {}: {error}", output_path.display()))?;
-        fs::write(&checkpoint_path, format!("{fingerprint}\n"))
+        let checkpoint = serde_json::to_string_pretty(&ChapterCheckpoint {
+            schema_version: 1,
+            source_fingerprint: fingerprint.clone(),
+            context_fingerprint: context_fingerprint.clone(),
+        })
+        .map_err(|error| format!("failed to serialize chapter checkpoint: {error}"))?;
+        fs::write(&checkpoint_path, checkpoint)
             .map_err(|error| format!("failed to write {}: {error}", checkpoint_path.display()))?;
         translated_chapters.push(Chapter::translated(
             chapter.index,
@@ -631,6 +682,7 @@ fn run_pipeline(
             title: chapter.title.clone(),
             file: output_path.display().to_string(),
             source_fingerprint: fingerprint.clone(),
+            context_fingerprint: context_fingerprint.clone(),
             resumed: false,
             quality_score: quality.score,
             quality_warnings: quality.warnings.clone(),
@@ -645,6 +697,11 @@ fn run_pipeline(
             "chapter.{}.source_fingerprint={}\n",
             chapter.index + 1,
             fingerprint
+        ));
+        manifest_text.push_str(&format!(
+            "chapter.{}.context_fingerprint={}\n",
+            chapter.index + 1,
+            context_fingerprint
         ));
         manifest_text.push_str(&format!("chapter.{}.resumed=false\n", chapter.index + 1));
         manifest_text.push_str(&format!(
@@ -777,6 +834,7 @@ fn run() -> Result<(), String> {
         }
         ("inspect", [path, ..]) => inspect(path, &format),
         ("analyze", [path, ..]) => analyze(path, &format),
+        ("review", args) => review::run_review(args, &format),
         ("prepare", [path]) => prepare(path, "fa", &format),
         ("prepare", [path, target]) => prepare(path, target, &format),
         ("run", [path]) => {

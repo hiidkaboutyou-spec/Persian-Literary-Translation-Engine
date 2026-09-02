@@ -21,6 +21,11 @@ scene, paragraph, and `SourceLocation` identifiers. No source excerpts are persi
 aggregate. Higher-level fields that cannot be established defensibly by deterministic rules remain
 unset in the separate inferred literary-profile section.
 
+Phase 14 consumes eligible seeds through the separate Human Review boundary. Re-running analysis
+does not inspect or mutate the review ledger by itself; `literary-engine review sync` is the explicit
+reconciliation operation. Approval remains a review decision, not a canonical mutation. See
+`INTELLIGENCE_REVIEW_AND_CANON_PROMOTION.md` for the promotion workflow.
+
 ## Canon precedence and conflicts
 
 Approved Character Bible identities and aliases are resolved before unknown character candidates.
