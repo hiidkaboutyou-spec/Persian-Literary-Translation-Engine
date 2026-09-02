@@ -854,6 +854,7 @@ version = "0.1.0"
 dependencies = [
  "character-engine",
  "document-engine",
+ "literary-intelligence-engine",
  "memory-engine",
  "quality-engine",
  "serde",
@@ -865,9 +866,14 @@ dependencies = [
 name = "literary-intelligence-engine"
 version = "0.1.0"
 dependencies = [
+ "character-engine",
  "chrono",
+ "document-engine",
+ "memory-engine",
  "serde",
  "serde_json",
+ "tempfile",
+ "text-normalization",
  "thiserror 1.0.69",
  "uuid",
 ]

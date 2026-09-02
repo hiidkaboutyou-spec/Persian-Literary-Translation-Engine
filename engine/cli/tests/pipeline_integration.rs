@@ -73,10 +73,54 @@ fn full_pipeline_with_glossary_and_character_bible() {
     assert!(manifest.contains("translation_memory_entries=1"));
     assert!(manifest.contains("glossary_entries=1"));
     assert!(manifest.contains("character_profiles=2"));
+    assert!(manifest.contains("manuscript_intelligence_schema=1"));
+    assert!(manifest.contains("character_seeds="));
+    assert!(manifest.contains("relationship_seeds="));
+    assert!(manifest.contains("terminology_seeds="));
     assert!(manifest.contains("quality_score=1.00"));
 
     // DOCX must be generated
     assert!(output_dir.join("manuscript.docx").exists());
+
+    fs::remove_dir_all(workspace).ok();
+}
+
+#[test]
+fn analyze_json_exposes_stable_seed_contract_without_mutating_canon() {
+    let workspace = temp_workspace("analyze-json");
+    let input_path = workspace.join("story.txt");
+    fs::create_dir_all(&workspace).expect("create workspace");
+    fs::write(
+        &input_path,
+        "Chapter 1\nMina met Reza beside the silver door.\n\nChapter 2\nReza opened the silver door for Mina.\n\nChapter 3\nMina thanked Reza at the silver door.",
+    )
+    .expect("write source");
+
+    let run = || {
+        Command::new(env!("CARGO_BIN_EXE_literary-engine"))
+            .arg("analyze")
+            .arg(&input_path)
+            .arg("--format")
+            .arg("json")
+            .env_remove("OPENAI_API_KEY")
+            .output()
+            .expect("analyze manuscript")
+    };
+    let first = run();
+    let second = run();
+    assert!(first.status.success());
+    assert_eq!(first.stdout, second.stdout, "analysis JSON must be stable");
+    let json: serde_json::Value =
+        serde_json::from_slice(&first.stdout).expect("analysis must be JSON");
+    assert_eq!(json["schema_version"], 1);
+    assert_eq!(json["analysis"]["deterministic"], true);
+    assert_eq!(json["chapter_maps"].as_array().unwrap().len(), 3);
+    assert!(json["character_seeds"].as_array().unwrap().len() >= 2);
+    assert!(!json["relationship_seeds"].as_array().unwrap().is_empty());
+    assert_eq!(json["initialization"]["mutates_canon"], false);
+    assert!(json["character_seeds"][0]["evidence"][0]["paragraph_id"]
+        .as_str()
+        .is_some_and(|value| !value.is_empty()));
 
     fs::remove_dir_all(workspace).ok();
 }

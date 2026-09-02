@@ -4,8 +4,15 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+character-engine = { path = "../character-engine" }
+document-engine = { path = "../document-engine" }
+memory-engine = { path = "../memory-engine" }
+text-normalization = { path = "../text-normalization" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 uuid = { version = "1", features = ["serde", "v4"] }
 chrono = { version = "0.4", features = ["serde"] }
 thiserror = "1"
+
+[dev-dependencies]
+tempfile = "3"
