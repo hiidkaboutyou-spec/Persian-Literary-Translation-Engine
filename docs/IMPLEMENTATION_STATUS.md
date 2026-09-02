@@ -22,12 +22,13 @@ Implemented and validated:
 - **character-engine** — Character bible with profiles, aliases, word-boundary-aware matching, and relationship context. JSON persistence.
 - **quality-engine** — Deterministic quality gate: empty output, prompt leakage, truncation, paragraph collapse, and terminology drift detection. Cross-chapter consistency auditing.
 - **project-engine** — Project manifest with chapter state tracking, schema versioning, and JSON persistence.
-- **literary-intelligence-engine** — Literary decision models (characters, scenes, relationships, translation decisions, decision traces) with validation.
+- **literary-intelligence-engine** — Literary decision models plus deterministic `Manuscript` analysis. Produces versioned character and relationship seeds, chapter maps, terminology candidates, observed literary-profile metrics, bounded evidence references, conflict reporting, and non-mutating initialization proposals.
 - **literary-reference-knowledge** — Reference sources, editorial guidelines, and validation rules with UUID identity.
 - **text-normalization** — Shared Persian/Arabic text normalization, negation detection, and similarity scoring. Eliminates duplication across memory, quality, and character engines.
 
 ### CLI
 - `inspect` — Document analysis with text and JSON output
+- `analyze` — Credential-free manuscript intelligence with text summaries and stable schema-versioned JSON
 - `prepare` — Chapter preparation with text and JSON output
 - `run` — Full pipeline: ingest → segment → context → translate → quality → export
 - `resume` — Checkpoint-based resume with source fingerprinting
@@ -51,6 +52,6 @@ Implemented and validated:
 - Build reusable translation memory across projects.
 
 ## Current Test Count
-- Unit tests: ~115 across all crates
-- Integration tests: 6 (pipeline, resume, JSON output, inspect JSON, quality gate, large-book regression)
+- Rust test suite: 125 unit and integration tests across the workspace
+- Coverage includes manuscript-intelligence extraction, idempotence, seed/canon precedence, JSON output, full pipeline, resume, quality gate, and large-book regression behavior
 - Doc-tests: 1 (text-normalization)

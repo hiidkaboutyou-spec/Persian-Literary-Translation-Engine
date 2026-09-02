@@ -15,3 +15,10 @@
 pub mod errors;
 pub mod models;
 pub mod traits;
+
+mod manuscript_analyzer;
+
+pub use manuscript_analyzer::{
+    AnalysisCanon, AnalysisConfig, DeterministicManuscriptAnalyzer, ManuscriptAnalyzer,
+};
+pub use models::manuscript_intelligence::*;

@@ -10,6 +10,7 @@ path = "src/main.rs"
 [dependencies]
 character-engine = { path = "../crates/character-engine" }
 document-engine = { path = "../crates/document-engine" }
+literary-intelligence-engine = { path = "../crates/literary-intelligence-engine" }
 memory-engine = { path = "../crates/memory-engine" }
 quality-engine = { path = "../crates/quality-engine" }
 translation-core = { path = "../crates/translation-core" }

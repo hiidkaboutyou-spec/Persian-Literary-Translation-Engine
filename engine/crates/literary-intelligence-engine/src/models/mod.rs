@@ -2,6 +2,7 @@ pub mod character;
 pub mod context_snapshot;
 pub mod decision_trace;
 pub mod literary_rule;
+pub mod manuscript_intelligence;
 pub mod novel_context;
 pub mod relationship;
 pub mod scene;

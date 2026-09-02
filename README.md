@@ -16,6 +16,8 @@ Implemented and validated:
 - chapter segmentation
 - unified serializable `Manuscript -> Book -> Chapter -> Scene -> Paragraph` model
 - source provenance on every extracted chapter, scene, and paragraph (including PDF page, EPUB resource, and DOCX paragraph)
+- deterministic manuscript intelligence with evidence-backed character, relationship, chapter, and terminology seeds
+- observed literary-profile metrics and proposal-only pre-translation context that never promotes inferred state to canon
 - extensible format-parser registry with explicit corrupted, empty, unsupported, parsing, and structure errors
 - provider-neutral literary translation pipeline
 - deterministic `EchoProvider` for credential-free end-to-end testing
@@ -68,6 +70,18 @@ cd engine
 cargo run -p literary-engine -- inspect ../input/original_files/story.epub
 ```
 
+Analyze literary context before translation (offline and deterministic):
+
+```bash
+cargo run -p literary-engine -- analyze ../input/original_files/story.epub
+cargo run -p literary-engine -- analyze ../input/original_files/story.epub --format json
+```
+
+Analysis retains bounded references to stable chapter, scene, paragraph, and source-location IDs, not
+manuscript excerpts. Character, relationship, and terminology results are inferred seeds. Existing
+Character Bible and Glossary entries remain approved canon, take precedence during context assembly,
+and are never overwritten by analysis. See `docs/MANUSCRIPT_INTELLIGENCE.md`.
+
 Prepare chapter translation requests:
 
 ```bash
@@ -106,6 +120,8 @@ Source manuscript
 Document ingestion
       ↓
 Chapter segmentation
+      ↓
+Deterministic manuscript intelligence
       ↓
 Passage-relevant project memory
       ↓

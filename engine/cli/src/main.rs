@@ -1,5 +1,8 @@
 use character_engine::CharacterBible;
 use document_engine::{export_persian_docx, ingest_file, Chapter};
+use literary_intelligence_engine::{
+    AnalysisCanon, DeterministicManuscriptAnalyzer, ManuscriptAnalyzer, ManuscriptIntelligence,
+};
 use memory_engine::glossary::Glossary;
 use memory_engine::{
     build_memory_context, load_glossary, load_translation_memory, MemoryContextConfig,
@@ -97,6 +100,9 @@ fn usage() {
         "  literary-engine inspect <file.txt|file.md|file.docx|file.epub|file.pdf> [--format json]"
     );
     println!(
+        "  literary-engine analyze <file.txt|file.md|file.docx|file.epub|file.pdf> [--format json]"
+    );
+    println!(
         "  literary-engine prepare <file.txt|file.md|file.docx|file.epub|file.pdf> [target-language] [--format json]"
     );
     println!(
@@ -127,6 +133,55 @@ fn usage() {
     println!("  - LITERARY_ENGINE_MEMORY_FILE=/path/to/translation-memory.json");
     println!("  - LITERARY_ENGINE_GLOSSARY_FILE=/path/to/glossary.json");
     println!("  - LITERARY_ENGINE_CHARACTER_BIBLE_FILE=/path/to/character-bible.json");
+}
+
+fn analyze(path: &str, format: &OutputFormat) -> Result<(), String> {
+    let manuscript =
+        ingest_file(path).map_err(|error| format!("failed to read {path}: {error}"))?;
+    let memory = configured_runtime_memory()?;
+    let intelligence = DeterministicManuscriptAnalyzer::default()
+        .analyze(
+            &manuscript,
+            AnalysisCanon {
+                characters: &memory.characters,
+                glossary: &memory.glossary,
+            },
+        )
+        .map_err(|error| format!("failed to analyze {path}: {error}"))?;
+
+    match format {
+        OutputFormat::Text => print_intelligence_summary(&intelligence),
+        OutputFormat::Json => println!(
+            "{}",
+            serde_json::to_string_pretty(&intelligence)
+                .map_err(|error| format!("failed to serialize analysis: {error}"))?
+        ),
+    }
+    Ok(())
+}
+
+fn print_intelligence_summary(intelligence: &ManuscriptIntelligence) {
+    println!("manuscript: {}", intelligence.manuscript_title);
+    println!("schema_version: {}", intelligence.schema_version);
+    println!("chapters: {}", intelligence.chapter_maps.len());
+    println!("character_seeds: {}", intelligence.character_seeds.len());
+    println!(
+        "relationship_seeds: {}",
+        intelligence.relationship_seeds.len()
+    );
+    println!(
+        "terminology_seeds: {}",
+        intelligence.terminology_seeds.len()
+    );
+    println!(
+        "dialogue_density: {:.3}",
+        intelligence.literary_profile.observed.dialogue_density
+    );
+    println!("conflicts: {}", intelligence.initialization.conflicts.len());
+    println!(
+        "canon_mutated: {}",
+        intelligence.initialization.mutates_canon
+    );
 }
 
 fn inspect(path: &str, format: &OutputFormat) -> Result<(), String> {
@@ -336,6 +391,7 @@ fn chapter_context(
     chapter_title: &str,
     source_text: &str,
     memory: &RuntimeMemory,
+    seed_context: Option<&str>,
 ) -> String {
     let mut sections = vec![format!(
         "document_title={document_title}\nchapter_title={chapter_title}"
@@ -356,6 +412,10 @@ fn chapter_context(
     );
     if !memory_context.text.trim().is_empty() {
         sections.push(memory_context.text);
+    }
+
+    if let Some(seed_context) = seed_context.filter(|value| !value.trim().is_empty()) {
+        sections.push(seed_context.to_string());
     }
 
     sections.join("\n\n")
@@ -388,7 +448,17 @@ fn run_pipeline(
 ) -> Result<(), String> {
     let manuscript =
         ingest_file(path).map_err(|error| format!("failed to read {path}: {error}"))?;
-    let document_title = manuscript.book.title;
+    let runtime_memory = configured_runtime_memory()?;
+    let intelligence = DeterministicManuscriptAnalyzer::default()
+        .analyze(
+            &manuscript,
+            AnalysisCanon {
+                characters: &runtime_memory.characters,
+                glossary: &runtime_memory.glossary,
+            },
+        )
+        .map_err(|error| format!("failed to analyze {path}: {error}"))?;
+    let document_title = manuscript.book.title.clone();
     let chapters = manuscript.chapters;
     if chapters.is_empty() {
         return Err("document contains no translatable chapters".to_string());
@@ -399,7 +469,6 @@ fn run_pipeline(
 
     let provider = configured_provider()?;
     let provider_name = provider.name().to_string();
-    let runtime_memory = configured_runtime_memory()?;
     let pipeline = TranslationPipeline::default_literary_pipeline();
     let mut translated_chapters = Vec::with_capacity(chapters.len());
     let mut manifest_chapters: Vec<RunChapterOutput> = Vec::with_capacity(chapters.len());
@@ -420,6 +489,16 @@ fn run_pipeline(
     manifest_text.push_str(&format!(
         "character_profiles={}\n",
         runtime_memory.characters.profiles().len()
+    ));
+    manifest_text.push_str(&format!(
+        "manuscript_intelligence_schema={}\n",
+        intelligence.schema_version
+    ));
+    manifest_text.push_str(&format!(
+        "character_seeds={}\nrelationship_seeds={}\nterminology_seeds={}\n",
+        intelligence.character_seeds.len(),
+        intelligence.relationship_seeds.len(),
+        intelligence.terminology_seeds.len()
     ));
 
     if *format == OutputFormat::Text {
@@ -516,6 +595,7 @@ fn run_pipeline(
             &chapter.title,
             &source_text,
             &runtime_memory,
+            intelligence.initialization.context_for_chapter(&chapter.id),
         );
         let output = pipeline
             .execute(
@@ -696,6 +776,7 @@ fn run() -> Result<(), String> {
             Ok(())
         }
         ("inspect", [path, ..]) => inspect(path, &format),
+        ("analyze", [path, ..]) => analyze(path, &format),
         ("prepare", [path]) => prepare(path, "fa", &format),
         ("prepare", [path, target]) => prepare(path, target, &format),
         ("run", [path]) => {
@@ -822,6 +903,7 @@ mod tests {
             "Chapter 1",
             "Magnus, the High Warlock, whispered softly to Alec.",
             &runtime,
+            None,
         );
 
         assert!(context.contains("CHARACTER BIBLE"));
@@ -830,6 +912,27 @@ mod tests {
         assert!(context.contains("High Warlock => جادوگر اعظم"));
         assert!(context.contains("TRANSLATION MEMORY"));
         assert!(context.contains("مگنوس آرام زمزمه کرد"));
+    }
+
+    #[test]
+    fn approved_context_precedes_manuscript_seed_context() {
+        let mut runtime = RuntimeMemory::default();
+        runtime.characters.add(CharacterProfile {
+            name: "Mina".into(),
+            voice_notes: "approved voice".into(),
+            personality_notes: String::new(),
+        });
+        let context = chapter_context(
+            "Book",
+            "Chapter 1",
+            "Mina met Reza.",
+            &runtime,
+            Some("MANUSCRIPT SEEDS — inferred evidence only:\n- character candidate: Reza"),
+        );
+
+        assert!(
+            context.find("approved voice").unwrap() < context.find("MANUSCRIPT SEEDS").unwrap()
+        );
     }
 
     #[test]
