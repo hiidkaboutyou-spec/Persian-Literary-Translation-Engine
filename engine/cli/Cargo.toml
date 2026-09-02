@@ -11,8 +11,14 @@ path = "src/main.rs"
 character-engine = { path = "../crates/character-engine" }
 document-engine = { path = "../crates/document-engine" }
 literary-intelligence-engine = { path = "../crates/literary-intelligence-engine" }
+human-review-workflow = { path = "../crates/human-review-workflow" }
+project-engine = { path = "../crates/project-engine" }
 memory-engine = { path = "../crates/memory-engine" }
 quality-engine = { path = "../crates/quality-engine" }
 translation-core = { path = "../crates/translation-core" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+chrono = { version = "0.4", features = ["serde"] }
+
+[dev-dependencies]
+tempfile = "3"

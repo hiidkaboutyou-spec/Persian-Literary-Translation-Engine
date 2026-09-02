@@ -1,7 +1,70 @@
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeSet;
 use std::fs;
 use std::io;
 use std::path::Path;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CharacterCanonError {
+    EmptyName,
+    EmptyAlias,
+    AliasCollision {
+        alias: String,
+        existing_character: String,
+        proposed_character: String,
+    },
+    ProfileConflict {
+        character: String,
+    },
+    InvalidRelationship,
+    RelationshipConflict {
+        character_a: String,
+        character_b: String,
+    },
+}
+
+impl std::fmt::Display for CharacterCanonError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::EmptyName => write!(formatter, "canonical character name cannot be empty"),
+            Self::EmptyAlias => write!(formatter, "character alias cannot be empty"),
+            Self::AliasCollision {
+                alias,
+                existing_character,
+                proposed_character,
+            } => write!(
+                formatter,
+                "alias '{alias}' belongs to '{existing_character}', not '{proposed_character}'"
+            ),
+            Self::ProfileConflict { character } => {
+                write!(
+                    formatter,
+                    "canonical profile for '{character}' already differs"
+                )
+            }
+            Self::InvalidRelationship => write!(
+                formatter,
+                "relationship endpoints must be non-empty, distinct characters"
+            ),
+            Self::RelationshipConflict {
+                character_a,
+                character_b,
+            } => write!(
+                formatter,
+                "canonical relationship between '{character_a}' and '{character_b}' already differs"
+            ),
+        }
+    }
+}
+
+impl std::error::Error for CharacterCanonError {}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CanonUpdate {
+    Inserted,
+    Replaced,
+    Unchanged,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CharacterProfile {
@@ -84,6 +147,51 @@ impl CharacterBible {
         self.profiles.push(profile);
     }
 
+    pub fn find_profile(&self, name: &str) -> Option<&CharacterProfile> {
+        let wanted = normalize_for_matching(name);
+        self.profiles
+            .iter()
+            .find(|profile| normalize_for_matching(&profile.name) == wanted)
+    }
+
+    pub fn upsert_profile(
+        &mut self,
+        profile: CharacterProfile,
+        replace_existing: bool,
+    ) -> Result<CanonUpdate, CharacterCanonError> {
+        let wanted = normalize_for_matching(&profile.name);
+        if wanted.is_empty() {
+            return Err(CharacterCanonError::EmptyName);
+        }
+        if let Some(owner) = self.find_alias_owner(&profile.name) {
+            if normalize_for_matching(owner) != wanted {
+                return Err(CharacterCanonError::AliasCollision {
+                    alias: profile.name.clone(),
+                    existing_character: owner.to_string(),
+                    proposed_character: profile.name,
+                });
+            }
+        }
+        if let Some(existing) = self
+            .profiles
+            .iter_mut()
+            .find(|existing| normalize_for_matching(&existing.name) == wanted)
+        {
+            if *existing == profile {
+                return Ok(CanonUpdate::Unchanged);
+            }
+            if !replace_existing {
+                return Err(CharacterCanonError::ProfileConflict {
+                    character: existing.name.clone(),
+                });
+            }
+            *existing = profile;
+            return Ok(CanonUpdate::Replaced);
+        }
+        self.profiles.push(profile);
+        Ok(CanonUpdate::Inserted)
+    }
+
     pub fn add_alias(&mut self, canonical_name: impl Into<String>, alias: impl Into<String>) {
         let canonical_name = canonical_name.into();
         let alias = alias.into();
@@ -103,8 +211,152 @@ impl CharacterBible {
         });
     }
 
+    pub fn find_alias_owner(&self, alias: &str) -> Option<&str> {
+        let wanted = normalize_for_matching(alias);
+        self.profiles
+            .iter()
+            .find(|profile| normalize_for_matching(&profile.name) == wanted)
+            .map(|profile| profile.name.as_str())
+            .or_else(|| {
+                self.aliases
+                    .iter()
+                    .find(|registered| normalize_for_matching(&registered.alias) == wanted)
+                    .map(|registered| registered.canonical_name.as_str())
+            })
+    }
+
+    pub fn add_alias_checked(
+        &mut self,
+        canonical_name: impl Into<String>,
+        alias: impl Into<String>,
+    ) -> Result<CanonUpdate, CharacterCanonError> {
+        let canonical_name = canonical_name.into();
+        let alias = alias.into();
+        let canonical_key = normalize_for_matching(&canonical_name);
+        let alias_key = normalize_for_matching(&alias);
+        if canonical_key.is_empty() {
+            return Err(CharacterCanonError::EmptyName);
+        }
+        if alias_key.is_empty() {
+            return Err(CharacterCanonError::EmptyAlias);
+        }
+        if alias_key == canonical_key {
+            return Ok(CanonUpdate::Unchanged);
+        }
+        if let Some(existing_owner) = self.find_alias_owner(&alias).map(str::to_owned) {
+            if normalize_for_matching(&existing_owner) == canonical_key {
+                return Ok(CanonUpdate::Unchanged);
+            }
+            return Err(CharacterCanonError::AliasCollision {
+                alias,
+                existing_character: existing_owner,
+                proposed_character: canonical_name,
+            });
+        }
+        self.aliases.push(CharacterAlias {
+            canonical_name,
+            alias,
+        });
+        Ok(CanonUpdate::Inserted)
+    }
+
+    pub fn replace_aliases_checked(
+        &mut self,
+        canonical_name: impl Into<String>,
+        aliases: Vec<String>,
+    ) -> Result<CanonUpdate, CharacterCanonError> {
+        let canonical_name = canonical_name.into();
+        let canonical_key = normalize_for_matching(&canonical_name);
+        if canonical_key.is_empty() {
+            return Err(CharacterCanonError::EmptyName);
+        }
+        let mut seen = BTreeSet::new();
+        let mut desired = Vec::new();
+        for alias in aliases {
+            let alias_key = normalize_for_matching(&alias);
+            if alias_key.is_empty() {
+                return Err(CharacterCanonError::EmptyAlias);
+            }
+            if alias_key == canonical_key || !seen.insert(alias_key) {
+                continue;
+            }
+            if let Some(owner) = self.find_alias_owner(&alias) {
+                if normalize_for_matching(owner) != canonical_key {
+                    return Err(CharacterCanonError::AliasCollision {
+                        alias,
+                        existing_character: owner.to_string(),
+                        proposed_character: canonical_name,
+                    });
+                }
+            }
+            desired.push(alias);
+        }
+        let current = self
+            .aliases
+            .iter()
+            .filter(|entry| normalize_for_matching(&entry.canonical_name) == canonical_key)
+            .map(|entry| normalize_for_matching(&entry.alias))
+            .collect::<BTreeSet<_>>();
+        let wanted = desired
+            .iter()
+            .map(|alias| normalize_for_matching(alias))
+            .collect::<BTreeSet<_>>();
+        if current == wanted {
+            return Ok(CanonUpdate::Unchanged);
+        }
+        self.aliases
+            .retain(|entry| normalize_for_matching(&entry.canonical_name) != canonical_key);
+        self.aliases
+            .extend(desired.into_iter().map(|alias| CharacterAlias {
+                canonical_name: canonical_name.clone(),
+                alias,
+            }));
+        Ok(CanonUpdate::Replaced)
+    }
+
     pub fn add_relationship(&mut self, relationship: RelationshipProfile) {
         self.relationships.push(relationship);
+    }
+
+    pub fn find_relationship(
+        &self,
+        character_a: &str,
+        character_b: &str,
+    ) -> Option<&RelationshipProfile> {
+        let wanted = normalized_pair(character_a, character_b);
+        self.relationships.iter().find(|relationship| {
+            normalized_pair(&relationship.character_a, &relationship.character_b) == wanted
+        })
+    }
+
+    pub fn upsert_relationship(
+        &mut self,
+        relationship: RelationshipProfile,
+        replace_existing: bool,
+    ) -> Result<CanonUpdate, CharacterCanonError> {
+        let a = normalize_for_matching(&relationship.character_a);
+        let b = normalize_for_matching(&relationship.character_b);
+        if a.is_empty() || b.is_empty() || a == b {
+            return Err(CharacterCanonError::InvalidRelationship);
+        }
+        let wanted = normalized_pair(&relationship.character_a, &relationship.character_b);
+        if let Some(existing) = self.relationships.iter_mut().find(|existing| {
+            normalized_pair(&existing.character_a, &existing.character_b) == wanted
+        }) {
+            if *existing == relationship {
+                return Ok(CanonUpdate::Unchanged);
+            }
+            if !replace_existing {
+                return Err(CharacterCanonError::RelationshipConflict {
+                    character_a: existing.character_a.clone(),
+                    character_b: existing.character_b.clone(),
+                });
+            }
+            *existing = relationship;
+            return Ok(CanonUpdate::Replaced);
+        }
+        self.relationships.push(relationship);
+        Ok(CanonUpdate::Inserted)
     }
 
     pub fn profiles(&self) -> &[CharacterProfile] {
@@ -182,6 +434,16 @@ impl CharacterBible {
             normalize_for_matching(&registered.canonical_name) == normalized_canonical
                 && contains_name(normalized_text, &registered.alias)
         })
+    }
+}
+
+fn normalized_pair(a: &str, b: &str) -> (String, String) {
+    let a = normalize_for_matching(a);
+    let b = normalize_for_matching(b);
+    if a <= b {
+        (a, b)
+    } else {
+        (b, a)
     }
 }
 
@@ -300,6 +562,66 @@ mod tests {
         bible.add_alias("Alexander Lightwood", "Alec");
         bible.add_alias("Alexander Lightwood", "Alec");
         assert_eq!(bible.aliases().len(), 1);
+    }
+
+    #[test]
+    fn checked_aliases_reject_cross_character_collisions() {
+        let mut bible = CharacterBible::new();
+        bible
+            .add_alias_checked("Elizabeth Bennet", "Lizzy")
+            .unwrap();
+        let error = bible
+            .add_alias_checked("Lydia Bennet", "LIZZY")
+            .unwrap_err();
+        assert!(matches!(error, CharacterCanonError::AliasCollision { .. }));
+        assert_eq!(bible.aliases().len(), 1);
+    }
+
+    #[test]
+    fn checked_aliases_cannot_shadow_another_canonical_name() {
+        let mut bible = CharacterBible::new();
+        bible.add(profile("John", "", ""));
+        bible.add(profile("James", "", ""));
+
+        let error = bible.add_alias_checked("James", "John").unwrap_err();
+
+        assert!(matches!(error, CharacterCanonError::AliasCollision { .. }));
+    }
+
+    #[test]
+    fn replacing_aliases_removes_old_values_and_ignores_the_canonical_name() {
+        let mut bible = CharacterBible::new();
+        bible.add(profile("Elizabeth Bennet", "", ""));
+        bible.add_alias("Elizabeth Bennet", "Lizzy");
+        bible.add_alias("Elizabeth Bennet", "Eliza");
+
+        bible
+            .replace_aliases_checked(
+                "Elizabeth Bennet",
+                vec!["Liz".into(), "Elizabeth Bennet".into(), "Liz".into()],
+            )
+            .unwrap();
+
+        assert_eq!(bible.find_alias_owner("Liz"), Some("Elizabeth Bennet"));
+        assert!(bible.find_alias_owner("Lizzy").is_none());
+        assert_eq!(bible.aliases().len(), 1);
+    }
+
+    #[test]
+    fn checked_relationship_upsert_normalizes_unordered_pairs() {
+        let mut bible = CharacterBible::new();
+        let mut first = RelationshipProfile::new("Mina", "Reza");
+        first.dynamic_notes = "friends".into();
+        bible.upsert_relationship(first, false).unwrap();
+        let mut replacement = RelationshipProfile::new("reza", "MINA");
+        replacement.dynamic_notes = "siblings".into();
+        assert!(matches!(
+            bible.upsert_relationship(replacement.clone(), false),
+            Err(CharacterCanonError::RelationshipConflict { .. })
+        ));
+        bible.upsert_relationship(replacement, true).unwrap();
+        assert_eq!(bible.relationships().len(), 1);
+        assert_eq!(bible.relationships()[0].dynamic_notes, "siblings");
     }
 
     #[test]

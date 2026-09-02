@@ -1,14 +1,14 @@
 use crate::retrieval::normalize;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GlossaryEntry {
     pub source_term: String,
     pub preferred_translation: String,
     pub context: String,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Glossary {
     entries: Vec<GlossaryEntry>,
 }
@@ -18,8 +18,61 @@ impl Glossary {
         self.entries.push(entry);
     }
 
+    pub fn upsert(
+        &mut self,
+        entry: GlossaryEntry,
+        replace_existing: bool,
+    ) -> Result<GlossaryUpdate, GlossaryCanonError> {
+        if normalize(&entry.source_term).is_empty() {
+            return Err(GlossaryCanonError::EmptySourceTerm);
+        }
+        if normalize(&entry.preferred_translation).is_empty() {
+            return Err(GlossaryCanonError::EmptyTranslation);
+        }
+        let wanted = normalize(&entry.source_term);
+        let matching_indices: Vec<_> = self
+            .entries
+            .iter()
+            .enumerate()
+            .filter_map(|(index, existing)| {
+                (normalize(&existing.source_term) == wanted).then_some(index)
+            })
+            .collect();
+        if let Some(&first_index) = matching_indices.first() {
+            let existing = &self.entries[first_index];
+            if normalize(&existing.preferred_translation) == normalize(&entry.preferred_translation)
+                && existing.context == entry.context
+                && matching_indices.len() == 1
+            {
+                return Ok(GlossaryUpdate::Unchanged);
+            }
+            if !replace_existing {
+                return Err(GlossaryCanonError::TranslationConflict {
+                    source_term: existing.source_term.clone(),
+                    existing_translation: existing.preferred_translation.clone(),
+                    proposed_translation: entry.preferred_translation,
+                });
+            }
+            for index in matching_indices.into_iter().rev() {
+                self.entries.remove(index);
+            }
+            self.entries.insert(first_index, entry);
+            return Ok(GlossaryUpdate::Replaced);
+        }
+        self.entries.push(entry);
+        Ok(GlossaryUpdate::Inserted)
+    }
+
     pub fn entries(&self) -> &[GlossaryEntry] {
         &self.entries
+    }
+
+    pub fn entries_for_term(&self, source_term: &str) -> Vec<&GlossaryEntry> {
+        let wanted = normalize(source_term);
+        self.entries
+            .iter()
+            .filter(|entry| normalize(&entry.source_term) == wanted)
+            .collect()
     }
 
     /// Returns glossary entries whose source term actually appears in the
@@ -93,6 +146,43 @@ impl Glossary {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GlossaryUpdate {
+    Inserted,
+    Replaced,
+    Unchanged,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum GlossaryCanonError {
+    EmptySourceTerm,
+    EmptyTranslation,
+    TranslationConflict {
+        source_term: String,
+        existing_translation: String,
+        proposed_translation: String,
+    },
+}
+
+impl std::fmt::Display for GlossaryCanonError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::EmptySourceTerm => write!(formatter, "glossary source term cannot be empty"),
+            Self::EmptyTranslation => write!(formatter, "preferred translation cannot be empty"),
+            Self::TranslationConflict {
+                source_term,
+                existing_translation,
+                proposed_translation,
+            } => write!(
+                formatter,
+                "glossary term '{source_term}' is already '{existing_translation}', not '{proposed_translation}'"
+            ),
+        }
+    }
+}
+
+impl std::error::Error for GlossaryCanonError {}
+
 #[derive(Debug)]
 pub struct GlossaryConflict<'a> {
     pub canonical: &'a GlossaryEntry,
@@ -141,5 +231,49 @@ mod tests {
         let conflicts = glossary.conflicting_terms();
         assert_eq!(conflicts.len(), 2);
         assert_eq!(conflicts[0].alternatives.len(), 1);
+    }
+
+    #[test]
+    fn checked_upsert_prevents_silent_approved_translation_changes() {
+        let mut glossary = Glossary::default();
+        glossary
+            .upsert(entry("Duke", "دوک اعظم", "title"), false)
+            .unwrap();
+        let error = glossary
+            .upsert(entry("duke", "دوک", "edited"), false)
+            .unwrap_err();
+        assert!(matches!(
+            error,
+            GlossaryCanonError::TranslationConflict { .. }
+        ));
+        glossary
+            .upsert(entry("duke", "دوک", "edited"), true)
+            .unwrap();
+        assert_eq!(glossary.entries().len(), 1);
+        assert_eq!(
+            glossary
+                .find_exact_term("DUKE")
+                .unwrap()
+                .preferred_translation,
+            "دوک"
+        );
+    }
+
+    #[test]
+    fn explicit_replacement_collapses_preexisting_duplicate_terms() {
+        let mut glossary = Glossary::default();
+        glossary.add(entry("Duke", "دوک اعظم", "old title"));
+        glossary.add(entry("duke", "دوک", "other title"));
+
+        let update = glossary
+            .upsert(entry("DUKE", "دوک", "approved title"), true)
+            .unwrap();
+
+        assert_eq!(update, GlossaryUpdate::Replaced);
+        assert_eq!(glossary.entries_for_term("duke").len(), 1);
+        assert_eq!(
+            glossary.find_exact_term("duke"),
+            Some(&entry("DUKE", "دوک", "approved title"))
+        );
     }
 }

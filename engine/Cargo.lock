@@ -548,6 +548,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6dbf3de79e51f3d586ab4cb9d5c3e2c14aa28ed23d180cf89b4df0454a69cc87"
 
 [[package]]
+name = "human-review-workflow"
+version = "0.1.0"
+dependencies = [
+ "character-engine",
+ "chrono",
+ "document-engine",
+ "literary-intelligence-engine",
+ "memory-engine",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "text-normalization",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "hyper"
 version = "1.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -853,12 +870,16 @@ name = "literary-engine"
 version = "0.1.0"
 dependencies = [
  "character-engine",
+ "chrono",
  "document-engine",
+ "human-review-workflow",
  "literary-intelligence-engine",
  "memory-engine",
+ "project-engine",
  "quality-engine",
  "serde",
  "serde_json",
+ "tempfile",
  "translation-core",
 ]
 
@@ -1092,8 +1113,16 @@ dependencies = [
 name = "project-engine"
 version = "0.1.0"
 dependencies = [
+ "character-engine",
+ "chrono",
+ "human-review-workflow",
+ "literary-intelligence-engine",
+ "memory-engine",
  "serde",
  "serde_json",
+ "sha2",
+ "tempfile",
+ "thiserror 1.0.69",
 ]
 
 [[package]]

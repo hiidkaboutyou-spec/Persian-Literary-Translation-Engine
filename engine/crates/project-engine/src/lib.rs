@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::{fs, io, path::Path};
 
+pub mod review_store;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ProjectManifest {
     pub schema_version: u32,

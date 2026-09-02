@@ -18,6 +18,8 @@ Implemented and validated:
 - source provenance on every extracted chapter, scene, and paragraph (including PDF page, EPUB resource, and DOCX paragraph)
 - deterministic manuscript intelligence with evidence-backed character, relationship, chapter, and terminology seeds
 - observed literary-profile metrics and proposal-only pre-translation context that never promotes inferred state to canon
+- persistent human review for character, relationship, and terminology proposals with approve, edit, reject, defer, and explicit promotion states
+- deterministic proposal reconciliation, typed canon conflicts, dry-run promotion plans, crash-safe apply, and durable audit lineage
 - extensible format-parser registry with explicit corrupted, empty, unsupported, parsing, and structure errors
 - provider-neutral literary translation pipeline
 - deterministic `EchoProvider` for credential-free end-to-end testing
@@ -82,6 +84,43 @@ manuscript excerpts. Character, relationship, and terminology results are inferr
 Character Bible and Glossary entries remain approved canon, take precedence during context assembly,
 and are never overwritten by analysis. See `docs/MANUSCRIPT_INTELLIGENCE.md`.
 
+Create or reconcile a durable review queue:
+
+```bash
+cargo run -p literary-engine -- review sync ../input/original_files/story.epub \
+  --review-file ../project/intelligence-review.json \
+  --character-bible ../project/character-bible.json \
+  --glossary ../project/glossary.json
+
+cargo run -p literary-engine -- review list \
+  --review-file ../project/intelligence-review.json \
+  --status pending --format json
+```
+
+Review decisions only update the review ledger. Canon changes require a dry-run followed by an
+explicit apply bound to the returned plan ID:
+
+```bash
+cargo run -p literary-engine -- review approve <review-id> \
+  --review-file ../project/intelligence-review.json \
+  --reviewer editor --reason "Evidence supports this identity"
+
+cargo run -p literary-engine -- review promote --dry-run \
+  --review-file ../project/intelligence-review.json \
+  --character-bible ../project/character-bible.json \
+  --glossary ../project/glossary.json --format json
+
+cargo run -p literary-engine -- review promote --apply --plan-id <promotion-id> \
+  --review-file ../project/intelligence-review.json \
+  --character-bible ../project/character-bible.json \
+  --glossary ../project/glossary.json \
+  --reviewer editor --reason "Apply reviewed canon"
+```
+
+Use `review edit <id> --replacement <json-file|->` for structured corrections, `review reject`,
+`review defer`, and the explicit audited `review reopen` operation. All review commands support
+`--format json`. See `docs/INTELLIGENCE_REVIEW_AND_CANON_PROMOTION.md`.
+
 Prepare chapter translation requests:
 
 ```bash
@@ -109,6 +148,7 @@ Optional persisted project memory:
 - `LITERARY_ENGINE_MEMORY_FILE=/path/to/translation-memory.json`
 - `LITERARY_ENGINE_GLOSSARY_FILE=/path/to/glossary.json`
 - `LITERARY_ENGINE_CHARACTER_BIBLE_FILE=/path/to/character-bible.json`
+- `LITERARY_ENGINE_REVIEW_FILE=/path/to/intelligence-review.json`
 
 The OpenAI provider disables response storage in its API requests. Secrets are not committed to repository files.
 
@@ -122,6 +162,8 @@ Document ingestion
 Chapter segmentation
       ↓
 Deterministic manuscript intelligence
+      ↓
+Persistent human review + explicit canon promotion
       ↓
 Passage-relevant project memory
       ↓

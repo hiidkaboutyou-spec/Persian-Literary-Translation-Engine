@@ -2,6 +2,14 @@
 
 These cycles extend the existing four milestones while preserving the product goal: a usable Rust-based Persian literary translation system that can ingest long-form fiction, preserve context and character voice across chapters, generate high-quality Persian, evaluate consistency, and export a publication-ready manuscript.
 
+## Delivery note — Phase 14
+
+Phase 14 now implements the literary-intelligence portion of Cycles 9 and 10: persistent proposal
+review, human decisions, reconciliation, typed canon conflicts, promotion preview/apply, and audit
+lineage. The historical cycle numbering below is retained for roadmap continuity. Remaining Cycle 9
+work is broader project orchestration and chapter-level review; remaining Cycle 10 work includes
+deeper literary-rule inference and output-span traceability.
+
 ## Cycle 5 — Provider Integration & End-to-End Translation Runtime
 
 ### Goal
