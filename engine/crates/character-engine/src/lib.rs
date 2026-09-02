@@ -80,8 +80,25 @@ impl CharacterBible {
         Self::default()
     }
 
+    /// Adds a new canonical profile or replaces the existing profile for the same
+    /// normalized character name. A Character Bible should have one source of truth
+    /// per character; duplicate profiles otherwise inject contradictory voice notes
+    /// into the same translation prompt.
     pub fn add(&mut self, profile: CharacterProfile) {
-        self.profiles.push(profile);
+        let canonical = normalize_for_matching(&profile.name);
+        if canonical.is_empty() {
+            return;
+        }
+
+        if let Some(existing) = self
+            .profiles
+            .iter_mut()
+            .find(|existing| normalize_for_matching(&existing.name) == canonical)
+        {
+            *existing = profile;
+        } else {
+            self.profiles.push(profile);
+        }
     }
 
     pub fn add_alias(&mut self, canonical_name: impl Into<String>, alias: impl Into<String>) {
@@ -103,8 +120,25 @@ impl CharacterBible {
         });
     }
 
+    /// Stores only one canonical relationship per unordered character pair. Later
+    /// edits replace earlier notes even if the caller reverses A/B, preventing stale
+    /// relationship dynamics and forms of address from being injected together.
     pub fn add_relationship(&mut self, relationship: RelationshipProfile) {
-        self.relationships.push(relationship);
+        let a = normalize_for_matching(&relationship.character_a);
+        let b = normalize_for_matching(&relationship.character_b);
+        if a.is_empty() || b.is_empty() || a == b {
+            return;
+        }
+
+        if let Some(existing) = self.relationships.iter_mut().find(|existing| {
+            let existing_a = normalize_for_matching(&existing.character_a);
+            let existing_b = normalize_for_matching(&existing.character_b);
+            (existing_a == a && existing_b == b) || (existing_a == b && existing_b == a)
+        }) {
+            *existing = relationship;
+        } else {
+            self.relationships.push(relationship);
+        }
     }
 
     pub fn profiles(&self) -> &[CharacterProfile] {
@@ -238,6 +272,18 @@ mod tests {
     }
 
     #[test]
+    fn adding_same_character_replaces_stale_voice_profile() {
+        let mut bible = CharacterBible::new();
+        bible.add(profile("Magnus", "formal", "guarded"));
+        bible.add(profile("  MAGNUS  ", "witty", "warm"));
+
+        assert_eq!(bible.profiles().len(), 1);
+        let context = bible.context_for_text("Magnus smiled.");
+        assert!(context.contains("Voice: witty"));
+        assert!(!context.contains("Voice: formal"));
+    }
+
+    #[test]
     fn alias_matching_restores_character_voice_context() {
         let mut bible = CharacterBible::new();
         bible.add(profile("Alexander Lightwood", "restrained", "loyal"));
@@ -276,6 +322,29 @@ mod tests {
         let relationships = bible.relevant_relationships("Alec looked over at Magnus.");
         assert_eq!(relationships.len(), 1);
         assert!(relationships[0].dynamic_notes.contains("teasing"));
+    }
+
+    #[test]
+    fn reversed_relationship_update_replaces_stale_pair_notes() {
+        let mut bible = CharacterBible::new();
+        let mut old = RelationshipProfile::new("Magnus", "Alec");
+        old.dynamic_notes = "distant and formal".into();
+        bible.add_relationship(old);
+
+        let mut current = RelationshipProfile::new("Alec", "Magnus");
+        current.dynamic_notes = "affectionate banter".into();
+        current.address_notes = "Alec uses Magnus's name when vulnerable".into();
+        bible.add_relationship(current);
+
+        assert_eq!(bible.relationships().len(), 1);
+        assert_eq!(bible.relationships()[0].dynamic_notes, "affectionate banter");
+    }
+
+    #[test]
+    fn invalid_self_relationship_is_ignored() {
+        let mut bible = CharacterBible::new();
+        bible.add_relationship(RelationshipProfile::new("Magnus", "magnus"));
+        assert!(bible.relationships().is_empty());
     }
 
     #[test]
