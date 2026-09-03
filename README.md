@@ -21,6 +21,8 @@ Implemented and validated:
 - persistent human review for character, relationship, and terminology proposals with approve, edit, reject, defer, and explicit promotion states
 - deterministic proposal reconciliation, typed canon conflicts, dry-run promotion plans, crash-safe apply, and durable audit lineage
 - optional model-assisted literary analysis (bounded analysis units, provider-neutral `mock`/`openai` providers, structured evidence-backed findings, deterministic validation, cache/resume) whose findings join the same human review ledger as review-only `Literary` proposals and never become canon
+- **one project-oriented application layer** (`project-engine::application::ApplicationService`) that a desktop UI can call for create/open/import/snapshot, analysis, review, promotion, translation lifecycle (progress/pause/resume), manual edits, and export — without touching engine internals; typed errors, events, atomic writes, project locking, source-fingerprint and canon-staleness detection, audit history, and UI-ready JSON models
+- `literary-engine project …` commands that are a thin adapter over that same application layer
 - extensible format-parser registry with explicit corrupted, empty, unsupported, parsing, and structure errors
 - provider-neutral literary translation pipeline
 - deterministic `EchoProvider` for credential-free end-to-end testing
@@ -38,7 +40,7 @@ Implemented and validated:
 - SHA-256 release checksums
 - successful first versioned release validation as `v0.1.0`
 
-The original v0.1.0 launch blockers are complete. Post-v0.1 development now focuses on project orchestration, human review workflows, literary decision traceability, large-book efficiency/cost control, offline resilience, and a stable v1 compatibility contract. See `docs/NEXT_DEVELOPMENT_CYCLES.md`.
+The original v0.1.0 launch blockers are complete. Post-v0.1 development now focuses on project orchestration, human review workflows, literary decision traceability, large-book efficiency/cost control, offline resilience, and a stable v1 compatibility contract. Phase 16 added the application orchestration layer; see `docs/APPLICATION_ORCHESTRATION.md` and `docs/NEXT_DEVELOPMENT_CYCLES.md`.
 
 ## Build
 
@@ -159,6 +161,33 @@ cargo run -p literary-engine -- run ../input/original_files/story.epub fa ../out
 ```
 
 A successful run emits per-chapter text artifacts, a runtime manifest, and the final Persian `manuscript.docx`.
+
+### Project-oriented workflow (application layer)
+
+`literary-engine project …` runs the same `ApplicationService` a desktop app will call. Each step
+is explicit; nothing is auto-run:
+
+```bash
+cd engine
+cargo run -p literary-engine -- project create ../project/my-book --name "My Book"
+cargo run -p literary-engine -- project import ../project/my-book ../input/original_files/story.epub
+cargo run -p literary-engine -- project status ../project/my-book --format json
+cargo run -p literary-engine -- project analyze ../project/my-book
+cargo run -p literary-engine -- project analyze-advanced ../project/my-book          # offline mock
+cargo run -p literary-engine -- project review ../project/my-book list
+cargo run -p literary-engine -- project review ../project/my-book approve-all
+cargo run -p literary-engine -- project review ../project/my-book promote
+cargo run -p literary-engine -- project translate ../project/my-book --provider echo --max-chapters 1
+cargo run -p literary-engine -- project resume ../project/my-book --provider echo
+cargo run -p literary-engine -- project export ../project/my-book
+```
+
+The project owns a copy of the imported source (never modified), all artifacts under predictable
+directories, and a `.lock` that prevents two writers. Terminology approvals need an explicit
+translation and relationship approvals need reviewed notes (Phase 14 rule — the CLI supplies
+placeholders only in `approve-all`); `promote` never touches review-only `Literary` findings.
+Manual edits and export/read operations are available through the same service for the future
+desktop editor. See `docs/APPLICATION_ORCHESTRATION.md`.
 
 Provider selection for `run`:
 
