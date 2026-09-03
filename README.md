@@ -20,6 +20,7 @@ Implemented and validated:
 - observed literary-profile metrics and proposal-only pre-translation context that never promotes inferred state to canon
 - persistent human review for character, relationship, and terminology proposals with approve, edit, reject, defer, and explicit promotion states
 - deterministic proposal reconciliation, typed canon conflicts, dry-run promotion plans, crash-safe apply, and durable audit lineage
+- optional model-assisted literary analysis (bounded analysis units, provider-neutral `mock`/`openai` providers, structured evidence-backed findings, deterministic validation, cache/resume) whose findings join the same human review ledger as review-only `Literary` proposals and never become canon
 - extensible format-parser registry with explicit corrupted, empty, unsupported, parsing, and structure errors
 - provider-neutral literary translation pipeline
 - deterministic `EchoProvider` for credential-free end-to-end testing
@@ -84,6 +85,29 @@ manuscript excerpts. Character, relationship, and terminology results are inferr
 Character Bible and Glossary entries remain approved canon, take precedence during context assembly,
 and are never overwritten by analysis. See `docs/MANUSCRIPT_INTELLIGENCE.md`.
 
+Run advanced (model-assisted) literary analysis explicitly — deterministic analysis never calls a
+model on its own:
+
+```bash
+# deterministic mock provider, fully offline (default)
+cargo run -p literary-engine -- analyze-advanced ../input/original_files/story.epub \
+  --review-file ../project/intelligence-review.json
+
+# queue findings for human review (same ledger as review sync)
+cargo run -p literary-engine -- analyze-advanced ../input/original_files/story.epub --review-file ../project/intelligence-review.json --format json
+
+# production provider (requires OPENAI_API_KEY)
+cargo run -p literary-engine -- analyze-advanced ../input/original_files/story.epub --provider openai
+```
+
+`analyze-advanced` splits the manuscript into bounded analysis units, validates every structured
+finding (hallucinated evidence IDs are rejected), and reconciles review-eligible findings into the
+Phase 14 ledger as `Literary` items. Literary items are review-only: they can be approved, edited,
+rejected, or deferred like any proposal, but they are never selected for canon promotion — there is
+no canonical owner for voice/tone/POV/subtext. Approved or edited literary findings are then
+injected into translation context only for the chapters their evidence belongs to. See
+`docs/ADVANCED_LITERARY_ANALYSIS.md`.
+
 Create or reconcile a durable review queue:
 
 ```bash
@@ -118,8 +142,9 @@ cargo run -p literary-engine -- review promote --apply --plan-id <promotion-id> 
 ```
 
 Use `review edit <id> --replacement <json-file|->` for structured corrections, `review reject`,
-`review defer`, and the explicit audited `review reopen` operation. All review commands support
-`--format json`. See `docs/INTELLIGENCE_REVIEW_AND_CANON_PROMOTION.md`.
+`review defer`, and the explicit audited `review reopen` operation. `review list --kind literary`
+filters advanced-analysis findings. All review commands support `--format json`. See
+`docs/INTELLIGENCE_REVIEW_AND_CANON_PROMOTION.md`.
 
 Prepare chapter translation requests:
 
@@ -149,6 +174,17 @@ Optional persisted project memory:
 - `LITERARY_ENGINE_GLOSSARY_FILE=/path/to/glossary.json`
 - `LITERARY_ENGINE_CHARACTER_BIBLE_FILE=/path/to/character-bible.json`
 - `LITERARY_ENGINE_REVIEW_FILE=/path/to/intelligence-review.json`
+
+Advanced analysis configuration:
+
+- `analyze-advanced` uses the deterministic `mock` provider unless `--provider openai` (or `LITERARY_ENGINE_ANALYSIS_PROVIDER=openai`) is set with `OPENAI_API_KEY`
+- `LITERARY_ENGINE_ANALYSIS_MODEL` / `OPENAI_MODEL` overrides the analysis model
+- `LITERARY_ENGINE_ANALYSIS_CACHE=/path/to/analysis-cache.json` enables fingerprint-keyed unit caching
+
+Advanced-analysis options:
+
+- `--max-units <n>` caps the number of provider requests
+- `--cache <path>` enables cache/resume for analysis units
 
 The OpenAI provider disables response storage in its API requests. Secrets are not committed to repository files.
 

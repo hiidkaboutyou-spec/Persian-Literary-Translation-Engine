@@ -26,6 +26,11 @@ does not inspect or mutate the review ledger by itself; `literary-engine review 
 reconciliation operation. Approval remains a review decision, not a canonical mutation. See
 `INTELLIGENCE_REVIEW_AND_CANON_PROMOTION.md` for the promotion workflow.
 
+Phase 15 adds an optional provider-assisted layer (`literary-engine analyze-advanced`) that stays
+strictly behind the same Human Review boundary. It never replaces the deterministic analyzer and is
+never triggered by it. See `ADVANCED_LITERARY_ANALYSIS.md` for the provider boundary, analysis
+units, finding model, evidence validation, and review integration.
+
 ## Canon precedence and conflicts
 
 Approved Character Bible identities and aliases are resolved before unknown character candidates.

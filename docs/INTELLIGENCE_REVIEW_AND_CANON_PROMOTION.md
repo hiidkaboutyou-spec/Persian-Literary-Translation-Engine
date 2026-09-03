@@ -14,6 +14,12 @@ inference != canon
 review decision != persisted canon mutation
 ```
 
+Phase 15 extends this with model-assisted findings, keeping the same boundary:
+
+```text
+model inference != human approval != canon
+```
+
 ## Ownership
 
 - `literary-intelligence-engine` owns inferred seeds, evidence, confidence, and Phase 13 IDs.
@@ -27,6 +33,28 @@ No Chapter Map or observed analysis metric is promoted. Current Phase 13 leaves 
 profile fields unset, and the runtime has no durable literary-rule owner, so Phase 14 deliberately
 does not invent one. A future literary-rule proposal receives an unsupported-promotion error until
 that owner and its runtime precedence contract exist.
+
+## Phase 15 literary findings are review-only
+
+Advanced (provider-assisted) findings enter the same ledger as a `Literary` proposal kind. They
+follow the exact same lifecycle and reconciliation semantics as deterministic proposals:
+`analyze-advanced` reconciles them via `reconcile_advanced`, unchanged findings keep human
+decisions, changed findings archive and return to `pending`, and missing findings become
+`obsolete`. The deterministic `reconcile` and the advanced `reconcile_advanced` passes are
+kind-scoped, so a plain `review sync` never obsoletes advanced items and an advanced reconcile never
+obsoletes deterministic ones.
+
+Literary findings have **no canonical owner** — voice, tone, POV, and subtext are not Character
+Bible or Glossary state. `ReviewKind::Literary` therefore never supports canon promotion:
+
+- default promotion selection never includes Literary items;
+- explicitly selecting one produces a blocking `UnsupportedPromotion` conflict (cancellable), not a
+  silent drop and not a fake canonical value;
+- approved/edited Literary findings are instead consumed as human-reviewed context during
+  `run`/`resume`, injected only into the chapters their evidence belongs to.
+
+Approving a Literary finding records a human-reviewed literary observation in the ledger. It is not
+canon.
 
 ## Ledger and stable identity
 
@@ -173,20 +201,23 @@ review defer <id> --review-file <path> --reviewer <name> --reason <text>
 review reopen <id> --review-file <path> --reviewer <name> --reason <text>
 review promote --dry-run --review-file <path> [--item <id> ...] [--resolutions <file|->]
 review promote --apply --plan-id <id> --review-file <path> [--item <id> ...]
+analyze-advanced <manuscript> --review-file <path> [--provider mock|openai] [--cache <path>] [--max-units <n>]
 ```
 
 Path flags override environment variables. The review ledger uses
 `LITERARY_ENGINE_REVIEW_FILE`; Character Bible and Glossary use their existing variables. Apply
 requires durable canonical paths. All operations accept `--format json`, and JSON outputs include a
 schema version. Queue filters include `all`, `pending`, `deferred`, `approved-not-applied`,
-`conflicted`, `rejected`, `applied`, and `obsolete`; kind filters include `character`, `relationship`, and
-`terminology`.
+`conflicted`, `rejected`, `applied`, and `obsolete`; kind filters include `character`, `relationship`, `terminology`, and
+`literary` (advanced findings).
 
 ## Translation and resume
 
 Promotion writes the same canon files that `run` and `resume` already load. Approved Character
 Bible/relationship and Glossary/Translation Memory context remains ahead of unresolved Phase 13
-inference in provider context.
+inference in provider context. Human-reviewed advanced findings (`kind: literary`, approved or
+edited) are injected after that canon but remain strictly below approved canon and above unresolved
+inference; unreviewed model inference never enters translation context.
 
 Chapter checkpoints now contain schema version, source fingerprint, and the fingerprint of the
 actual assembled chapter context. A canon change invalidates reuse instead of silently continuing
