@@ -2,6 +2,16 @@
 
 These cycles extend the existing four milestones while preserving the product goal: a usable Rust-based Persian literary translation system that can ingest long-form fiction, preserve context and character voice across chapters, generate high-quality Persian, evaluate consistency, and export a publication-ready manuscript.
 
+## Delivery note — Phase 15
+
+Phase 15 adds optional model-assisted literary analysis on top of the deterministic Phase 13
+intelligence: bounded analysis units, a provider-neutral `LiteraryAnalysisProvider` (mock + OpenAI),
+structured evidence-backed findings for voice/tone/POV/relationships/subtext and related
+categories, deterministic evidence/schema/confidence validation, fingerprint-keyed cache/resume,
+and review-only `Literary` proposals that flow through the Phase 14 human review ledger — never
+into canon. Deterministic analysis remains fully offline and is unchanged. See
+`docs/ADVANCED_LITERARY_ANALYSIS.md`.
+
 ## Delivery note — Phase 14
 
 Phase 14 now implements the literary-intelligence portion of Cycles 9 and 10: persistent proposal
