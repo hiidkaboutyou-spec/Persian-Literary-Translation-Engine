@@ -19,6 +19,7 @@ use translation_core::{
     TranslationPipeline, TranslationProvider, TranslationRequest,
 };
 
+mod advanced;
 mod review;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -112,6 +113,12 @@ fn usage() {
     println!(
         "  literary-engine analyze <file.txt|file.md|file.docx|file.epub|file.pdf> [--format json]"
     );
+    println!(
+        "  literary-engine analyze-advanced <file.txt|file.md|file.docx|file.epub|file.pdf> [--provider mock|openai] [--review-file <path>] [--cache <path>] [--max-units <n>] [--format json]"
+    );
+    println!(
+        "    analyze is deterministic and offline; analyze-advanced explicitly requests model-assisted analysis"
+    );
     println!("  literary-engine review <sync|list|show|approve|edit|reject|defer|reopen|promote> ... [--format json]");
     println!(
         "  literary-engine prepare <file.txt|file.md|file.docx|file.epub|file.pdf> [target-language] [--format json]"
@@ -130,6 +137,10 @@ fn usage() {
     println!("  --format json  Machine-readable JSON output");
     println!();
     println!("Provider selection:");
+    println!("  - analyze-advanced uses the deterministic mock analysis provider by default");
+    println!("  - set LITERARY_ENGINE_ANALYSIS_PROVIDER=openai (or --provider openai) plus OPENAI_API_KEY");
+    println!("  - override the analysis model with LITERARY_ENGINE_ANALYSIS_MODEL or OPENAI_MODEL");
+    println!("  - analysis unit results cache to LITERARY_ENGINE_ANALYSIS_CACHE when configured");
     println!("  - OPENAI_API_KEY set: run/resume uses OpenAI by default");
     println!("  - no OPENAI_API_KEY: run/resume uses the deterministic echo provider");
     println!("  - override with LITERARY_ENGINE_PROVIDER=openai|echo");
@@ -427,6 +438,7 @@ fn chapter_context(
     source_text: &str,
     memory: &RuntimeMemory,
     seed_context: Option<&str>,
+    reviewed_literary_lines: &[String],
 ) -> String {
     let mut sections = vec![format!(
         "document_title={document_title}\nchapter_title={chapter_title}"
@@ -451,6 +463,13 @@ fn chapter_context(
 
     if let Some(seed_context) = seed_context.filter(|value| !value.trim().is_empty()) {
         sections.push(seed_context.to_string());
+    }
+
+    if !reviewed_literary_lines.is_empty() {
+        sections.push(format!(
+            "REVIEWED LITERARY FINDINGS — human-approved context:\n{}",
+            reviewed_literary_lines.join("\n")
+        ));
     }
 
     sections.join("\n\n")
@@ -493,6 +512,7 @@ fn run_pipeline(
             },
         )
         .map_err(|error| format!("failed to analyze {path}: {error}"))?;
+    let reviewed_literary = review::load_reviewed_literary_lines();
     let document_title = manuscript.book.title.clone();
     let chapters = manuscript.chapters;
     if chapters.is_empty() {
@@ -535,6 +555,10 @@ fn run_pipeline(
         intelligence.relationship_seeds.len(),
         intelligence.terminology_seeds.len()
     ));
+    manifest_text.push_str(&format!(
+        "reviewed_literary_findings_available={}\n",
+        reviewed_literary.len()
+    ));
 
     if *format == OutputFormat::Text {
         println!("provider: {provider_name}");
@@ -553,12 +577,23 @@ fn run_pipeline(
         let output_path = output_dir.join(format!("{stem}.txt"));
         let checkpoint_path = output_dir.join(format!("{stem}.source-fingerprint"));
         let fingerprint = source_fingerprint(&source_text);
+        let chapter_literary_lines = reviewed_literary
+            .iter()
+            .filter(|line| line.chapter_ids.iter().any(|id| id == &chapter.id))
+            .map(|line| line.line.clone())
+            .collect::<Vec<_>>();
+        manifest_text.push_str(&format!(
+            "chapter.{}.literary_findings_used={}\n",
+            chapter.index + 1,
+            chapter_literary_lines.len()
+        ));
         let context = chapter_context(
             &document_title,
             &chapter.title,
             &source_text,
             &runtime_memory,
             intelligence.initialization.context_for_chapter(&chapter.id),
+            &chapter_literary_lines,
         );
         let context_fingerprint = source_fingerprint(&context);
 
@@ -834,6 +869,7 @@ fn run() -> Result<(), String> {
         }
         ("inspect", [path, ..]) => inspect(path, &format),
         ("analyze", [path, ..]) => analyze(path, &format),
+        ("analyze-advanced", args) => advanced::run_analyze_advanced(args, &format),
         ("review", args) => review::run_review(args, &format),
         ("prepare", [path]) => prepare(path, "fa", &format),
         ("prepare", [path, target]) => prepare(path, target, &format),
@@ -962,6 +998,7 @@ mod tests {
             "Magnus, the High Warlock, whispered softly to Alec.",
             &runtime,
             None,
+            &[],
         );
 
         assert!(context.contains("CHARACTER BIBLE"));
@@ -986,11 +1023,54 @@ mod tests {
             "Mina met Reza.",
             &runtime,
             Some("MANUSCRIPT SEEDS — inferred evidence only:\n- character candidate: Reza"),
+            &[],
         );
 
         assert!(
             context.find("approved voice").unwrap() < context.find("MANUSCRIPT SEEDS").unwrap()
         );
+    }
+
+    #[test]
+    fn reviewed_literary_findings_are_injected_only_into_their_own_chapter() {
+        let runtime = RuntimeMemory::default();
+        let chapter_a_lines = vec![
+            "[character_voice] Reza (chapter 1 [chapter-1]) — clipped, formal speech".to_string(),
+        ];
+        let chapter_b_lines = vec![
+            "[character_voice] Mina (chapter 2 [chapter-2]) — warm, expansive speech".to_string(),
+        ];
+        let context_a = chapter_context(
+            "Book",
+            "Chapter 1",
+            "Reza said nothing for a long moment.",
+            &runtime,
+            None,
+            &chapter_a_lines,
+        );
+        let context_b = chapter_context(
+            "Book",
+            "Chapter 2",
+            "Mina laughed.",
+            &runtime,
+            None,
+            &chapter_b_lines,
+        );
+        assert!(context_a.contains("REVIEWED LITERARY FINDINGS"));
+        assert!(context_a.contains("Reza"));
+        assert!(!context_a.contains("Mina"));
+        assert!(context_b.contains("REVIEWED LITERARY FINDINGS"));
+        assert!(context_b.contains("Mina"));
+        assert!(!context_b.contains("Reza"));
+        assert!(!chapter_context(
+            "Book",
+            "Chapter 3",
+            "A stranger arrived.",
+            &runtime,
+            None,
+            &[],
+        )
+        .contains("REVIEWED LITERARY FINDINGS"));
     }
 
     #[test]

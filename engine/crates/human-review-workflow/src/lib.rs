@@ -53,6 +53,20 @@ pub enum ReviewKind {
     Character,
     Relationship,
     Terminology,
+    /// Advanced model-assisted literary finding (voice, tone, POV, subtext, …).
+    /// Reviewable through the standard lifecycle but never promotable to canon
+    /// because no canonical owner exists for these dimensions.
+    Literary,
+}
+
+impl ReviewKind {
+    /// Kinds whose reviewed value can be promoted into a canonical owner.
+    pub fn supports_canon_promotion(self) -> bool {
+        matches!(
+            self,
+            Self::Character | Self::Relationship | Self::Terminology
+        )
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -73,12 +87,36 @@ pub enum ProposalAvailability {
     Obsolete,
 }
 
+/// A reviewable advanced literary finding (produced by provider-assisted
+/// analysis and validated before it reaches the queue). Literary proposals
+/// carry no canonical owner: approving one records a human-reviewed literary
+/// observation, not canon.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LiteraryFindingProposal {
+    /// Stable finding identity derived from analysis unit, category,
+    /// normalized subject/claim, and scope — never from raw provider prose.
+    pub id: String,
+    /// Snake_case finding category (e.g. `character_voice`, `tone`).
+    pub finding_category: String,
+    /// Target of the observation (character, relationship pair, scene label).
+    pub subject: String,
+    /// Concise evidence-backed claim.
+    pub claim: String,
+    /// Human-readable narrative scope (chapter/scene/range/global).
+    pub scope_label: String,
+    pub confidence: Confidence,
+    pub evidence: Vec<EvidenceRef>,
+    pub analysis_unit_id: String,
+    pub alternative_interpretations: Vec<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "proposal", rename_all = "snake_case")]
 pub enum ReviewProposal {
     Character(Box<CharacterSeed>),
     Relationship(Box<RelationshipSeed>),
     Terminology(Box<TerminologySeed>),
+    Literary(Box<LiteraryFindingProposal>),
 }
 
 impl ReviewProposal {
@@ -87,6 +125,7 @@ impl ReviewProposal {
             Self::Character(_) => ReviewKind::Character,
             Self::Relationship(_) => ReviewKind::Relationship,
             Self::Terminology(_) => ReviewKind::Terminology,
+            Self::Literary(_) => ReviewKind::Literary,
         }
     }
 
@@ -95,6 +134,7 @@ impl ReviewProposal {
             Self::Character(value) => &value.id,
             Self::Relationship(value) => &value.id,
             Self::Terminology(value) => &value.id,
+            Self::Literary(value) => &value.id,
         }
     }
 
@@ -103,6 +143,7 @@ impl ReviewProposal {
             Self::Character(value) => &value.confidence,
             Self::Relationship(value) => &value.confidence,
             Self::Terminology(value) => &value.confidence,
+            Self::Literary(value) => &value.confidence,
         }
     }
 
@@ -111,6 +152,7 @@ impl ReviewProposal {
             Self::Character(value) => &value.evidence,
             Self::Relationship(value) => &value.evidence,
             Self::Terminology(value) => &value.evidence,
+            Self::Literary(value) => &value.evidence,
         }
     }
 
@@ -119,6 +161,9 @@ impl ReviewProposal {
             Self::Character(value) => value.matches_approved_character,
             Self::Relationship(value) => value.matches_approved_relationship,
             Self::Terminology(value) => value.approved_translation.is_some(),
+            // Literary findings are never canonicalized; they remain
+            // human-reviewed observations only.
+            Self::Literary(_) => false,
         }
     }
 
@@ -166,6 +211,21 @@ impl ReviewProposal {
                 source: normalize(&value.source_expression),
                 category: value.category,
             })?,
+            Self::Literary(value) => {
+                #[derive(Serialize)]
+                struct LiterarySemantic {
+                    category: String,
+                    subject: String,
+                    claim: String,
+                    scope: String,
+                }
+                serde_json::to_vec(&LiterarySemantic {
+                    category: normalize(&value.finding_category),
+                    subject: normalize(&value.subject),
+                    claim: normalize(&value.claim),
+                    scope: normalize(&value.scope_label),
+                })?
+            }
         };
         Ok(stable_hash(&bytes))
     }
@@ -193,6 +253,14 @@ impl ReviewProposal {
                 preferred_translation: value.approved_translation.clone().unwrap_or_default(),
                 context: format!("reviewed {:?} manuscript terminology", value.category),
             }),
+            Self::Literary(value) => ReviewedValue::Literary(ReviewedLiteraryFinding {
+                finding_category: value.finding_category.clone(),
+                subject: value.subject.clone(),
+                claim: value.claim.clone(),
+                scope_label: value.scope_label.clone(),
+                analysis_unit_id: value.analysis_unit_id.clone(),
+                alternative_interpretations: value.alternative_interpretations.clone(),
+            }),
         }
     }
 }
@@ -203,6 +271,7 @@ pub enum ReviewedValue {
     Character(ReviewedCharacter),
     Relationship(ReviewedRelationship),
     Terminology(ReviewedTerminology),
+    Literary(ReviewedLiteraryFinding),
 }
 
 impl ReviewedValue {
@@ -211,6 +280,7 @@ impl ReviewedValue {
             Self::Character(_) => ReviewKind::Character,
             Self::Relationship(_) => ReviewKind::Relationship,
             Self::Terminology(_) => ReviewKind::Terminology,
+            Self::Literary(_) => ReviewKind::Literary,
         }
     }
 
@@ -260,6 +330,28 @@ impl ReviewedValue {
                     ));
                 }
             }
+            Self::Literary(value) => {
+                if normalize(&value.finding_category).is_empty() {
+                    return Err(ReviewError::Validation(
+                        "literary finding category cannot be empty".into(),
+                    ));
+                }
+                if normalize(&value.subject).is_empty() {
+                    return Err(ReviewError::Validation(
+                        "literary finding subject cannot be empty".into(),
+                    ));
+                }
+                if normalize(&value.claim).is_empty() {
+                    return Err(ReviewError::Validation(
+                        "literary finding claim cannot be empty".into(),
+                    ));
+                }
+                if value.claim.chars().count() > 2_000 {
+                    return Err(ReviewError::Validation(
+                        "literary finding claim is unreasonably large".into(),
+                    ));
+                }
+            }
         }
         Ok(())
     }
@@ -293,6 +385,18 @@ pub struct ReviewedTerminology {
     pub preferred_translation: String,
     #[serde(default)]
     pub context: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReviewedLiteraryFinding {
+    pub finding_category: String,
+    pub subject: String,
+    /// The claim approved/edited by the human reviewer.
+    pub claim: String,
+    pub scope_label: String,
+    pub analysis_unit_id: String,
+    #[serde(default)]
+    pub alternative_interpretations: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -472,6 +576,56 @@ impl ReviewLedger {
                     .map(|value| ReviewProposal::Terminology(Box::new(value))),
             )
             .collect::<Vec<_>>();
+        let record = self.reconcile_incoming(
+            incoming,
+            intelligence.schema_version,
+            analyzed_at,
+            intelligence.analysis.analyzer.clone(),
+            intelligence.analysis.analyzer_version.clone(),
+            &[
+                ReviewKind::Character,
+                ReviewKind::Relationship,
+                ReviewKind::Terminology,
+            ],
+        )?;
+        self.analysis_schema_version = intelligence.schema_version;
+        self.manuscript_title = intelligence.manuscript_title.clone();
+        Ok(record)
+    }
+
+    /// Reconcile advanced literary proposals from the optional provider-assisted
+    /// layer into the same review ledger. Unchanged proposals keep their human
+    /// decisions; materially changed proposals are archived and reset to
+    /// Pending; missing proposals become Obsolete — exactly the Phase 14
+    /// semantics, applied to model-assisted findings.
+    pub fn reconcile_advanced(
+        &mut self,
+        proposals: Vec<ReviewProposal>,
+        analysis_schema_version: u32,
+        analyzer: String,
+        analyzer_version: String,
+        analyzed_at: DateTime<Utc>,
+    ) -> Result<ReconciliationRecord, ReviewError> {
+        self.validate()?;
+        self.reconcile_incoming(
+            proposals,
+            analysis_schema_version,
+            analyzed_at,
+            analyzer,
+            analyzer_version,
+            &[ReviewKind::Literary],
+        )
+    }
+
+    fn reconcile_incoming(
+        &mut self,
+        incoming: Vec<ReviewProposal>,
+        analysis_schema_version: u32,
+        analyzed_at: DateTime<Utc>,
+        analyzer: String,
+        analyzer_version: String,
+        scope_kinds: &[ReviewKind],
+    ) -> Result<ReconciliationRecord, ReviewError> {
         let mut existing_by_key = self
             .items
             .iter()
@@ -481,8 +635,8 @@ impl ReviewLedger {
         let mut seen = BTreeSet::new();
         let mut record = ReconciliationRecord {
             analyzed_at,
-            analyzer: intelligence.analysis.analyzer.clone(),
-            analyzer_version: intelligence.analysis.analyzer_version.clone(),
+            analyzer,
+            analyzer_version,
             added: Vec::new(),
             unchanged: Vec::new(),
             changed: Vec::new(),
@@ -528,8 +682,8 @@ impl ReviewLedger {
                 continue;
             }
             let id = review_item_id(
-                intelligence.schema_version,
-                &intelligence.manuscript_id,
+                analysis_schema_version,
+                &self.manuscript_id,
                 proposal.kind(),
                 proposal.proposal_id(),
             );
@@ -552,7 +706,13 @@ impl ReviewLedger {
             record.added.push(id);
         }
 
+        // Obsolete sweep is scoped to the proposal kinds this reconcile pass
+        // owns, so a deterministic sync never obsoletes advanced Literary items
+        // (and an advanced reconcile never obsoletes deterministic ones).
         for item in &mut self.items {
+            if !scope_kinds.contains(&item.kind) {
+                continue;
+            }
             let key = (item.kind, item.subject_key.clone());
             if !seen.contains(&key) && item.availability == ProposalAvailability::Active {
                 item.availability = ProposalAvailability::Obsolete;
@@ -568,8 +728,6 @@ impl ReviewLedger {
         ] {
             values.sort();
         }
-        self.analysis_schema_version = intelligence.schema_version;
-        self.manuscript_title = intelligence.manuscript_title.clone();
         self.reconciliations.push(record.clone());
         Ok(record)
     }
@@ -850,7 +1008,12 @@ pub fn build_promotion_plan(
         ledger
             .items
             .iter()
-            .filter(|item| matches!(item.status, ReviewStatus::Approved | ReviewStatus::Edited))
+            // Literary findings are review-only: they have no canonical owner,
+            // so default selection never tries to promote them.
+            .filter(|item| {
+                matches!(item.status, ReviewStatus::Approved | ReviewStatus::Edited)
+                    && item.kind.supports_canon_promotion()
+            })
             .map(|item| item.id.clone())
             .collect::<Vec<_>>()
     } else {
@@ -879,7 +1042,9 @@ pub fn build_promotion_plan(
                 ConflictSeverity::Informational,
                 id,
                 None,
-                item.reviewed_value.as_ref().map(canonical_from_reviewed),
+                item.reviewed_value
+                    .as_ref()
+                    .and_then(canonical_from_reviewed),
                 Vec::new(),
                 "proposal revision was already applied",
                 None,
@@ -893,7 +1058,9 @@ pub fn build_promotion_plan(
                 ConflictSeverity::Blocking,
                 id,
                 None,
-                item.reviewed_value.as_ref().map(canonical_from_reviewed),
+                item.reviewed_value
+                    .as_ref()
+                    .and_then(canonical_from_reviewed),
                 vec![ResolutionKind::CancelPromotion],
                 "proposal is no longer present in the latest analysis",
                 None,
@@ -1300,6 +1467,23 @@ fn plan_item(
                 });
             }
         }
+        ReviewedValue::Literary(value) => {
+            // Literary findings are review-only. There is no canonical owner
+            // for voice/tone/POV/subtext, so promotion is unsupported and any
+            // explicit selection is surfaced as a blocking, cancellable
+            // conflict instead of being silently dropped or fake-canonized.
+            conflicts.push(conflict(
+                item,
+                CanonConflictKind::UnsupportedPromotion,
+                ConflictSeverity::Blocking,
+                &format!("{}: {}", value.finding_category, value.subject),
+                None,
+                None,
+                vec![ResolutionKind::CancelPromotion],
+                "literary review findings have no canonical owner and cannot be promoted to canon",
+                None,
+            ));
+        }
     }
     Ok(())
 }
@@ -1519,11 +1703,13 @@ fn terminology_value(value: &GlossaryEntry) -> ReviewedTerminology {
     }
 }
 
-fn canonical_from_reviewed(value: &ReviewedValue) -> CanonicalValue {
+fn canonical_from_reviewed(value: &ReviewedValue) -> Option<CanonicalValue> {
     match value {
-        ReviewedValue::Character(value) => CanonicalValue::Character(value.clone()),
-        ReviewedValue::Relationship(value) => CanonicalValue::Relationship(value.clone()),
-        ReviewedValue::Terminology(value) => CanonicalValue::Terminology(value.clone()),
+        ReviewedValue::Character(value) => Some(CanonicalValue::Character(value.clone())),
+        ReviewedValue::Relationship(value) => Some(CanonicalValue::Relationship(value.clone())),
+        ReviewedValue::Terminology(value) => Some(CanonicalValue::Terminology(value.clone())),
+        // Literary findings never map onto a canonical owner.
+        ReviewedValue::Literary(_) => None,
     }
 }
 
@@ -2146,6 +2332,214 @@ mod tests {
             .items
             .iter()
             .all(|item| { item.latest_proposal.evidence().len() <= 1 }));
+    }
+
+    fn literary_proposal() -> ReviewProposal {
+        ReviewProposal::Literary(Box::new(LiteraryFindingProposal {
+            id: "finding-tone-1".into(),
+            finding_category: "tone".into(),
+            subject: "scene".into(),
+            claim: "warm affectionate tone".into(),
+            scope_label: "chapter 1 [chapter-1]".into(),
+            confidence: Confidence::from_evidence(2),
+            evidence: vec![evidence()],
+            analysis_unit_id: "unit-1".into(),
+            alternative_interpretations: Vec::new(),
+        }))
+    }
+
+    #[test]
+    fn literary_proposals_reconcile_and_survive_deterministic_sync() {
+        let intelligence = intelligence("Lizzy");
+        let mut ledger = ReviewLedger::new(&intelligence);
+        ledger.reconcile(&intelligence, timestamp()).unwrap();
+        assert_eq!(ledger.items.len(), 1);
+
+        let record = ledger
+            .reconcile_advanced(
+                vec![literary_proposal()],
+                1,
+                "advanced-test".into(),
+                "1".into(),
+                timestamp(),
+            )
+            .unwrap();
+        assert_eq!(record.added.len(), 1);
+        assert_eq!(ledger.items.len(), 2);
+        let literary = ledger
+            .items
+            .iter()
+            .find(|item| item.kind == ReviewKind::Literary)
+            .expect("literary item present");
+        assert_eq!(literary.availability, ProposalAvailability::Active);
+        assert_eq!(literary.status, ReviewStatus::Pending);
+
+        // A later deterministic-only sync must NOT obsolete the literary item.
+        let second = ledger.reconcile(&intelligence, timestamp()).unwrap();
+        assert!(second.obsolete.is_empty());
+        let literary = ledger
+            .items
+            .iter()
+            .find(|item| item.kind == ReviewKind::Literary)
+            .unwrap();
+        assert_eq!(literary.availability, ProposalAvailability::Active);
+        assert_eq!(ledger.items.len(), 2);
+    }
+
+    #[test]
+    fn approved_literary_finding_is_review_only_and_never_promoted() {
+        let intelligence = intelligence("Lizzy");
+        let mut ledger = ReviewLedger::new(&intelligence);
+        ledger.reconcile(&intelligence, timestamp()).unwrap();
+        ledger
+            .reconcile_advanced(
+                vec![literary_proposal()],
+                1,
+                "advanced-test".into(),
+                "1".into(),
+                timestamp(),
+            )
+            .unwrap();
+        let id = ledger
+            .items
+            .iter()
+            .find(|item| item.kind == ReviewKind::Literary)
+            .unwrap()
+            .id
+            .clone();
+        ledger
+            .decide(
+                &id,
+                DecisionAction::Approve,
+                None,
+                "editor".into(),
+                "matches reading".into(),
+                timestamp(),
+            )
+            .unwrap();
+        assert_eq!(ledger.item(&id).unwrap().status, ReviewStatus::Approved);
+        assert!(matches!(
+            ledger.item(&id).unwrap().reviewed_value,
+            Some(ReviewedValue::Literary(_))
+        ));
+
+        // Default plan selection never includes review-only literary items.
+        let default_plan = build_promotion_plan(
+            &ledger,
+            &CharacterBible::new(),
+            &Glossary::default(),
+            &[],
+            &[],
+        )
+        .unwrap();
+        assert!(default_plan
+            .selected_item_ids
+            .iter()
+            .all(|selected| selected != &id));
+        assert!(default_plan.promoted_item_ids.is_empty());
+
+        // Even an explicit selection is surfaced as a blocking conflict,
+        // never silently dropped and never fake-canonized.
+        let explicit = build_promotion_plan(
+            &ledger,
+            &CharacterBible::new(),
+            &Glossary::default(),
+            std::slice::from_ref(&id),
+            &[],
+        )
+        .unwrap();
+        assert!(explicit.blocked);
+        assert!(explicit.conflicts.iter().any(|conflict| {
+            conflict.kind == CanonConflictKind::UnsupportedPromotion && conflict.item_id == id
+        }));
+    }
+
+    #[test]
+    fn advanced_reconcile_obsoletes_only_literary_items() {
+        let intelligence = intelligence("Lizzy");
+        let mut ledger = ReviewLedger::new(&intelligence);
+        ledger.reconcile(&intelligence, timestamp()).unwrap();
+        ledger
+            .reconcile_advanced(
+                vec![literary_proposal()],
+                1,
+                "advanced-test".into(),
+                "1".into(),
+                timestamp(),
+            )
+            .unwrap();
+
+        // Finding disappears from a later advanced pass: only the literary
+        // item becomes obsolete; the deterministic character item stays active.
+        let record = ledger
+            .reconcile_advanced(
+                Vec::new(),
+                1,
+                "advanced-test".into(),
+                "1".into(),
+                timestamp(),
+            )
+            .unwrap();
+        assert_eq!(record.obsolete.len(), 1);
+        let character_item = ledger
+            .items
+            .iter()
+            .find(|item| item.kind == ReviewKind::Character)
+            .unwrap();
+        assert_eq!(character_item.availability, ProposalAvailability::Active);
+        let literary_item = ledger
+            .items
+            .iter()
+            .find(|item| item.kind == ReviewKind::Literary)
+            .unwrap();
+        assert_eq!(literary_item.availability, ProposalAvailability::Obsolete);
+    }
+
+    #[test]
+    fn edited_literary_value_replaces_the_claim_through_review() {
+        let intelligence = intelligence("Lizzy");
+        let mut ledger = ReviewLedger::new(&intelligence);
+        ledger.reconcile(&intelligence, timestamp()).unwrap();
+        ledger
+            .reconcile_advanced(
+                vec![literary_proposal()],
+                1,
+                "advanced-test".into(),
+                "1".into(),
+                timestamp(),
+            )
+            .unwrap();
+        let id = ledger
+            .items
+            .iter()
+            .find(|item| item.kind == ReviewKind::Literary)
+            .unwrap()
+            .id
+            .clone();
+        ledger
+            .decide(
+                &id,
+                DecisionAction::Edit,
+                Some(ReviewedValue::Literary(ReviewedLiteraryFinding {
+                    finding_category: "tone".into(),
+                    subject: "scene".into(),
+                    claim: "reserved but warm tone, not affectionate".into(),
+                    scope_label: "chapter 1 [chapter-1]".into(),
+                    analysis_unit_id: "unit-1".into(),
+                    alternative_interpretations: Vec::new(),
+                })),
+                "editor".into(),
+                "overstated warmth".into(),
+                timestamp(),
+            )
+            .unwrap();
+        let item = ledger.item(&id).unwrap();
+        assert_eq!(item.status, ReviewStatus::Edited);
+        let ReviewedValue::Literary(reviewed) = item.reviewed_value.as_ref().unwrap() else {
+            panic!("expected literary reviewed value");
+        };
+        assert_eq!(reviewed.claim, "reserved but warm tone, not affectionate");
+        assert_eq!(item.decisions.last().unwrap().action, DecisionAction::Edit);
     }
 
     #[test]

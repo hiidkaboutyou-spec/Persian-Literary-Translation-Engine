@@ -17,6 +17,60 @@ use project_engine::review_store::{
 };
 use serde::Serialize;
 use std::collections::BTreeSet;
+
+/// One human-approved/edited advanced literary finding, ready to enrich
+/// translation context for the chapters its evidence belongs to.
+///
+/// Ordering note (never weakened by Phase 15):
+/// human-approved canon > human-reviewed literary finding > deterministic
+/// manuscript evidence > unreviewed model inference. Only items that have
+/// passed the human review boundary are eligible here.
+pub(crate) struct LiteraryContextLine {
+    pub chapter_ids: Vec<String>,
+    pub line: String,
+}
+
+/// Load reviewed (approved or edited) `Literary` items from the review ledger
+/// configured via `LITERARY_ENGINE_REVIEW_FILE`, when present. Returns an
+/// empty list when no ledger is configured or no eligible findings exist.
+pub(crate) fn load_reviewed_literary_lines() -> Vec<LiteraryContextLine> {
+    let Ok(path) = env::var("LITERARY_ENGINE_REVIEW_FILE") else {
+        return Vec::new();
+    };
+    if path.trim().is_empty() {
+        return Vec::new();
+    }
+    let Ok(ledger) = load_review_ledger(&path) else {
+        return Vec::new();
+    };
+    ledger
+        .items
+        .iter()
+        .filter(|item| item.kind == ReviewKind::Literary)
+        .filter(|item| matches!(item.status, ReviewStatus::Approved | ReviewStatus::Edited))
+        .filter_map(|item| {
+            let ReviewedValue::Literary(value) = item.reviewed_value.as_ref()? else {
+                return None;
+            };
+            let chapter_ids = item
+                .latest_proposal
+                .evidence()
+                .iter()
+                .map(|evidence| evidence.chapter_id.clone())
+                .collect::<Vec<_>>();
+            if chapter_ids.is_empty() {
+                return None;
+            }
+            Some(LiteraryContextLine {
+                chapter_ids,
+                line: format!(
+                    "[{}] {} ({}) — {}",
+                    value.finding_category, value.subject, value.scope_label, value.claim
+                ),
+            })
+        })
+        .collect()
+}
 use std::env;
 use std::fs;
 use std::io::{self, Read};
@@ -80,7 +134,7 @@ pub(crate) fn run_review(args: &[String], format: &OutputFormat) -> Result<(), S
 fn review_usage() {
     println!("Literary intelligence review commands:");
     println!("  review sync <manuscript> --review-file <path> [canon paths]");
-    println!("  review list --review-file <path> [--status <filter>] [--kind <filter>]");
+    println!("  review list --review-file <path> [--status <filter>] [--kind <all|character|relationship|terminology|literary>]");
     println!("  review show <id> --review-file <path>");
     println!("  review <approve|reject|defer|reopen> <id> --review-file <path> --reviewer <name> --reason <text>");
     println!("  review edit <id> --review-file <path> --replacement <file|-> --reviewer <name> --reason <text>");
@@ -167,9 +221,16 @@ fn list(args: &[String], format: &OutputFormat) -> Result<(), String> {
             "unsupported review status filter '{status_filter}'"
         ));
     }
-    if kind_filter
-        .is_some_and(|value| !["all", "character", "relationship", "terminology"].contains(&value))
-    {
+    if kind_filter.is_some_and(|value| {
+        ![
+            "all",
+            "character",
+            "relationship",
+            "terminology",
+            "literary",
+        ]
+        .contains(&value)
+    }) {
         return Err(format!(
             "unsupported review kind filter '{}'",
             kind_filter.unwrap_or_default()
@@ -409,6 +470,7 @@ fn matches_kind(item: &ReviewItem, filter: Option<&str>) -> bool {
         "character" => item.kind == ReviewKind::Character,
         "relationship" => item.kind == ReviewKind::Relationship,
         "terminology" => item.kind == ReviewKind::Terminology,
+        "literary" => item.kind == ReviewKind::Literary,
         _ => false,
     }
 }

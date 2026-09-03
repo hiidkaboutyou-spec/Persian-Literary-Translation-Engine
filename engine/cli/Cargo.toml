@@ -12,6 +12,7 @@ character-engine = { path = "../crates/character-engine" }
 document-engine = { path = "../crates/document-engine" }
 literary-intelligence-engine = { path = "../crates/literary-intelligence-engine" }
 human-review-workflow = { path = "../crates/human-review-workflow" }
+advanced-literary-analysis = { path = "../crates/advanced-literary-analysis" }
 project-engine = { path = "../crates/project-engine" }
 memory-engine = { path = "../crates/memory-engine" }
 quality-engine = { path = "../crates/quality-engine" }

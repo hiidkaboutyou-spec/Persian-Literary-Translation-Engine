@@ -8,6 +8,7 @@ members = [
   "crates/document-engine",
   "crates/project-engine",
   "crates/literary-intelligence-engine",
+  "crates/advanced-literary-analysis",
   "crates/human-review-workflow",
   "crates/literary-reference-knowledge",
   "crates/text-normalization",
