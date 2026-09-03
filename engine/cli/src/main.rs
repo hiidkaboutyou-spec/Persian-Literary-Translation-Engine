@@ -20,6 +20,7 @@ use translation_core::{
 };
 
 mod advanced;
+mod project_cmd;
 mod review;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -129,6 +130,8 @@ fn usage() {
     println!(
         "  literary-engine resume <file.txt|file.md|file.docx|file.epub|file.pdf> [target-language] [output-dir] [--format json]"
     );
+    println!("  literary-engine project <create|import|status|analyze|analyze-advanced|review|translate|resume|progress|export|history> <dir> ...");
+    println!("    project commands are a thin adapter over the same ApplicationService the desktop app will use");
     println!("  literary-engine --help");
     println!("  literary-engine --version");
     println!();
@@ -871,6 +874,7 @@ fn run() -> Result<(), String> {
         ("analyze", [path, ..]) => analyze(path, &format),
         ("analyze-advanced", args) => advanced::run_analyze_advanced(args, &format),
         ("review", args) => review::run_review(args, &format),
+        ("project", args) => project_cmd::run_project(args, &format),
         ("prepare", [path]) => prepare(path, "fa", &format),
         ("prepare", [path, target]) => prepare(path, target, &format),
         ("run", [path]) => {

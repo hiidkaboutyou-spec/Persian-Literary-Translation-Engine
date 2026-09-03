@@ -1128,16 +1128,20 @@ dependencies = [
 name = "project-engine"
 version = "0.1.0"
 dependencies = [
+ "advanced-literary-analysis",
  "character-engine",
  "chrono",
+ "document-engine",
  "human-review-workflow",
  "literary-intelligence-engine",
  "memory-engine",
+ "quality-engine",
  "serde",
  "serde_json",
  "sha2",
  "tempfile",
  "thiserror 1.0.69",
+ "translation-core",
 ]
 
 [[package]]

@@ -27,6 +27,7 @@ Implemented and validated:
 - **literary-intelligence-engine** — Literary decision models plus deterministic `Manuscript` analysis. Produces versioned character and relationship seeds, chapter maps, terminology candidates, observed literary-profile metrics, bounded evidence references, conflict reporting, and non-mutating initialization proposals.
 - **advanced-literary-analysis** — Optional provider-assisted literary analysis (Phase 15). Bounded, fingerprint-identified analysis units; a provider-neutral `LiteraryAnalysisProvider` (deterministic mock + OpenAI); versioned injection-resistant prompts; deterministic validation of structured findings (hallucinated evidence IDs, invalid schema/confidence/scope, oversized fields rejected); derived confidence with cross-unit disagreement surfaced; fingerprint-keyed cache/resume; and review-eligible `Literary` proposals that flow through the Phase 14 ledger without ever becoming canon.
 - **literary-reference-knowledge** — Reference sources, editorial guidelines, and validation rules with UUID identity.
+- **project-engine `application` layer (Phase 16)** — One application boundary above the domain engines: `ApplicationService` with project create/open/import/snapshot, deterministic + advanced analysis orchestration, review and canon promotion reuse (Phase 14 rules intact), character/glossary APIs, translation lifecycle (start/progress/pause/resume/chapter artifacts/manual edits with revision history/export), typed errors with recovery hints, project events, atomic persistence, exclusive project locking with stale-lock recovery, source fingerprint staleness detection, canon-revision context staleness, bounded audit history, UI-ready JSON models, and capabilities reporting.
 - **text-normalization** — Shared Persian/Arabic text normalization, negation detection, and similarity scoring. Eliminates duplication across memory, quality, and character engines.
 
 ### CLI
@@ -37,6 +38,7 @@ Implemented and validated:
 - `prepare` — Chapter preparation with text and JSON output
 - `run` — Full pipeline: ingest → segment → context → translate → quality → export
 - `resume` — Checkpoint-based resume with source fingerprinting
+- `project create/import/status/analyze/analyze-advanced/review/translate/resume/progress/export/history` — Thin CLI adapter over the Phase 16 `ApplicationService`; each project command maps to one application operation, so CLI behavior is application behavior
 - `--format json` — Machine-readable JSON output for all commands
 - resume checkpoints include source and assembled-context fingerprints, so canon changes cannot silently reuse output generated under stale project knowledge
 - approved/edited advanced literary findings are loaded from the review ledger and injected into translation context only for the chapters their evidence belongs to (`reviewed_literary_findings_available`, `chapter.N.literary_findings_used` in the manifest)
@@ -61,4 +63,5 @@ Implemented and validated:
 ## Current Test Count
 - Coverage includes Phase 14 lifecycle, reconciliation, stable IDs, conflict resolution, dry-run non-mutation, atomic rollback, idempotent apply, audit lineage, Unicode, CLI JSON, canon-aware resume, manuscript intelligence, full pipeline, and large-book regression behavior
 - Phase 15 coverage adds provider contract, prompt-injection resistance, evidence-validation, stable identity, cache reuse/invalidation, partial failure, Unicode, review lifecycle for Literary proposals, and credential-free CLI end-to-end tests
+- Phase 16 coverage adds 18 application tests (lifecycle, full offline workflow through `ApplicationService`, snapshot accuracy per stage, next-action determinism, reopen-after-every-stage, review rules, character/glossary APIs, pause/resume, manual edits with revisions, translation gating, source mismatch, canon staleness, locking, corrupt-manifest recovery, events, provider config, advanced cache, JSON round-trips, Unicode, 120-chapter regression) plus 2 CLI end-to-end project tests
 - Doc-tests: 1 (text-normalization)
