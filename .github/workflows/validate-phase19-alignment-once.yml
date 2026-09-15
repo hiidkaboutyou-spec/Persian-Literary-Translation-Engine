@@ -1,0 +1,116 @@
+name: Validate Phase 19 Native Alignment Once
+
+on:
+  push:
+    branches: [phase-19-literary-review-stack]
+    paths:
+      - '.github/workflows/validate-phase19-alignment-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  validate-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout Phase 19 branch
+        uses: actions/checkout@v7
+        with:
+          ref: phase-19-literary-review-stack
+          fetch-depth: 0
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Apply already-validated critic dimension-scope repair
+        shell: bash
+        env:
+          OLD_B64: ICAgICAgICBsZXQgcmVzdWx0ID0gcHJvdmlkZXIucmV2aWV3KCZyZXF1ZXN0KCkpLnVud3JhcF9lcnIoKTsKICAgICAgICBhc3NlcnQhKG1hdGNoZXMhKHJlc3VsdCwgUmV2aWV3UHJvdmlkZXJFcnJvcjo6U2NoZW1hVmlvbGF0aW9uKF8pKSk7CgogICAgICAgIGxldCBuYXR1cmFsbmVzc19yZXF1ZXN0ID0gUmV2aWV3UHJvdmlkZXJSZXF1ZXN0Ojpmcm9tX3RleHQoCg==
+          NEW_B64: ICAgICAgICBsZXQgcmVzdHJpY3RlZF9yZXF1ZXN0ID0gUmV2aWV3UHJvdmlkZXJSZXF1ZXN0Ojpmcm9tX3RleHQoCiAgICAgICAgICAgICJjaGFwdGVyLTEiLAogICAgICAgICAgICAiSGUgbGF1Z2hlZC5cblxuU2hlIGRpZCBub3QgYW5zd2VyLiIsCiAgICAgICAgICAgICLYrtmG2K/bjNivLlxuXG7Yp9mIINis2YjYp9io24wg2YbYr9in2K8uIiwKICAgICAgICAgICAgIiIsCiAgICAgICAgICAgIHZlYyFbUmV2aWV3RGltZW5zaW9uOjpTZW1hbnRpY0ZpZGVsaXR5XSwKICAgICAgICAgICAgUmV2aWV3UmVxdWVzdExpbWl0czo6ZGVmYXVsdCgpLAogICAgICAgICkKICAgICAgICAudW53cmFwKCk7CiAgICAgICAgbGV0IHJlc3VsdCA9IHByb3ZpZGVyLnJldmlldygmcmVzdHJpY3RlZF9yZXF1ZXN0KS51bndyYXBfZXJyKCk7CiAgICAgICAgYXNzZXJ0IShtYXRjaGVzIShyZXN1bHQsIFJldmlld1Byb3ZpZGVyRXJyb3I6OlNjaGVtYVZpb2xhdGlvbihfKSkpOwoKICAgICAgICBsZXQgbmF0dXJhbG5lc3NfcmVxdWVzdCA9IFJldmlld1Byb3ZpZGVyUmVxdWVzdDo6ZnJvbV90ZXh0KAo=
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64, os
+          from pathlib import Path
+          path = Path('engine/crates/literary-review-engine/src/provider.rs')
+          text = path.read_text()
+          old = base64.b64decode(os.environ['OLD_B64']).decode()
+          new = base64.b64decode(os.environ['NEW_B64']).decode()
+          if new in text:
+              print('critic repair already present')
+          elif old in text:
+              path.write_text(text.replace(old, new, 1))
+          else:
+              raise SystemExit('critic test no longer matches validated old/new forms')
+          PY
+
+      - name: Format and sync lockfiles
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd engine && cargo fmt --all && cargo generate-lockfile)
+          cargo generate-lockfile --manifest-path tools/literary-alignment/Cargo.toml
+
+      - name: Clippy literary review engine
+        working-directory: engine
+        run: cargo clippy -p literary-review-engine --all-targets -- -D warnings
+
+      - name: Test literary review engine offline
+        working-directory: engine
+        env:
+          OPENAI_API_KEY: ''
+        run: cargo test -p literary-review-engine
+
+      - name: Test alignment protocol without model feature
+        run: cargo test --manifest-path tools/literary-alignment/Cargo.toml
+
+      - name: Check BGE adapter on Linux without fetching model weights
+        run: |
+          cargo check --manifest-path tools/literary-alignment/Cargo.toml --features bge
+          test ! -e .tools/models/fastembed
+
+      - name: Validate installer shell
+        run: bash -n tools/literary-alignment/install.sh
+
+      - name: Audit engine and alignment dependency graphs
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo install cargo-audit --locked
+          (cd engine && cargo audit)
+          (cd tools/literary-alignment && cargo audit)
+
+      - name: Commit validated repair, formatting, and lockfiles
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add engine/Cargo.lock engine/crates/literary-review-engine/src tools/literary-alignment/Cargo.lock tools/literary-alignment/src/main.rs
+          if git diff --cached --quiet; then
+            echo 'No generated/formatting changes required.'
+            exit 0
+          fi
+          git commit -m 'chore: validate Phase 19 alignment state'
+          git pull --rebase origin phase-19-literary-review-stack
+          git push origin HEAD:phase-19-literary-review-stack
+
+  bge-macos-arm64:
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Verify Apple Silicon runner
+        run: test "$(uname -m)" = arm64
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Generate local tool lockfile for compile validation
+        run: cargo generate-lockfile --manifest-path tools/literary-alignment/Cargo.toml
+      - name: Compile BGE alignment adapter
+        run: cargo check --manifest-path tools/literary-alignment/Cargo.toml --features bge
+      - name: Confirm compilation did not fetch model weights
+        run: test ! -e .tools/models/fastembed
