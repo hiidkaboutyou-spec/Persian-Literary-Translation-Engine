@@ -26,7 +26,9 @@ jobs:
           components: rustfmt, clippy
 
       - name: Wire ApplicationService and CLI
-        run: python3 tools/phase19-wire-patch.py
+        run: |
+          python3 tools/phase19-wire-patch.py
+          sed -i 's/use std::path::{Path, PathBuf};/use std::path::PathBuf;/' engine/crates/project-engine/src/application/literary_review.rs
 
       - name: Format and sync engine lockfile
         working-directory: engine
