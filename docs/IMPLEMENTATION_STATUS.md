@@ -1,95 +1,112 @@
 # Implementation Status
 
 ## Vision
-A production-grade Persian literary translation engine with a Rust core.
 
-The system is designed around:
-- document understanding before translation
-- character voice preservation
-- translation memory
-- glossary consistency
-- multi-pass quality control
-- publication-ready export
+A production-grade English-to-Persian literary translation engine with a Rust core that preserves author intent, character voice, relationship/register, terminology, emotional subtext, continuity, and natural Persian while keeping human review as the final authority.
 
-## Current Rust Architecture
+## Canonical Main State
 
-Implemented and validated on `main` through Phase 17:
+`main` is verified through Phase 18.
 
-### Core Crates
-- **translation-core** — Provider-neutral translation pipeline with EchoProvider (deterministic testing) and OpenAIProvider (production). Multi-pass: translate → revise → quality review. Bounded passage chunking for oversized chapters.
-- **document-engine** — Ingestion of TXT, Markdown, DOCX, EPUB, and text-based PDF files. Structured `Manuscript → Book → Chapter → Scene → Paragraph` model with source provenance. Extensible parser registry. Character-safe text chunking. Persian RTL DOCX export. Phase 17 routes normal EPUB ingestion through revision-pinned BookForge IR while mapping back into native document types; the legacy parser is an explicit `--no-default-features` compatibility path, never a silent fallback.
-- **memory-engine** — Durable translation memory and glossary with JSON persistence. Passage-relevant runtime retrieval using Jaccard similarity with negation polarity detection and diversity filtering.
-- **character-engine** — Character bible with profiles, aliases, word-boundary-aware matching, and relationship context. JSON persistence.
-- **quality-engine** — Deterministic quality gate: empty output, prompt leakage, truncation, paragraph collapse, and terminology drift detection. Cross-chapter consistency auditing. Phase 17 adds an optional typed COMET JSON/process sidecar for advisory model-based quality evidence without changing human-approval rules.
-- **project-engine** — Project manifest with chapter state tracking, schema versioning, and JSON persistence.
-- **human-review-workflow** — Versioned literary-intelligence review ledger, deterministic proposal identity/reconciliation, validated lifecycle transitions, typed canon conflicts/resolutions, promotion plans, and audit lineage. It owns review decisions but not canonical stores or file mutation.
-- **project-engine** — Project manifest plus atomic review-ledger writes and recoverable multi-file promotion transactions for Character Bible, Glossary, and review audit state.
-- **literary-intelligence-engine** — Literary decision models plus deterministic `Manuscript` analysis. Produces versioned character and relationship seeds, chapter maps, terminology candidates, observed literary-profile metrics, bounded evidence references, conflict reporting, and non-mutating initialization proposals.
-- **advanced-literary-analysis** — Optional provider-assisted literary analysis (Phase 15). Bounded, fingerprint-identified analysis units; a provider-neutral `LiteraryAnalysisProvider` (deterministic mock + OpenAI); versioned injection-resistant prompts; deterministic validation of structured findings; derived confidence with disagreement surfaced; fingerprint-keyed cache/resume; and review-eligible `Literary` proposals that flow through the Phase 14 ledger without ever becoming canon.
-- **literary-reference-knowledge** — Reference sources, editorial guidelines, and validation rules with UUID identity.
-- **project-engine `application` layer (Phase 16)** — One application boundary above the domain engines: `ApplicationService` with project create/open/import/snapshot, deterministic + advanced analysis orchestration, review and canon promotion reuse, character/glossary APIs, translation lifecycle, typed errors with recovery hints, project events, atomic persistence, locking/recovery, fingerprint staleness detection, bounded audit history, UI-ready JSON models, and capabilities reporting.
-- **text-normalization** — Shared Persian/Arabic text normalization, negation detection, and similarity scoring. Eliminates duplication across memory, quality, and character engines.
+### Core crates and application boundaries
 
-### Phase 17 External Integration State
+- **translation-core** — provider-neutral translate → revise → quality pipeline with deterministic EchoProvider and production OpenAIProvider, plus bounded oversized-passage handling.
+- **document-engine** — TXT/Markdown/DOCX/EPUB/text-PDF ingestion, structured `Manuscript → Book → Chapter → Scene → Paragraph`, provenance, parser registry, Unicode-safe segmentation, Persian RTL DOCX export, and strict revision-pinned BookForge EPUB ingestion.
+- **memory-engine** — durable translation memory/glossary, deterministic lexical/polarity/diversity retrieval, Context Packet v2 types/provenance/fingerprints, and optional semantic candidate fusion boundaries.
+- **character-engine** — character profiles, aliases, relationships, word-boundary-aware relevance, and canonical JSON persistence.
+- **quality-engine** — deterministic blocking checks plus optional advisory COMET and English/Persian Lingua diagnostics; probabilistic evidence never equals approval.
+- **literary-intelligence-engine** — deterministic manuscript analysis, chapter maps, continuity hooks, entity/terminology seeds, observed literary metrics, evidence-backed initialization proposals, and shared Context Packet v2 assembly.
+- **advanced-literary-analysis** — optional bounded provider-assisted literary findings with cache/resume, structured validation, stable evidence, and review-only output.
+- **human-review-workflow** — versioned review ledger, stable IDs, lifecycle validation, typed conflicts, promotion plans, audit lineage, and explicit human decisions.
+- **project-engine** — manifests, atomic persistence/recovery, application orchestration, translation lifecycle, review/canon integration, checkpoint/fingerprint safety, manual revisions, export, history, and UI-ready snapshots.
+- **literary-reference-knowledge** — editorial/reference sources and validation rules.
+- **text-normalization** — shared Persian/Arabic normalization, matching, negation, and similarity helpers.
 
-Merged via PR #90 at commit `6a4b8807d8c54878f1f10db5cab1f1290fcc60fb` after lockfile, rustfmt, Clippy, compatibility build, COMET script checks, full workspace tests, cargo audit, release CLI build, CLI smoke, and Security passed.
+### Phase 17 — Controlled External Integrations — canonical
 
-Canonical Phase 17 integrations:
+PR #90; merge commit `6a4b8807d8c54878f1f10db5cab1f1290fcc60fb`.
 
-- BookForge revision `23f8c9d3c97a06f48e13424698441bfb4b037844` for strict EPUB ingestion at the document boundary.
-- `unbabel-comet==2.2.7` behind an isolated optional Python sidecar; model checkpoints are not downloaded by default.
-- external-integration provenance/licensing/privacy/upgrade rules in `docs/EXTERNAL_INTEGRATIONS.md` and `AGENTS.md`.
+Canonical integrations include revision-pinned BookForge EPUB parsing and the optional isolated COMET quality-evidence sidecar. Safe supporting tooling added after Phase 17 includes optional Lingua English/Persian diagnostics, checksum-pinned EPUBCheck tooling, and isolated projectmem developer memory.
 
-### Branch-Scoped Supporting Tooling
+### Phase 18 — Context Packet v2 & Selective Long-Novel Retrieval — canonical
 
-The following is implemented on `chore/safe-quality-tooling` and is **not canonical until that branch is merged**:
+PR #94; merge commit `2af408a19b8f69db93aff8e6896eaf189c4d69ae`.
 
-- optional `quality-engine` feature `language-diagnostics` using exactly `lingua 1.8.0`, with default Lingua features disabled and only English/Persian models enabled;
-- advisory `diagnose_persian_output` API that does not alter the deterministic quality gate or human-review state;
-- optional EPUBCheck 5.3.0 installer/wrapper with published SHA-256 verification and ignored local `.tools/` installation;
-- CI coverage for the optional language feature and EPUBCheck shell wrappers.
+Delivered:
 
-Heavy Phase 18–21 candidates such as BGE-M3, Hazm, DadmaTools, Vecalign, and SacreBLEU remain deliberately uninstalled until their owning phase has a benchmark, legal inputs, resource/failure constraints, and a concrete capability gap.
+- typed/budgeted Context Packet v2 with provenance, authority, selection reasons, stable IDs, and SHA-256 packet fingerprints;
+- relevant glossary, character/relationship canon, translation memory, reviewed literary findings, manuscript intelligence, and local continuity in one shared assembly policy;
+- deterministic lexical retrieval remains the fallback/safety floor;
+- optional Rust-native FastEmbed/BGE-M3 semantic retrieval/reranking boundary;
+- sidecar timeout/failure fallback and rejection of unknown semantic IDs;
+- context-aware resume invalidation through packet fingerprints;
+- Linux and Apple Silicon arm64 validation without model downloads during normal build/CI.
 
-### CLI
-- `inspect` — Document analysis with text and JSON output
-- `analyze` — Credential-free manuscript intelligence with text summaries and stable schema-versioned JSON
-- `analyze-advanced` — Explicit, provider-assisted literary analysis with deterministic mock provider available
-- `review sync/list/show/approve/edit/reject/defer/reopen/promote` — Non-interactive review, reconciliation, conflict preview, and explicit canon promotion with stable JSON outputs
-- `prepare` — Chapter preparation with text and JSON output
-- `run` — Full pipeline: ingest → segment → context → translate → quality → export
-- `resume` — Checkpoint-based resume with source fingerprinting
-- `project create/import/status/analyze/analyze-advanced/review/translate/resume/progress/export/history` — Thin CLI adapter over the Phase 16 `ApplicationService`
-- `--format json` — Machine-readable JSON output for all commands
-- resume checkpoints include source and assembled-context fingerprints, so canon changes cannot silently reuse output generated under stale project knowledge
+## Phase 19 Branch State — Literary Fidelity & Persian Naturalness Review
 
-### CI/CD
-- deterministic Cargo lockfile freshness check
-- Format checking (rustfmt)
-- Clippy with `-D warnings`
-- Full workspace test suite
-- optional-feature compatibility tests where external integrations are feature-gated
-- BookForge explicit no-default-features compatibility build
-- sidecar/wrapper syntax checks
-- Cross-crate integration tests (glossary, character bible, memory, quality gates, JSON output, resume)
-- 120-chapter end-to-end regression coverage
-- CLI smoke tests (text and JSON modes)
-- Cargo audit for dependency vulnerability scanning
-- Security audit workflow
-- Dependabot configuration
+Branch: `phase-19-literary-review-stack`.
+
+This work is **not canonical until its pull request is merged and post-merge CI is verified**.
+
+Implemented and validated so far:
+
+- new `literary-review-engine` crate with typed dimensions for omission/addition, semantic fidelity, character voice, relationship/register, Persian naturalness, dialogue/subtext, and terminology/continuity;
+- deterministic native findings that do not pretend unevaluated dimensions passed;
+- provider-neutral literary critic contract with bounded paragraph-indexed input, structured output validation, evidence-index validation, requested-dimension enforcement, and revision proposals that are never auto-applied;
+- optional OpenAI critic adapter while credential-free mock/native review remains available;
+- native bounded monotonic alignment with 1:1, 1:N, N:1, N:M, source-only and target-only gaps;
+- optional `tools/literary-alignment` Rust/FastEmbed process adapter reusing BGE-M3 rather than adding a second embedding stack;
+- strict alignment response validation for unit identity, index ranges, monotonicity, complete coverage, finite values, and schema shape;
+- post-translation `ApplicationService::review_translation` plus persisted per-chapter literary-review artifacts;
+- artifact staleness detection from source, translated-text, and translation-context fingerprints;
+- CLI `project review-translation` adapter over the same application API;
+- permanent Phase 19 CI covering native review, application regression, alignment protocol, Linux BGE compile, Apple Silicon arm64 BGE compile, lockfiles, and security audits;
+- application-level regression coverage proving literary review does not mutate the human-intelligence review/canon lifecycle and becomes stale after a manual translation edit.
+
+### Phase 19 dependency decisions
+
+- **BGE-M3/FastEmbed** — reuse the already-approved optional Phase 18 model boundary; no model download during normal compilation/default CI.
+- **Hazm 0.12.1** — blocked. It requires NLTK, and the current compatible NLTK line is affected by unpatched High-severity `GHSA-8mgp-746c-j5xp` / `CVE-2026-81726`. No advisory waiver is allowed merely to enable Hazm.
+- **Vecalign** — Apache-2.0 design reference, but not installed because its Python/Cython/C-compiler surface is unnecessary for the current native aligner; bundled Bleualign dev/test data has separate GPL licensing.
+- **SentWeave 0.3.3** — release provenance/hash/platform/dependency audit completed successfully as research, but it remains reference-only because the native Rust aligner satisfies the same measured need with a smaller dependency surface.
+- **DadmaTools** — deferred unless a concrete Persian NLP gap remains after the native Phase 19 stack.
+
+Detailed research is in `docs/PHASE_19_RESEARCH.md`.
+
+## CLI
+
+Current canonical commands include:
+
+- `inspect`
+- `analyze`
+- `analyze-advanced`
+- review lifecycle commands
+- `prepare`
+- `run`
+- `resume`
+- `project create/import/status/analyze/analyze-advanced/review/translate/resume/progress/export/history`
+
+The Phase 19 branch additionally exposes `project review-translation` through `ApplicationService`; it becomes canonical only after Phase 19 merge.
+
+## CI/CD
+
+Canonical CI includes reproducible lockfile checks, rustfmt, Clippy `-D warnings`, workspace tests, optional-feature compatibility tests, strict EPUB compatibility paths, wrapper/sidecar checks, 120-chapter regression, CLI smoke tests, Cargo audit, Security workflow, Dependabot, projectmem safe-init CI, and Phase 18 Linux/Apple Silicon semantic-tool validation.
+
+Phase 19 adds a dedicated read-only workflow for review-engine/application tests and optional BGE alignment compilation on Linux and Apple Silicon without fetching model weights.
 
 ## Non-Negotiable Constraints
+
 - Rust remains the core language.
-- No simple machine translation wrapper.
+- No simple machine-translation wrapper replaces literary translation logic.
 - Preserve author intent and narrative structure.
-- Build reusable translation memory across projects.
 - Human review remains the approval/canon boundary.
-- Optional probabilistic diagnostics and external metrics remain evidence, not authority.
-- Heavy external models/tools must not become hidden runtime requirements.
+- External/model metrics remain evidence, not authority.
+- Optional tools/models must not become hidden runtime requirements.
+- Review/provider/alignment failures must remain explicit; absence must never be interpreted as a clean literary review.
+- No secrets, proprietary manuscripts, generated translations, or private reviewer material are committed to Git or developer-memory systems.
 
 ## Test Coverage
-- Coverage includes review lifecycle/reconciliation/stable IDs/conflict resolution, dry-run non-mutation, atomic rollback, idempotent apply, audit lineage, Unicode, CLI JSON, canon-aware resume, manuscript intelligence, full pipeline, and large-book regression behavior.
-- Phase 15 coverage adds provider contract, prompt-injection resistance, evidence validation, stable identity, cache reuse/invalidation, partial failure, Unicode, review lifecycle for Literary proposals, and credential-free CLI end-to-end tests.
-- Phase 16 coverage adds application lifecycle/offline workflow, snapshot accuracy, next-action determinism, review rules, character/glossary APIs, pause/resume, manual edits, translation gating, source mismatch, canon staleness, locking, corrupt-manifest recovery, events, provider config, advanced cache, JSON round-trips, Unicode, and 120-chapter regression.
-- Phase 17 coverage adds strict BookForge EPUB regression fixtures, compatibility-path build coverage, COMET JSON/process protocol tests, lockfile freshness, and integration CI/security validation.
-- Supporting tooling branch adds focused English/Persian language-diagnostic tests and shell validation for the EPUBCheck installer/wrapper without downloading EPUBCheck in default CI.
+
+Coverage includes document ingestion, runtime translation, glossary/character/relationship memory, Context Packet v2 retrieval/fingerprints, deterministic quality gates, review lifecycle/promotion/conflicts, provider contracts, cache/resume, source/canon staleness, manual edits, atomic persistence, CLI JSON, Unicode/Persian cases, EPUB boundaries, optional quality evidence, and large-book regressions.
+
+Phase 19 branch coverage additionally validates native review dimensions, provider evidence indices/dimension scope, monotonic alignment and gaps, sidecar schema/failure boundaries, persisted review artifacts, manual-edit staleness, non-mutation of human review/canon state, and credential-free operation.

@@ -44,7 +44,11 @@ This project is independent from every other repository. Do not import assumptio
 - ContextWeaver is an architecture reference, not a dependency. Stable IDs, bounded selective context, resume fingerprints, review history, and canon ownership stay native to this repository unless a future gap analysis proves otherwise.
 - Do not copy code from `TranslateBooksWithLLMs`; selective glossary injection is already native in `memory-engine`, and any licensing change must be deliberate.
 - TransAgents may inform agent-role separation but is not a runtime dependency. Provider/model judgments remain separate from deterministic quality checks and human review.
-- FlagEmbedding/BGE-M3, Hazm, DadmaTools, Vecalign, and SacreBLEU are researched phase-scoped candidates, not blanket-approved dependencies. Follow `docs/EXTERNAL_INTEGRATIONS.md` and the roadmap; do not install them merely because they are useful in isolation.
+- BGE-M3 is approved only through the optional Rust/FastEmbed boundaries introduced for Phase 18/19. Model weights are never downloaded by normal builds or default CI, deterministic native behavior remains available without the model, and BGE evidence never owns canon or human approval.
+- Phase 19 literary review stays in the native `literary-review-engine` plus the optional `tools/literary-alignment` process boundary. Source/target alignment is monotonic, bounded, schema-validated, and advisory. A failed/missing aligner must not block translation, mutate canon, or be interpreted as a clean review.
+- Hazm is **blocked**, not approved, while its required NLTK dependency is affected by an unpatched security advisory. Reconsider only after a patched compatible NLTK release exists and a fresh dependency/security audit passes. Do not add an advisory waiver merely to enable Hazm.
+- Vecalign and SentWeave are Phase 19 research references only. Their alignment design may inform native code, but do not add their Python/Cython stacks while the native Rust aligner plus the already-approved BGE boundary satisfies the measured requirement.
+- DadmaTools remains conditional on a measured Persian NLP gap after native Phase 19 review; SacreBLEU/chrF++ remains a Phase 21 benchmark candidate after a rights-safe reference corpus exists.
 - Serena, Global Agent Memory, MemoryWiki, and automatic chat-history memory systems are project-memory research references only unless a new gap analysis changes that decision. Do not install multiple overlapping memory systems by default.
 
 ## Coding standards
@@ -83,6 +87,8 @@ cargo test -p quality-engine --features language-diagnostics
 The normal workspace build must still pass with the feature disabled. For EPUBCheck wrapper changes, syntax-check both scripts without downloading the distribution in default CI. A real publication-validation smoke test should use a project-owned EPUB fixture or generated output.
 
 For projectmem integration changes, run the dedicated `Project Memory Tooling` workflow. Its smoke test must confirm the selected package version and prove that safe initialization does not create/alter Git hooks, create `AGENTS.md`/`CLAUDE.md`, or start watcher state. Do not make normal Rust CI depend on projectmem.
+
+For Phase 19 literary-review changes, run the dedicated `Phase 19 Literary Review` workflow. Credential-free tests must cover native review, artifact persistence/staleness, provider-schema validation, alignment protocol validation, and deterministic operation with alignment/provider tooling absent. Compile the optional BGE alignment adapter on Linux and Apple Silicon without fetching model weights in CI. Never convert an unavailable provider/aligner into a silent pass.
 
 ## Forbidden actions
 

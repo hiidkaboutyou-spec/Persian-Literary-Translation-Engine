@@ -130,7 +130,7 @@ fn usage() {
     println!(
         "  literary-engine resume <file.txt|file.md|file.docx|file.epub|file.pdf> [target-language] [output-dir] [--format json]"
     );
-    println!("  literary-engine project <create|import|status|analyze|analyze-advanced|review|translate|resume|progress|export|history> <dir> ...");
+    println!("  literary-engine project <create|import|status|analyze|analyze-advanced|review|review-translation|translate|resume|progress|export|history> <dir> ...");
     println!("    project commands are a thin adapter over the same ApplicationService the desktop app will use");
     println!("  literary-engine --help");
     println!("  literary-engine --version");

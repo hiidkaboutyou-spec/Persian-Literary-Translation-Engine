@@ -67,54 +67,72 @@ Delivered:
 - reproducible lockfile/CI/security/audit/release/smoke validation
 - post-merge verification of PR #90 on `main`
 
+### Phase 18 — Context Packet v2 & Selective Long-Novel Retrieval — merged
+
+PR: #94
+Merge commit: `2af408a19b8f69db93aff8e6896eaf189c4d69ae`
+
+Delivered:
+
+- typed Context Packet v2 with provenance, authority, bounded budgets, stable IDs, and SHA-256 packet fingerprints
+- passage-relevant glossary, character/relationship canon, translation memory, literary findings, local neighbor continuity, and hierarchical manuscript-intelligence context
+- one shared context assembly policy for CLI and `ApplicationService`
+- deterministic lexical retrieval remains the safety floor
+- optional Rust-native FastEmbed boundary using BGE-M3 / multilingual reranking only when explicitly enabled
+- semantic sidecar timeout/failure handling with deterministic fallback; model output cannot create canon IDs or own project memory
+- Linux plus Apple Silicon arm64 compatibility checks without downloading model weights during normal compilation
+- context fingerprint integration with resumable checkpoints so canon/context changes invalidate stale reuse safely
+
 ## Safe Supporting Tooling
 
 Small supporting integrations may land between numbered phases when they do not change the phase architecture or runtime defaults. They must remain optional or advisory and pass the same CI/security gates.
 
-Current supporting-tooling work:
+Current supporting tooling:
 
 - optional `lingua-rs` English/Persian language diagnostics for detecting probable untranslated English output; disabled by default and never an automatic approval/rejection decision
 - checksum-pinned optional EPUBCheck installer/wrapper for future publication validation; no EPUBCheck binary is vendored into the repository
+- optional projectmem developer-side memory tooling; it never owns translation/runtime memory
 
-These do not replace Phase 18–22 work and must not be described as completing any future phase.
+Future supporting-tool candidates must not interrupt the numbered roadmap. OpenDataLoader PDF is a benchmark candidate for difficult PDF ingestion; ripwire is a developer-only code-intelligence candidate; Headroom is conditional developer/research context compression. None is a Phase 19 runtime dependency.
+
+## Current Phase
+
+### Phase 19 — Literary Fidelity & Persian Naturalness Review Stack — branch validation in progress
+
+Goal: catch errors that generic MT metrics miss without turning probabilistic evidence into approval.
+
+Implemented on the Phase 19 branch and pending final PR/merge verification:
+
+- independent review dimensions for omission/addition, semantic fidelity, character voice, relationship/register, Persian naturalness, dialogue/subtext, and terminology/continuity
+- native deterministic review evidence with explicit unevaluated dimensions
+- provider-neutral bounded literary critic with validated paragraph citations and revision proposals that are never auto-applied
+- post-translation `ApplicationService` review API plus persisted per-chapter review artifacts
+- source/translation/context fingerprints that mark old review artifacts stale after manual edits or changed translation context
+- native bounded monotonic Rust alignment supporting 1:1, 1:N, N:1, N:M, and source/target gaps
+- optional BGE-M3 alignment adapter reusing the existing Phase 18 model boundary; no second embedding stack
+- schema/coverage/monotonicity/index validation before alignment evidence enters a review report
+- deterministic operation when provider/alignment tooling is absent or fails
+- Linux and Apple Silicon arm64 compile validation without model downloads
+
+Dependency decisions:
+
+- Hazm 0.12.1 is blocked while its mandatory NLTK dependency is affected by an unpatched High-severity advisory; do not waive the advisory
+- Vecalign is an Apache-2.0 design reference but its Python/Cython runtime is unnecessary for the current native implementation; its bundled Bleualign test/dev data has separate GPL licensing
+- SentWeave 0.3.3 was hash/provenance/platform/audit checked as a reference but remains uninstalled because the native Rust aligner satisfies the measured requirement with less dependency surface
+- DadmaTools remains conditional on a measured Persian NLP gap after Phase 19
+
+Exit criteria:
+
+- permanent read-only Phase 19 CI
+- native review and application artifact/staleness tests
+- provider-schema and alignment-protocol tests
+- optional BGE compile checks on Linux and Apple Silicon
+- RustSec audits
+- normal Rust CI/security/release smoke on the final PR head
+- no temporary write-enabled validation workflows/scripts in the final diff
+- PR merge and post-merge verification before Phase 19 is called canonical
 
 ## Forward Roadmap
-
-### Phase 18 — Context Packet v2 & Selective Long-Novel Retrieval
-
-Goal: make every translation unit receive the smallest sufficient, highest-value context instead of broad prompt stuffing.
-
-Planned work:
-
-- stable context-packet contract per translation unit
-- passage-relevant glossary selection only
-- relevant character/relationship state only
-- previous translation decisions and local continuity handoff
-- scene/chapter neighbor context with strict budgets
-- retrieval provenance explaining why each memory item was included
-- deterministic context fingerprints so changed canon/context invalidates stale checkpoints
-- regression tests for very long novels, repeated names, polarity, timeline changes, and conflicting terminology
-- evaluate BGE-M3 + multilingual reranking as an optional semantic-retrieval sidecar; do not download models by default and do not replace deterministic native memory ownership
-
-### Phase 19 — Literary Fidelity & Persian Naturalness Review Stack
-
-Goal: catch errors that generic MT metrics miss.
-
-Planned independent review dimensions:
-
-- omission/addition detection
-- semantic faithfulness and narrative-intent preservation
-- character-voice consistency
-- relationship/register consistency
-- Persian naturalness and non-literal fluency
-- dialogue rhythm and emotional-subtext preservation
-- terminology/continuity consistency
-- evaluate Hazm for Persian-only linguistic diagnostics where the native normalization layer is insufficient
-- evaluate Vecalign or an equivalent native alignment layer for source/translation omission evidence
-
-DadmaTools remains conditional: only introduce it if Phase 19 demonstrates a concrete NER/syntax capability gap not covered by native code or Hazm.
-
-These reviewers produce evidence and revision proposals. They do not silently mutate canon and do not bypass human review.
 
 ### Phase 20 — Publication-Grade EPUB Round Trip
 
@@ -146,7 +164,7 @@ Planned work:
 
 Goal: expose the stable application layer through a usable product without moving domain logic into the UI.
 
-Possible surfaces can call `ApplicationService` directly and should support project home/status, analysis review, canon editing, translation progress, manual revision history, export, recovery hints, and provider configuration checks.
+Possible surfaces can call `ApplicationService` directly and should support project home/status, analysis review, canon editing, translation progress, literary-review evidence, manual revision history, export, recovery hints, and provider configuration checks.
 
 ## Next Action Rule
 
