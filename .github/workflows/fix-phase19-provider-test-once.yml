@@ -26,18 +26,12 @@ jobs:
 
       - name: Repair dimension-scope test
         shell: bash
+        env:
+          OLD_B64: ICAgICAgICBsZXQgcmVzdWx0ID0gcHJvdmlkZXIucmV2aWV3KCZyZXF1ZXN0KCkpLnVud3JhcF9lcnIoKTsKICAgICAgICBhc3NlcnQhKG1hdGNoZXMhKHJlc3VsdCwgUmV2aWV3UHJvdmlkZXJFcnJvcjo6U2NoZW1hVmlvbGF0aW9uKF8pKSk7CgogICAgICAgIGxldCBuYXR1cmFsbmVzc19yZXF1ZXN0ID0gUmV2aWV3UHJvdmlkZXJSZXF1ZXN0Ojpmcm9tX3RleHQoCg==
+          NEW_B64: ICAgICAgICBsZXQgcmVzdHJpY3RlZF9yZXF1ZXN0ID0gUmV2aWV3UHJvdmlkZXJSZXF1ZXN0Ojpmcm9tX3RleHQoCiAgICAgICAgICAgICJjaGFwdGVyLTEiLAogICAgICAgICAgICAiSGUgbGF1Z2hlZC5cblxuU2hlIGRpZCBub3QgYW5zd2VyLiIsCiAgICAgICAgICAgICLYrtmG2K/bjNivLlxuXG7Yp9mIINis2YjYp9io24wg2YbYr9in2K8uIiwKICAgICAgICAgICAgIiIsCiAgICAgICAgICAgIHZlYyFbUmV2aWV3RGltZW5zaW9uOjpTZW1hbnRpY0ZpZGVsaXR5XSwKICAgICAgICAgICAgUmV2aWV3UmVxdWVzdExpbWl0czo6ZGVmYXVsdCgpLAogICAgICAgICkKICAgICAgICAudW53cmFwKCk7CiAgICAgICAgbGV0IHJlc3VsdCA9IHByb3ZpZGVyLnJldmlldygmcmVzdHJpY3RlZF9yZXF1ZXN0KS51bndyYXBfZXJyKCk7CiAgICAgICAgYXNzZXJ0IShtYXRjaGVzIShyZXN1bHQsIFJldmlld1Byb3ZpZGVyRXJyb3I6OlNjaGVtYVZpb2xhdGlvbihfKSkpOwoKICAgICAgICBsZXQgbmF0dXJhbG5lc3NfcmVxdWVzdCA9IFJldmlld1Byb3ZpZGVyUmVxdWVzdDo6ZnJvbV90ZXh0KAo=
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          path = Path('engine/crates/literary-review-engine/src/provider.rs')
-          text = path.read_text()
-          old = "        let result = provider.review(&request()).unwrap_err();\n        assert!(matches!(result, ReviewProviderError::SchemaViolation(_)));\n\n        let naturalness_request = ReviewProviderRequest::from_text(\n"
-          new = "        let restricted_request = ReviewProviderRequest::from_text(\n            \"chapter-1\",\n            \"He laughed.\\\\n\\\\nShe did not answer.\",\n            \"خندید.\\\\n\\\\nاو جوابی نداد.\",\n            \"\",\n            vec![ReviewDimension::SemanticFidelity],\n            ReviewRequestLimits::default(),\n        )\n        .unwrap();\n        let result = provider.review(&restricted_request).unwrap_err();\n        assert!(matches!(result, ReviewProviderError::SchemaViolation(_)));\n\n        let naturalness_request = ReviewProviderRequest::from_text(\n"
-          if old not in text:
-              raise SystemExit('expected provider test fragment not found')
-          path.write_text(text.replace(old, new, 1))
-          PY
+          python3 -c 'import base64, os; from pathlib import Path; p=Path("engine/crates/literary-review-engine/src/provider.rs"); s=p.read_text(); old=base64.b64decode(os.environ["OLD_B64"]).decode(); new=base64.b64decode(os.environ["NEW_B64"]).decode(); assert old in s, "expected provider test fragment not found"; p.write_text(s.replace(old,new,1))'
 
       - name: Format and sync lockfile
         working-directory: engine
