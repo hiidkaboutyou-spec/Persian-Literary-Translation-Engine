@@ -597,7 +597,10 @@ mod tests {
     #[cfg(feature = "bookforge-epub")]
     #[test]
     fn bookforge_page_furniture_and_code_are_not_translation_units() {
-        assert_eq!(map_bookforge_block_kind(&BookForgeBlockKind::PageFurniture), None);
+        assert_eq!(
+            map_bookforge_block_kind(&BookForgeBlockKind::PageFurniture),
+            None
+        );
         assert_eq!(map_bookforge_block_kind(&BookForgeBlockKind::Code), None);
         assert_eq!(
             map_bookforge_block_kind(&BookForgeBlockKind::Footnote),
