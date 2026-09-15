@@ -21,7 +21,7 @@ Build a production-grade English-to-Persian literary translation system that pre
 
 ## Delivered Foundation
 
-The current `main` branch already contains the production foundation represented by:
+The current `main` branch contains the production foundation represented by:
 
 - structured TXT/Markdown/DOCX/EPUB/text-PDF ingestion and source provenance
 - translation memory, glossary, character bible, relationship context, and Persian-aware normalization/retrieval
@@ -32,6 +32,7 @@ The current `main` branch already contains the production foundation represented
 - optional bounded model-assisted literary analysis whose findings remain review-controlled
 - project-oriented `ApplicationService` orchestration for Import -> Analyze -> Review -> Translate -> Edit -> Export
 - CLI/JSON interfaces, release/security CI, large-book regression coverage, and Persian RTL DOCX output
+- controlled external integrations with pinned provenance and explicit failure boundaries
 
 ## Verified Recent Phases
 
@@ -51,27 +52,31 @@ Optional bounded provider analysis with structured validation, stable evidence, 
 
 One project-oriented application boundary above the domain engines. Provides project lifecycle, snapshots, analysis/review/promotion orchestration, translation progress/pause/resume, manual edit revisions, export, typed errors, events, locking, staleness detection, and UI-ready JSON models.
 
-### Phase 17 — Controlled External Integrations — in progress
+### Phase 17 — Controlled External Integrations — merged
 
-Branch: `phase-17-external-integrations`
 PR: #90
-Implementation state: implemented on branch, not canonical until merged.
+Merge commit: `6a4b8807d8c54878f1f10db5cab1f1290fcc60fb`
 
-Scope:
+Delivered:
 
-- pin and integrate BookForge for validated deterministic EPUB ingestion while mapping back into native `document-engine` models
-- preserve an explicit legacy-parser compatibility build path; never silently fall back after a BookForge validation failure
-- add an optional isolated Rust <-> Python COMET/XCOMET/DocCOMET quality-evidence sidecar
-- keep external scores advisory; they cannot mark a translation human-approved
-- keep ContextWeaver, TranslateBooksWithLLMs, TransAgents, and similar projects as design references when native capabilities already cover the need
-- record dependency, license, privacy, and upgrade boundaries
-- keep the lockfile, CI, audit, release build, and smoke tests reproducible
+- BookForge pinned to a known upstream revision for validated deterministic EPUB ingestion while mapping back into native `document-engine` models
+- explicit legacy-parser compatibility build path with no silent fallback after BookForge validation failure
+- optional isolated Rust <-> Python COMET/XCOMET/DocCOMET quality-evidence sidecar
+- advisory-only external metrics that cannot mark a translation human-approved
+- documented licensing, privacy, upgrade, and failure boundaries
+- reproducible lockfile/CI/security/audit/release/smoke validation
+- post-merge verification of PR #90 on `main`
 
-Phase 17 completion gate:
+## Safe Supporting Tooling
 
-1. latest PR head passes lockfile check, rustfmt, Clippy `-D warnings`, compatibility build, COMET-sidecar syntax/protocol checks, full workspace tests, cargo audit, release build, and CLI smoke test
-2. PR #90 is merged into `main`
-3. post-merge verification confirms `main` contains the integration and documentation
+Small supporting integrations may land between numbered phases when they do not change the phase architecture or runtime defaults. They must remain optional or advisory and pass the same CI/security gates.
+
+Current supporting-tooling work:
+
+- optional `lingua-rs` English/Persian language diagnostics for detecting probable untranslated English output; disabled by default and never an automatic approval/rejection decision
+- checksum-pinned optional EPUBCheck installer/wrapper for future publication validation; no EPUBCheck binary is vendored into the repository
+
+These do not replace Phase 18–22 work and must not be described as completing any future phase.
 
 ## Forward Roadmap
 
@@ -89,6 +94,7 @@ Planned work:
 - retrieval provenance explaining why each memory item was included
 - deterministic context fingerprints so changed canon/context invalidates stale checkpoints
 - regression tests for very long novels, repeated names, polarity, timeline changes, and conflicting terminology
+- evaluate BGE-M3 + multilingual reranking as an optional semantic-retrieval sidecar; do not download models by default and do not replace deterministic native memory ownership
 
 ### Phase 19 — Literary Fidelity & Persian Naturalness Review Stack
 
@@ -103,6 +109,10 @@ Planned independent review dimensions:
 - Persian naturalness and non-literal fluency
 - dialogue rhythm and emotional-subtext preservation
 - terminology/continuity consistency
+- evaluate Hazm for Persian-only linguistic diagnostics where the native normalization layer is insufficient
+- evaluate Vecalign or an equivalent native alignment layer for source/translation omission evidence
+
+DadmaTools remains conditional: only introduce it if Phase 19 demonstrates a concrete NER/syntax capability gap not covered by native code or Hazm.
 
 These reviewers produce evidence and revision proposals. They do not silently mutate canon and do not bypass human review.
 
@@ -115,7 +125,7 @@ Planned work:
 - block/segment identity through translation and rebuild
 - preserve XHTML structure, links, footnotes/endnotes, navigation, images, styles, and non-translatable resources
 - RTL/Persian metadata and language handling
-- structural round-trip validation before publication
+- EPUBCheck structural conformance validation before publication
 - deterministic output checks and hostile/corrupt EPUB fixtures
 - keep DOCX publishing path intact
 
@@ -128,6 +138,7 @@ Planned work:
 - curated EN -> FA literary test corpus with rights-safe/project-owned fixtures
 - expected terminology, voice, relationship, omission, and continuity assertions
 - deterministic regression suite plus optional COMET/XCOMET evidence
+- add SacreBLEU/chrF++ only when a suitable reference corpus exists; it is benchmark evidence, never the literary judge
 - human-review scorecards for naturalness, voice, fidelity, subtext, and readability
 - compare model/provider/prompt/runtime changes without making one metric the final judge
 
@@ -139,4 +150,4 @@ Possible surfaces can call `ApplicationService` directly and should support proj
 
 ## Next Action Rule
 
-Always finish and verify the current phase before starting a new numbered phase. Do not treat branch-only work as merged. When a phase changes architecture or persistence contracts, update `IMPLEMENTATION_STATUS.md`, this roadmap, engineering decisions, and project-memory notes together.
+Always finish and verify the current numbered phase before starting the next numbered phase. Supporting tooling may be added only when it does not change runtime defaults or claim completion of a later phase. Do not treat branch-only work as merged. When a phase changes architecture or persistence contracts, update `IMPLEMENTATION_STATUS.md`, this roadmap, engineering decisions, external-integration notes, and project-memory notes together.
