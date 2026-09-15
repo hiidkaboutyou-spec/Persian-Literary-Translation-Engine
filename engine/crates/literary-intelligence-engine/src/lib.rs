@@ -16,8 +16,10 @@ pub mod errors;
 pub mod models;
 pub mod traits;
 
+mod context_packet;
 mod manuscript_analyzer;
 
+pub use context_packet::manuscript_context_candidates;
 pub use manuscript_analyzer::{
     AnalysisCanon, AnalysisConfig, DeterministicManuscriptAnalyzer, ManuscriptAnalyzer,
 };
