@@ -1,16 +1,28 @@
 pub mod context;
+pub mod context_v2;
 pub mod glossary;
 pub mod models;
 pub mod persistence;
 pub mod retrieval;
+pub mod semantic;
 
 pub use context::{build_memory_context, MemoryContext, MemoryContextConfig};
+pub use context_v2::{
+    build_context_packet_v2, native_memory_candidates, stable_evidence_id, ContextAuthority,
+    ContextCandidate, ContextItem, ContextKind, ContextPacketBudget, ContextPacketConfig,
+    ContextPacketV2, CONTEXT_PACKET_SCHEMA_VERSION,
+};
 pub use models::MemoryEntry;
 pub use persistence::{
     load_glossary, load_translation_memory, save_glossary, save_translation_memory,
     PersistenceError,
 };
 pub use retrieval::{rank_memory, RetrievalConfig, RetrievalHit};
+pub use semantic::{
+    reciprocal_rank_fusion, FusedRank, ReciprocalRankFusionConfig, SemanticCandidate,
+    SemanticError, SemanticMode, SemanticRerankRequest, SemanticRerankResponse, SemanticScore,
+    SemanticSidecar, SEMANTIC_PROTOCOL_VERSION,
+};
 
 #[derive(Debug, Default, Clone)]
 pub struct TranslationMemory {
