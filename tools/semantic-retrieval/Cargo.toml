@@ -1,0 +1,14 @@
+[package]
+name = "semantic-retrieval-tool"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[features]
+default = []
+bge = ["dep:fastembed"]
+
+[dependencies]
+memory-engine = { path = "../../engine/crates/memory-engine" }
+serde_json = "1"
+fastembed = { version = "=6.1.0", optional = true, default-features = false, features = ["hf-hub-rustls-tls", "ort-download-binaries-rustls-tls"] }
