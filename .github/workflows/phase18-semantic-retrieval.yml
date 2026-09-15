@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'engine/crates/memory-engine/**'
+      - 'engine/Cargo.lock'
       - 'tools/semantic-retrieval/**'
       - 'docs/PHASE_18_RESEARCH.md'
       - 'docs/IMPLEMENTATION_ROADMAP.md'
@@ -14,6 +15,7 @@ on:
   pull_request:
     paths:
       - 'engine/crates/memory-engine/**'
+      - 'engine/Cargo.lock'
       - 'tools/semantic-retrieval/**'
       - 'docs/PHASE_18_RESEARCH.md'
       - 'docs/IMPLEMENTATION_ROADMAP.md'
@@ -32,7 +34,7 @@ concurrency:
 jobs:
   native-context:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -41,6 +43,13 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+
+      - name: Engine lockfile is current
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd engine && cargo generate-lockfile)
+          git diff --exit-code -- engine/Cargo.lock
 
       - name: Format
         working-directory: engine
@@ -56,7 +65,7 @@ jobs:
 
   semantic-tool:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -64,11 +73,25 @@ jobs:
       - name: Install stable Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Semantic-tool lockfile is current
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo generate-lockfile --manifest-path tools/semantic-retrieval/Cargo.toml
+          git diff --exit-code -- tools/semantic-retrieval/Cargo.lock
+
       - name: Test protocol-only build
-        run: cargo test --manifest-path tools/semantic-retrieval/Cargo.toml --no-default-features
+        run: cargo test --locked --manifest-path tools/semantic-retrieval/Cargo.toml --no-default-features
 
       - name: Check pinned BGE integration
-        run: cargo check --manifest-path tools/semantic-retrieval/Cargo.toml --features bge
+        run: cargo check --locked --manifest-path tools/semantic-retrieval/Cargo.toml --features bge
+
+      - name: Audit semantic dependency graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo install cargo-audit --locked 2>/dev/null || true
+          cargo audit --file tools/semantic-retrieval/Cargo.lock
 
       - name: Confirm no model weights were downloaded by compilation
         shell: bash
