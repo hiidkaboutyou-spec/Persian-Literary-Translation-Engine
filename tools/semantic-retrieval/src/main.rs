@@ -3,9 +3,9 @@ use std::error::Error;
 use std::io::{self, Read};
 use std::path::PathBuf;
 
-use memory_engine::{SemanticRerankRequest, SEMANTIC_PROTOCOL_VERSION};
 #[cfg(feature = "bge")]
 use memory_engine::{SemanticMode, SemanticRerankResponse, SemanticScore};
+use memory_engine::{SemanticRerankRequest, SEMANTIC_PROTOCOL_VERSION};
 
 fn main() {
     if let Err(error) = run() {
@@ -76,8 +76,7 @@ fn model_cache_dir() -> PathBuf {
 mod bge {
     use super::*;
     use fastembed::{
-        Bgem3Embedding, Bgem3InitOptions, Bgem3Model, RerankInitOptions, RerankerModel,
-        TextRerank,
+        Bgem3Embedding, Bgem3InitOptions, Bgem3Model, RerankInitOptions, RerankerModel, TextRerank,
     };
 
     pub fn rank(request: &SemanticRerankRequest) -> Result<SemanticRerankResponse, Box<dyn Error>> {
@@ -168,9 +167,11 @@ mod bge {
             .map(|(index, embedding)| (index, cosine_similarity(query, embedding)))
             .collect::<Vec<_>>();
         ranked.sort_by(|(index_a, score_a), (index_b, score_b)| {
-            score_b
-                .total_cmp(score_a)
-                .then_with(|| request.candidates[*index_a].id.cmp(&request.candidates[*index_b].id))
+            score_b.total_cmp(score_a).then_with(|| {
+                request.candidates[*index_a]
+                    .id
+                    .cmp(&request.candidates[*index_b].id)
+            })
         });
         Ok(ranked)
     }
@@ -202,9 +203,11 @@ mod bge {
             })
             .collect::<Result<Vec<_>, Box<dyn Error>>>()?;
         ranked.sort_by(|(index_a, score_a), (index_b, score_b)| {
-            score_b
-                .total_cmp(score_a)
-                .then_with(|| request.candidates[*index_a].id.cmp(&request.candidates[*index_b].id))
+            score_b.total_cmp(score_a).then_with(|| {
+                request.candidates[*index_a]
+                    .id
+                    .cmp(&request.candidates[*index_b].id)
+            })
         });
         Ok(ranked)
     }

@@ -144,7 +144,11 @@ pub fn reciprocal_rank_fusion(
         if !seen_semantic.insert(item.id.clone()) {
             continue;
         }
-        let rank = if item.rank == 0 { position + 1 } else { item.rank };
+        let rank = if item.rank == 0 {
+            position + 1
+        } else {
+            item.rank
+        };
         let entry = state.entry(item.id.clone()).or_insert(FusedRank {
             id: item.id.clone(),
             score: 0.0,
@@ -194,7 +198,9 @@ pub enum SemanticError {
 impl fmt::Display for SemanticError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InvalidRequest(message) => write!(formatter, "invalid semantic request: {message}"),
+            Self::InvalidRequest(message) => {
+                write!(formatter, "invalid semantic request: {message}")
+            }
             Self::Io(error) => write!(formatter, "semantic sidecar I/O error: {error}"),
             Self::SidecarFailed { status, stderr } => write!(
                 formatter,
@@ -202,7 +208,9 @@ impl fmt::Display for SemanticError {
                 status,
                 stderr.trim()
             ),
-            Self::Protocol(message) => write!(formatter, "semantic sidecar protocol error: {message}"),
+            Self::Protocol(message) => {
+                write!(formatter, "semantic sidecar protocol error: {message}")
+            }
         }
     }
 }
@@ -286,7 +294,9 @@ fn validate_request(
         return Err(SemanticError::InvalidRequest("query is empty".into()));
     }
     if request.candidates.is_empty() {
-        return Err(SemanticError::InvalidRequest("candidate list is empty".into()));
+        return Err(SemanticError::InvalidRequest(
+            "candidate list is empty".into(),
+        ));
     }
     if request.candidates.len() > max_candidates {
         return Err(SemanticError::InvalidRequest(format!(
@@ -420,7 +430,10 @@ mod tests {
         let ids = vec!["a".to_string(), "b".to_string(), "c".to_string()];
         let fused = reciprocal_rank_fusion(&ids, &[], ReciprocalRankFusionConfig::default());
         assert_eq!(
-            fused.iter().map(|item| item.id.as_str()).collect::<Vec<_>>(),
+            fused
+                .iter()
+                .map(|item| item.id.as_str())
+                .collect::<Vec<_>>(),
             vec!["a", "b", "c"]
         );
     }

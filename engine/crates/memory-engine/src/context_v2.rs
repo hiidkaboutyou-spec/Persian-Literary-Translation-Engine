@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -206,9 +206,7 @@ pub fn build_context_packet_v2(
     let source_fingerprint = sha256_hex(source_text.as_bytes());
     let canon_fingerprint = fingerprint_candidates(candidates);
 
-    if source_text.trim().is_empty()
-        || config.budget.max_chars == 0
-        || config.budget.max_items == 0
+    if source_text.trim().is_empty() || config.budget.max_chars == 0 || config.budget.max_items == 0
     {
         return finalize_packet(
             unit_id,
@@ -348,7 +346,11 @@ pub fn native_memory_candidates(
         };
         let id = stable_evidence_id(
             "glossary",
-            &[&entry.source_term, &entry.preferred_translation, &entry.context],
+            &[
+                &entry.source_term,
+                &entry.preferred_translation,
+                &entry.context,
+            ],
         );
         candidates.push(ContextCandidate::new(
             id,
@@ -513,6 +515,7 @@ mod tests {
     use super::*;
     use crate::glossary::GlossaryEntry;
     use crate::MemoryEntry;
+    use std::collections::BTreeMap;
 
     fn candidate(
         id: &str,
@@ -599,8 +602,18 @@ mod tests {
             1.0,
         );
         let config = ContextPacketConfig::default();
-        let first = build_context_packet_v2("u1", "Open the Portal", std::slice::from_ref(&base), &config);
-        let second = build_context_packet_v2("u1", "Close the Portal", std::slice::from_ref(&base), &config);
+        let first = build_context_packet_v2(
+            "u1",
+            "Open the Portal",
+            std::slice::from_ref(&base),
+            &config,
+        );
+        let second = build_context_packet_v2(
+            "u1",
+            "Close the Portal",
+            std::slice::from_ref(&base),
+            &config,
+        );
         let changed = candidate(
             "term",
             ContextKind::Glossary,
@@ -641,7 +654,9 @@ mod tests {
         assert!(packet.truncated);
         assert!(packet.items[0].truncated);
         assert!(packet.used_chars <= 220);
-        assert!(packet.rendered_context.is_char_boundary(packet.rendered_context.len()));
+        assert!(packet
+            .rendered_context
+            .is_char_boundary(packet.rendered_context.len()));
     }
 
     #[test]
@@ -666,7 +681,9 @@ mod tests {
             &MemoryContextConfig::default(),
         );
 
-        assert!(candidates.iter().any(|item| item.kind == ContextKind::Glossary));
+        assert!(candidates
+            .iter()
+            .any(|item| item.kind == ContextKind::Glossary));
         assert!(candidates
             .iter()
             .any(|item| item.kind == ContextKind::TranslationMemory));
@@ -688,12 +705,8 @@ mod tests {
             "second",
             0.7,
         );
-        let packet = build_context_packet_v2(
-            "u1",
-            "source",
-            &[two, one],
-            &ContextPacketConfig::default(),
-        );
+        let packet =
+            build_context_packet_v2("u1", "source", &[two, one], &ContextPacketConfig::default());
         assert_eq!(packet.items.len(), 1);
         assert_eq!(packet.items[0].text, "first");
     }
