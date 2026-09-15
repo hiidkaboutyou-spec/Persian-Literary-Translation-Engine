@@ -27,18 +27,22 @@ This project is independent from every other repository. Do not import assumptio
 - Keep translation providers replaceable and provider-neutral; credential-free deterministic execution must remain available.
 - Treat glossary, character bible, relationship context, and translation memory as durable literary intelligence with stable, documented schemas.
 - Quality gates must report evidence and must not silently rewrite or accept degraded output.
-- Use Python only for document parsing or PDF/EPUB/DOCX/TXT processing when a Rust solution is impractical. Keep any Python adapter isolated from the Rust domain model and orchestration.
+- Use Python only for document parsing, model-backed analysis/evaluation, or document tooling when a Rust solution is impractical. Keep every Python adapter isolated from the Rust domain model and orchestration.
 - Preserve compatibility of persisted project memory, runtime manifests, CLI behavior, and published artifacts unless a migration path is included.
 - Human review remains an explicit stage; automation must not claim literary approval on a reviewer's behalf.
+- Heavy models and external tools must remain optional unless a numbered roadmap phase explicitly promotes them after benchmark, licensing, resource, privacy, and failure-mode review.
 
 ## Approved external integrations
 
 - BookForge is the approved structured EPUB boundary. Keep `bookforge-core` and `bookforge-epub` revision-pinned as documented in `docs/EXTERNAL_INTEGRATIONS.md`; map their IR into native `document-engine` types and never persist BookForge types in project schemas.
-- When the BookForge feature is enabled, a BookForge EPUB validation/parsing failure is actionable and must not silently fall back to the legacy parser. The legacy path exists only for explicit builds without the feature.
+- When the BookForge feature is enabled, a BookForge EPUB validation/parsing failure is actionable and must not silently fall back to the legacy parser. The legacy path exists only for explicit builds without the feature. Malformed archive/decompression preflight failures may be normalized to the public `CorruptedFile` contract, but validation must remain strict.
 - COMET/XCOMET/DocCOMET are optional external quality evidence only. Keep them behind the isolated `quality-engine::comet` process boundary; do not import PyTorch/COMET into the Rust runtime, auto-download models in default CI, or use a COMET score as human approval.
+- Lingua is approved only as optional English/Persian diagnostic evidence. Keep the crate exactly pinned as documented, disable its default all-language feature set, enable only English/Persian models, and keep `language-diagnostics` off by default. Lingua must not change deterministic quality results, rewrite text, reject intentional multilingual prose by itself, or act as human approval.
+- EPUBCheck is approved as an optional external publication validator. Do not vendor its distribution. Keep the installer version/checksum pinned, install only under ignored local tool storage, and keep absence of Java/EPUBCheck from breaking ingestion, translation, DOCX export, or existing runtime behavior.
 - ContextWeaver is an architecture reference, not a dependency. Stable IDs, bounded selective context, resume fingerprints, review history, and canon ownership stay native to this repository unless a future gap analysis proves otherwise.
 - Do not copy code from `TranslateBooksWithLLMs`; selective glossary injection is already native in `memory-engine`, and any licensing change must be deliberate.
 - TransAgents may inform agent-role separation but is not a runtime dependency. Provider/model judgments remain separate from deterministic quality checks and human review.
+- FlagEmbedding/BGE-M3, Hazm, DadmaTools, Vecalign, and SacreBLEU are researched phase-scoped candidates, not blanket-approved dependencies. Follow `docs/EXTERNAL_INTEGRATIONS.md` and the roadmap; do not install them merely because they are useful in isolation.
 
 ## Coding standards
 
@@ -67,13 +71,22 @@ For pipeline changes, also run a credential-free `EchoProvider` smoke test throu
 
 For BookForge changes, exercise EPUB ingestion with the default feature and verify an explicit `--no-default-features` document-engine build where practical. For COMET changes, test the JSON protocol without downloading a model in default CI; a real model smoke test requires explicit local setup and any model-specific license/authentication approval.
 
+For Lingua changes, run:
+
+```bash
+cargo test -p quality-engine --features language-diagnostics
+```
+
+The normal workspace build must still pass with the feature disabled. For EPUBCheck wrapper changes, syntax-check both scripts without downloading the distribution in default CI. A real publication-validation smoke test should use a project-owned EPUB fixture or generated output.
+
 ## Forbidden actions
 
 - Do not replace literary translation with unreviewed word-for-word or generic machine translation.
 - Do not bypass deterministic quality gates or mark automated output as human-approved.
 - Do not silently discard glossary, character, relationship, or translation-memory decisions.
 - Do not introduce Python into the core runtime when Rust can reasonably implement the requirement.
-- Do not commit manuscripts, generated translations, credentials, or private review material.
+- Do not turn optional ML models or external validators into hidden runtime requirements.
+- Do not commit manuscripts, generated translations, credentials, private review material, downloaded model checkpoints, or downloaded EPUBCheck binaries.
 - Do not break CLI, persistence, manifest, or publishing contracts without migration and documentation.
 - Do not force-push shared branches, bypass failing CI/security checks, or mix this repository with another product.
 
@@ -83,6 +96,6 @@ For BookForge changes, exercise EPUB ingestion with the default feature and veri
 2. Make the smallest coherent change on a focused branch.
 3. Add tests for behavior, literary-decision consistency, and regressions.
 4. Run formatting, Clippy, tests, build, and task-specific smoke checks; fix failures.
-5. Review the diff for secret/manuscript exposure, persistence compatibility, provider coupling, external-dependency provenance, and quality-gate regressions.
+5. Review the diff for secret/manuscript exposure, persistence compatibility, provider coupling, external-dependency provenance, runtime-cost changes, licensing, and quality-gate regressions.
 6. Open a concise pull request describing behavior, contracts, and validation.
 7. Merge only after required CI and security checks pass and the change is safe; otherwise record the blocker and leave the pull request open.
