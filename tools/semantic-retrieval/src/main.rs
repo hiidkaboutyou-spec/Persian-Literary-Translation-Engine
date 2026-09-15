@@ -95,7 +95,7 @@ mod bge {
     ) -> Result<SemanticRerankResponse, Box<dyn Error>> {
         let ranked = dense_candidates(request)?;
         Ok(response(
-            request.mode,
+            request,
             "gpahal/bge-m3-onnx-int8",
             ranked.into_iter().take(request.max_results).collect(),
         ))
@@ -107,7 +107,7 @@ mod bge {
         let indices = (0..request.candidates.len()).collect::<Vec<_>>();
         let ranked = rerank_subset(request, &indices)?;
         Ok(response(
-            request.mode,
+            request,
             "rozgo/bge-reranker-v2-m3",
             ranked.into_iter().take(request.max_results).collect(),
         ))
@@ -129,7 +129,7 @@ mod bge {
             .collect::<Vec<_>>();
         let ranked = rerank_subset(request, &indices)?;
         Ok(response(
-            request.mode,
+            request,
             "gpahal/bge-m3-onnx-int8 + rozgo/bge-reranker-v2-m3",
             ranked.into_iter().take(request.max_results).collect(),
         ))
@@ -207,19 +207,19 @@ mod bge {
     }
 
     fn response(
-        mode: SemanticMode,
+        request: &SemanticRerankRequest,
         model: &str,
         ranked: Vec<(usize, f32)>,
     ) -> SemanticRerankResponse {
         SemanticRerankResponse {
             schema_version: SEMANTIC_PROTOCOL_VERSION,
             model: model.to_string(),
-            mode,
+            mode: request.mode,
             scores: ranked
                 .into_iter()
                 .enumerate()
                 .map(|(zero_rank, (index, score))| SemanticScore {
-                    id: index.to_string(),
+                    id: request.candidates[index].id.clone(),
                     score,
                     rank: zero_rank + 1,
                 })
