@@ -1,0 +1,15 @@
+[package]
+name = "literary-alignment-tool"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[features]
+default = []
+bge = ["dep:fastembed"]
+
+[dependencies]
+literary-review-engine = { path = "../../engine/crates/literary-review-engine" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+fastembed = { version = "=6.1.0", optional = true, default-features = false, features = ["hf-hub-rustls-tls", "ort-download-binaries-rustls-tls"] }
