@@ -1,0 +1,2 @@
+# Optional developer-side project memory. Not part of the translation runtime.
+projectmem==0.3.3
