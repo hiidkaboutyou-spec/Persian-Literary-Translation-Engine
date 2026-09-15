@@ -100,7 +100,7 @@ def main() -> None:
         spans = [None] * len(ids)
 
     response_items = []
-    for item_id, score, item_spans in zip(ids, scores, spans, strict=True):
+    for item_id, score, item_spans in zip(ids, scores, spans):
         response_items.append(
             {
                 "id": item_id,
