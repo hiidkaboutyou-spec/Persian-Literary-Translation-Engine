@@ -1,0 +1,100 @@
+name: Remove Blocked Hazm Once
+
+on:
+  push:
+    branches: [phase-19-literary-review-stack]
+    paths:
+      - '.github/workflows/remove-blocked-hazm-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Phase 19 branch
+        uses: actions/checkout@v7
+        with:
+          ref: phase-19-literary-review-stack
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Remove unshippable Hazm process boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('engine/crates/literary-review-engine/src/lib.rs')
+          text = path.read_text()
+          for old in [
+              'use std::fmt;\n',
+              'use std::io::{Read, Write};\n',
+              'use std::path::{Path, PathBuf};\n',
+              'use std::process::{Command, Stdio};\n',
+              'use std::thread;\n',
+              'use std::time::{Duration, Instant};\n',
+              'pub const HAZM_PROTOCOL_VERSION: u32 = 1;\n',
+          ]:
+              if old not in text:
+                  raise SystemExit(f'missing expected Hazm boundary fragment: {old!r}')
+              text = text.replace(old, '', 1)
+
+          text, count = re.subn(
+              r'\n#\[derive\(Debug, Clone, PartialEq, Serialize, Deserialize\)\]\npub struct HazmDiagnosticRequest.*?\n#\[cfg\(test\)\]',
+              '\n#[cfg(test)]',
+              text,
+              count=1,
+              flags=re.S,
+          )
+          if count != 1:
+              raise SystemExit(f'expected one Hazm protocol block, found {count}')
+
+          for name in [
+              'hazm_evidence_is_advisory_and_does_not_rewrite',
+              'hazm_request_rejects_unbounded_text',
+          ]:
+              pattern = rf'\n    #\[test\]\n    fn {name}\(\) \{{.*?\n    \}}\n'
+              text, count = re.subn(pattern, '\n', text, count=1, flags=re.S)
+              if count != 1:
+                  raise SystemExit(f'expected one test {name}, found {count}')
+
+          path.write_text(text)
+          PY
+
+      - name: Format and sync lockfile
+        working-directory: engine
+        run: |
+          cargo fmt --all
+          cargo generate-lockfile
+
+      - name: Clippy review engine
+        working-directory: engine
+        run: cargo clippy -p literary-review-engine --all-targets -- -D warnings
+
+      - name: Test review engine
+        working-directory: engine
+        run: cargo test -p literary-review-engine
+
+      - name: Audit Rust dependency graph
+        working-directory: engine
+        run: |
+          cargo install cargo-audit --locked
+          cargo audit
+
+      - name: Commit safe native review baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add engine/Cargo.lock engine/crates/literary-review-engine/src/lib.rs
+          git commit -m 'feat: keep Phase 19 review baseline native and dependency-safe'
+          git push origin HEAD:phase-19-literary-review-stack
