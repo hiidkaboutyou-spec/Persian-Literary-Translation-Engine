@@ -386,24 +386,28 @@ mod tests {
     use super::*;
     use crate::{AnalysisCanon, DeterministicManuscriptAnalyzer, ManuscriptAnalyzer};
     use character_engine::{CharacterProfile, RelationshipProfile};
-    use document_engine::{Book, Chapter, ParsedDocument};
+    use document_engine::{Book, Chapter, DocumentFormat, Manuscript, SourceLocation};
     use memory_engine::glossary::{Glossary, GlossaryEntry};
     use memory_engine::MemoryEntry;
+    use std::collections::BTreeMap;
+
+    fn test_manuscript(content: &str) -> Manuscript {
+        Manuscript {
+            book: Book {
+                id: "book-test".into(),
+                title: "Test".into(),
+                author: None,
+                language: Some("en".into()),
+                metadata: BTreeMap::new(),
+            },
+            chapters: vec![Chapter::translated(0, "Chapter 1", content)],
+            source: SourceLocation::new("test.txt", DocumentFormat::Txt),
+        }
+    }
 
     #[test]
     fn candidates_keep_observed_and_inferred_authority_separate() {
-        let document = ParsedDocument {
-            book: Book {
-                title: "Test".into(),
-                author: None,
-            },
-            chapters: vec![Chapter::source(
-                0,
-                "Chapter 1".into(),
-                "Mina whispered. The door remained open.".into(),
-            )],
-            ..ParsedDocument::default()
-        };
+        let document = test_manuscript("Mina whispered. The door remained open.");
         let characters = CharacterBible::new();
         let glossary = Glossary::default();
         let intelligence = DeterministicManuscriptAnalyzer::default()
@@ -430,18 +434,7 @@ mod tests {
 
     #[test]
     fn shared_packet_prioritizes_human_and_canonical_context_and_neighbors() {
-        let document = ParsedDocument {
-            book: Book {
-                title: "Test".into(),
-                author: None,
-            },
-            chapters: vec![Chapter::source(
-                0,
-                "Chapter 1".into(),
-                "Mina met Reza near the Portal.".into(),
-            )],
-            ..ParsedDocument::default()
-        };
+        let document = test_manuscript("Mina met Reza near the Portal.");
         let mut characters = CharacterBible::new();
         characters.add(CharacterProfile {
             name: "Mina".into(),
