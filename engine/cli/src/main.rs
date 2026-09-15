@@ -954,9 +954,7 @@ fn main() -> ExitCode {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use character_engine::{CharacterProfile, RelationshipProfile};
     use memory_engine::glossary::GlossaryEntry;
-    use memory_engine::MemoryEntry;
 
     #[test]
     fn output_file_stems_are_deterministic_and_safe() {
