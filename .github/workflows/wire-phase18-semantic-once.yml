@@ -1,0 +1,218 @@
+name: Wire Phase 18 Semantic Once
+
+on:
+  push:
+    branches: [phase-18-semantic-integration-safety]
+    paths:
+      - '.github/workflows/wire-phase18-semantic-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  wire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout safety branch
+        uses: actions/checkout@v7
+        with:
+          ref: phase-18-semantic-integration-safety
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Wire optional semantic retrieval without changing default behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          def replace_once(path: Path, old: str, new: str) -> None:
+              text = path.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected exactly one match, found {count}")
+              path.write_text(text.replace(old, new, 1))
+
+          def regex_once(path: Path, pattern: str, replacement: str) -> None:
+              text = path.read_text()
+              updated, count = re.subn(pattern, replacement, text, count=1, flags=re.S)
+              if count != 1:
+                  raise SystemExit(f"{path}: regex expected exactly one match, found {count}")
+              path.write_text(updated)
+
+          context = Path('engine/crates/literary-intelligence-engine/src/context_packet.rs')
+          replace_once(
+              context,
+              '''use memory_engine::{\n    build_context_packet_v2, native_memory_candidates, stable_evidence_id, ContextAuthority,\n    ContextCandidate, ContextKind, ContextPacketConfig, ContextPacketV2, MemoryContextConfig,\n    TranslationMemory,\n};''',
+              '''use memory_engine::{\n    build_context_packet_v2, hybrid_memory_candidates, stable_evidence_id, ContextAuthority,\n    ContextCandidate, ContextKind, ContextPacketConfig, ContextPacketV2, MemoryContextConfig,\n    SemanticRetrievalStatus, SemanticSidecar, TranslationMemory,\n};'''
+          )
+          replace_once(
+              context,
+              '''pub struct ChapterContextPacketInput<'a> {\n    pub document_title: &'a str,\n    pub chapter_id: &'a str,\n    pub chapter_title: &'a str,\n    pub source_text: &'a str,\n    pub previous: Option<NeighborContext<'a>>,\n    pub next: Option<NeighborContext<'a>>,\n    pub characters: &'a CharacterBible,\n    pub glossary: &'a Glossary,\n    pub translation_memory: &'a TranslationMemory,\n    pub intelligence: &'a ManuscriptIntelligence,\n    pub reviewed_literary_lines: &'a [String],\n}\n''',
+              '''pub struct ChapterContextPacketInput<'a> {\n    pub document_title: &'a str,\n    pub chapter_id: &'a str,\n    pub chapter_title: &'a str,\n    pub source_text: &'a str,\n    pub previous: Option<NeighborContext<'a>>,\n    pub next: Option<NeighborContext<'a>>,\n    pub characters: &'a CharacterBible,\n    pub glossary: &'a Glossary,\n    pub translation_memory: &'a TranslationMemory,\n    pub intelligence: &'a ManuscriptIntelligence,\n    pub reviewed_literary_lines: &'a [String],\n}\n\n#[derive(Debug, Clone, PartialEq)]\npub struct ChapterContextPacketBuild {\n    pub packet: ContextPacketV2,\n    pub semantic: SemanticRetrievalStatus,\n}\n'''
+          )
+          replace_once(
+              context,
+              '''pub fn build_chapter_context_packet(\n    input: ChapterContextPacketInput<'_>,\n    config: &ContextPacketConfig,\n) -> ContextPacketV2 {''',
+              '''pub fn build_chapter_context_packet_with_semantic(\n    input: ChapterContextPacketInput<'_>,\n    config: &ContextPacketConfig,\n    semantic_sidecar: Option<&SemanticSidecar>,\n) -> ChapterContextPacketBuild {'''
+          )
+          replace_once(
+              context,
+              '''    candidates.extend(native_memory_candidates(\n        input.source_text,\n        input.translation_memory,\n        input.glossary,\n        &MemoryContextConfig::default(),\n    ));''',
+              '''    let memory_candidates = hybrid_memory_candidates(\n        input.source_text,\n        input.translation_memory,\n        input.glossary,\n        &MemoryContextConfig::default(),\n        semantic_sidecar,\n    );\n    let semantic = memory_candidates.semantic;\n    candidates.extend(memory_candidates.candidates);'''
+          )
+          replace_once(
+              context,
+              '''    build_context_packet_v2(input.chapter_id, input.source_text, &candidates, config)\n}\n\n/// Convert deterministic manuscript intelligence''',
+              '''    ChapterContextPacketBuild {\n        packet: build_context_packet_v2(input.chapter_id, input.source_text, &candidates, config),\n        semantic,\n    }\n}\n\n/// Deterministic compatibility wrapper. Existing callers keep exactly the old\n/// behavior unless they explicitly provide a semantic sidecar.\npub fn build_chapter_context_packet(\n    input: ChapterContextPacketInput<'_>,\n    config: &ContextPacketConfig,\n) -> ContextPacketV2 {\n    build_chapter_context_packet_with_semantic(input, config, None).packet\n}\n\n/// Convert deterministic manuscript intelligence'''
+          )
+
+          lib = Path('engine/crates/literary-intelligence-engine/src/lib.rs')
+          replace_once(
+              lib,
+              '''pub use context_packet::{\n    build_chapter_context_packet, manuscript_context_candidates, ChapterContextPacketInput,\n    NeighborContext,\n};''',
+              '''pub use context_packet::{\n    build_chapter_context_packet, build_chapter_context_packet_with_semantic,\n    manuscript_context_candidates, ChapterContextPacketBuild, ChapterContextPacketInput,\n    NeighborContext,\n};'''
+          )
+
+          cli = Path('engine/cli/src/main.rs')
+          replace_once(
+              cli,
+              '''use literary_intelligence_engine::{\n    build_chapter_context_packet, AnalysisCanon, ChapterContextPacketInput,\n    DeterministicManuscriptAnalyzer, ManuscriptAnalyzer, ManuscriptIntelligence, NeighborContext,\n};''',
+              '''use literary_intelligence_engine::{\n    build_chapter_context_packet_with_semantic, AnalysisCanon, ChapterContextPacketInput,\n    DeterministicManuscriptAnalyzer, ManuscriptAnalyzer, ManuscriptIntelligence, NeighborContext,\n};'''
+          )
+          replace_once(
+              cli,
+              '''use memory_engine::{\n    build_memory_context, load_glossary, load_translation_memory, ContextPacketConfig,\n    MemoryContextConfig, TranslationMemory,\n};''',
+              '''use memory_engine::{\n    load_glossary, load_translation_memory, ContextPacketConfig, SemanticSidecar,\n    TranslationMemory,\n};'''
+          )
+          regex_once(
+              cli,
+              r'''\nfn chapter_context\(.*?\n}\n\nfn terminology_rules''',
+              '''\nfn terminology_rules'''
+          )
+          replace_once(
+              cli,
+              '''fn configured_runtime_memory() -> Result<RuntimeMemory, String> {''',
+              '''fn configured_semantic_sidecar() -> Option<SemanticSidecar> {\n    env::var("LITERARY_ENGINE_SEMANTIC_RETRIEVAL_TOOL")\n        .ok()\n        .map(|value| value.trim().to_string())\n        .filter(|value| !value.is_empty())\n        .map(SemanticSidecar::new)\n}\n\nfn configured_runtime_memory() -> Result<RuntimeMemory, String> {'''
+          )
+          replace_once(
+              cli,
+              '''    let runtime_memory = configured_runtime_memory()?;\n    let intelligence = DeterministicManuscriptAnalyzer::default()''',
+              '''    let runtime_memory = configured_runtime_memory()?;\n    let semantic_sidecar = configured_semantic_sidecar();\n    let intelligence = DeterministicManuscriptAnalyzer::default()'''
+          )
+          replace_once(
+              cli,
+              '''    manifest_text.push_str(&format!("chapters={}\\n", chapters.len()));''',
+              '''    manifest_text.push_str(&format!("chapters={}\\n", chapters.len()));\n    manifest_text.push_str(&format!(\n        "semantic_retrieval_configured={}\\n",\n        semantic_sidecar.is_some()\n    ));'''
+          )
+          replace_once(
+              cli,
+              '''        let context_packet = build_chapter_context_packet(\n            ChapterContextPacketInput {\n                document_title: &document_title,\n                chapter_id: &chapter.id,\n                chapter_title: &chapter.title,\n                source_text: &source_text,\n                previous,\n                next,\n                characters: &runtime_memory.characters,\n                glossary: &runtime_memory.glossary,\n                translation_memory: &runtime_memory.translation,\n                intelligence: &intelligence,\n                reviewed_literary_lines: &chapter_literary_lines,\n            },\n            &ContextPacketConfig::default(),\n        );''',
+              '''        let context_build = build_chapter_context_packet_with_semantic(\n            ChapterContextPacketInput {\n                document_title: &document_title,\n                chapter_id: &chapter.id,\n                chapter_title: &chapter.title,\n                source_text: &source_text,\n                previous,\n                next,\n                characters: &runtime_memory.characters,\n                glossary: &runtime_memory.glossary,\n                translation_memory: &runtime_memory.translation,\n                intelligence: &intelligence,\n                reviewed_literary_lines: &chapter_literary_lines,\n            },\n            &ContextPacketConfig::default(),\n            semantic_sidecar.as_ref(),\n        );\n        if let Some(error) = &context_build.semantic.error {\n            eprintln!(\n                "semantic retrieval [{}] unavailable; deterministic fallback: {}",\n                chapter.title, error\n            );\n            manifest_text.push_str(&format!(\n                "chapter.{}.semantic_retrieval_fallback={}\\n",\n                chapter.index + 1,\n                manifest_value(error)\n            ));\n        }\n        if let Some(model) = &context_build.semantic.model {\n            manifest_text.push_str(&format!(\n                "chapter.{}.semantic_retrieval_model={}\\n",\n                chapter.index + 1,\n                manifest_value(model)\n            ));\n        }\n        let context_packet = context_build.packet;'''
+          )
+          replace_once(
+              cli,
+              '''    println!("  - LITERARY_ENGINE_REVIEW_FILE=/path/to/intelligence-review.json");''',
+              '''    println!("  - LITERARY_ENGINE_REVIEW_FILE=/path/to/intelligence-review.json");\n    println!("  - LITERARY_ENGINE_SEMANTIC_RETRIEVAL_TOOL=/path/to/semantic-retrieval (optional; deterministic fallback on failure)");'''
+          )
+
+          app = Path('engine/crates/project-engine/src/application/translation.rs')
+          replace_once(
+              app,
+              '''use literary_intelligence_engine::{\n    build_chapter_context_packet, ChapterContextPacketInput, NeighborContext,\n};\nuse memory_engine::{\n    build_memory_context, ContextPacketConfig, MemoryContextConfig, TranslationMemory,\n};''',
+              '''use literary_intelligence_engine::{\n    build_chapter_context_packet_with_semantic, ChapterContextPacketInput, NeighborContext,\n};\nuse memory_engine::{ContextPacketConfig, SemanticSidecar, TranslationMemory};'''
+          )
+          regex_once(
+              app,
+              r'''\n#\[allow\(clippy::too_many_arguments\)\]\nfn chapter_context\(.*?\n}\n\nfn terminology_rules''',
+              '''\nfn terminology_rules'''
+          )
+          replace_once(
+              app,
+              '''// ---------------------------------------------------------------------------\n// Context assembly (mirrors the CLI chapter context so CLI and app behave\n// identically)\n// ---------------------------------------------------------------------------\n\nfn terminology_rules''',
+              '''// ---------------------------------------------------------------------------\n// Context assembly: both CLI and ApplicationService consume the same shared\n// Context Packet v2 builder. Semantic retrieval is explicitly opt-in.\n// ---------------------------------------------------------------------------\n\nfn configured_semantic_sidecar() -> Option<SemanticSidecar> {\n    std::env::var("LITERARY_ENGINE_SEMANTIC_RETRIEVAL_TOOL")\n        .ok()\n        .map(|value| value.trim().to_string())\n        .filter(|value| !value.is_empty())\n        .map(SemanticSidecar::new)\n}\n\nfn terminology_rules'''
+          )
+          replace_once(
+              app,
+              '''    let translation_memory = load_translation_memory()?;\n    let pipeline = TranslationPipeline::default_literary_pipeline();''',
+              '''    let translation_memory = load_translation_memory()?;\n    let semantic_sidecar = configured_semantic_sidecar();\n    let pipeline = TranslationPipeline::default_literary_pipeline();'''
+          )
+          replace_once(
+              app,
+              '''        let context_packet = build_chapter_context_packet(\n            ChapterContextPacketInput {\n                document_title: &manuscript.book.title,\n                chapter_id: &chapter.id,\n                chapter_title: &chapter.title,\n                source_text: &source_text,\n                previous,\n                next,\n                characters: &characters,\n                glossary: &glossary,\n                translation_memory: &translation_memory,\n                intelligence: &intelligence,\n                reviewed_literary_lines: &literary_lines,\n            },\n            &ContextPacketConfig::default(),\n        );\n        let context = context_packet.rendered_context.clone();''',
+              '''        let context_build = build_chapter_context_packet_with_semantic(\n            ChapterContextPacketInput {\n                document_title: &manuscript.book.title,\n                chapter_id: &chapter.id,\n                chapter_title: &chapter.title,\n                source_text: &source_text,\n                previous,\n                next,\n                characters: &characters,\n                glossary: &glossary,\n                translation_memory: &translation_memory,\n                intelligence: &intelligence,\n                reviewed_literary_lines: &literary_lines,\n            },\n            &ContextPacketConfig::default(),\n            semantic_sidecar.as_ref(),\n        );\n        if let Some(error) = &context_build.semantic.error {\n            let warning = format!(\n                "semantic retrieval for {} fell back to deterministic retrieval: {}",\n                chapter.title, error\n            );\n            if !progress.warnings.contains(&warning) {\n                progress.warnings.push(warning);\n            }\n        }\n        let context_packet = context_build.packet;\n        let context = context_packet.rendered_context.clone();'''
+          )
+          PY
+
+          mkdir -p tools/semantic-retrieval
+          cat > tools/semantic-retrieval/install.sh <<'SH'
+          #!/usr/bin/env bash
+          set -euo pipefail
+
+          script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+          repo_root="$(cd "$script_dir/../.." && pwd)"
+          tool_dir="${PERSIAN_TRANSLATOR_TOOL_DIR:-$repo_root/.tools/bin}"
+          build_dir="${PERSIAN_TRANSLATOR_BUILD_DIR:-$repo_root/.tools/build/semantic-retrieval}"
+          manifest="$script_dir/Cargo.toml"
+
+          mkdir -p "$tool_dir" "$build_dir"
+          cargo build \
+            --locked \
+            --release \
+            --manifest-path "$manifest" \
+            --features bge \
+            --target-dir "$build_dir"
+
+          cp "$build_dir/release/semantic-retrieval-tool" "$tool_dir/semantic-retrieval"
+          chmod +x "$tool_dir/semantic-retrieval"
+
+          cat <<EOF
+          Installed semantic retrieval tool:
+            $tool_dir/semantic-retrieval
+
+          No embedding/reranker model weights were downloaded by this installer.
+          To opt in for a translation run, set:
+            export LITERARY_ENGINE_SEMANTIC_RETRIEVAL_TOOL="$tool_dir/semantic-retrieval"
+
+          Model weights are fetched only when the semantic tool is actually invoked.
+          If the tool/model fails, the engine falls back to deterministic retrieval.
+          EOF
+          SH
+          chmod +x tools/semantic-retrieval/install.sh
+
+      - name: Format engine
+        working-directory: engine
+        run: cargo fmt --all
+
+      - name: Validate installer shell
+        run: bash -n tools/semantic-retrieval/install.sh
+
+      - name: Clippy affected engine crates
+        working-directory: engine
+        run: cargo clippy -p memory-engine -p literary-intelligence-engine -p project-engine -p literary-engine --all-targets -- -D warnings
+
+      - name: Test affected engine crates
+        working-directory: engine
+        run: cargo test -p memory-engine -p literary-intelligence-engine -p project-engine -p literary-engine
+
+      - name: Check BGE semantic tool
+        run: cargo check --locked --manifest-path tools/semantic-retrieval/Cargo.toml --features bge
+
+      - name: Commit validated integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add engine tools/semantic-retrieval/install.sh
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m 'feat: integrate optional semantic retrieval safely'
+          git push origin HEAD:phase-18-semantic-integration-safety
