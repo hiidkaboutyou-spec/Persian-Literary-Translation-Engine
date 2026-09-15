@@ -1,0 +1,114 @@
+name: Project Memory Tooling
+
+on:
+  push:
+    paths:
+      - 'tools/projectmem/**'
+      - 'docs/PROJECT_MEMORY_INTEGRATIONS.md'
+      - 'docs/PMC_BOOTSTRAP.md'
+      - 'AGENTS.md'
+      - '.gitignore'
+      - '.github/workflows/project-memory-tooling.yml'
+  pull_request:
+    paths:
+      - 'tools/projectmem/**'
+      - 'docs/PROJECT_MEMORY_INTEGRATIONS.md'
+      - 'docs/PMC_BOOTSTRAP.md'
+      - 'AGENTS.md'
+      - '.gitignore'
+      - '.github/workflows/project-memory-tooling.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: project-memory-tooling-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Syntax-check integration scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n tools/projectmem/install.sh
+          bash -n tools/projectmem/init-safe.sh
+          bash -n tools/projectmem/print-codex-config.sh
+
+      - name: Install pinned projectmem
+        shell: bash
+        run: bash tools/projectmem/install.sh
+
+      - name: Verify selected package version
+        shell: bash
+        run: |
+          set -euo pipefail
+          .venv/projectmem/bin/python - <<'PY'
+          from importlib.metadata import version
+          assert version('projectmem') == '0.3.3'
+          PY
+
+      - name: Audit Python dependency graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'pip-audit==2.10.1' >/dev/null
+          python -m pip_audit -r tools/projectmem/requirements.txt
+
+      - name: Safe-init smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          export HOME="${RUNNER_TEMP}/projectmem-home"
+          mkdir -p "${HOME}"
+          SMOKE="${RUNNER_TEMP}/projectmem-smoke"
+          mkdir -p "${SMOKE}"
+          cd "${SMOKE}"
+          git init -q
+          printf '# projectmem smoke\n' > README.md
+          printf 'existing=true\n' > existing.txt
+
+          find .git/hooks -maxdepth 1 -type f -print0 | sort -z | xargs -0 -r sha256sum > "${RUNNER_TEMP}/hooks.before"
+
+          bash "${GITHUB_WORKSPACE}/tools/projectmem/init-safe.sh" "${SMOKE}"
+
+          test -f .projectmem/config.toml
+          test -f .projectmem/summary.md
+          test -f .projectmem/PROJECT_MAP.md
+          test -f .projectmem/AI_INSTRUCTIONS.md
+          test -f .projectmem/plan.md
+          test ! -e AGENTS.md
+          test ! -e CLAUDE.md
+          test ! -e .projectmem/watch.pid
+          test ! -e .projectmem/watch.log
+          test "$(cat existing.txt)" = 'existing=true'
+
+          find .git/hooks -maxdepth 1 -type f -print0 | sort -z | xargs -0 -r sha256sum > "${RUNNER_TEMP}/hooks.after"
+          diff -u "${RUNNER_TEMP}/hooks.before" "${RUNNER_TEMP}/hooks.after"
+
+          grep -Fx '.projectmem/events.jsonl' .gitignore
+          grep -Fx '.projectmem/watch.pid' .gitignore
+          grep -Fx '.projectmem/watch.log' .gitignore
+          grep -Fx '.projectmem/structure.json' .gitignore
+
+          "${GITHUB_WORKSPACE}/.venv/projectmem/bin/pjm" show >/dev/null
+
+      - name: Codex config helper smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          output="$(bash tools/projectmem/print-codex-config.sh)"
+          grep -F '[mcp_servers.projectmem]' <<<"${output}"
+          grep -F 'args = ["-m", "projectmem.mcp_server"]' <<<"${output}"
+          grep -F '/.venv/projectmem/bin/python' <<<"${output}"

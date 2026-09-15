@@ -27,7 +27,7 @@ This project is independent from every other repository. Do not import assumptio
 - Keep translation providers replaceable and provider-neutral; credential-free deterministic execution must remain available.
 - Treat glossary, character bible, relationship context, and translation memory as durable literary intelligence with stable, documented schemas.
 - Quality gates must report evidence and must not silently rewrite or accept degraded output.
-- Use Python only for document parsing, model-backed analysis/evaluation, or document tooling when a Rust solution is impractical. Keep every Python adapter isolated from the Rust domain model and orchestration.
+- Use Python only for document parsing, model-backed analysis/evaluation, document tooling, or isolated developer tooling when a Rust solution is impractical. Keep every Python adapter isolated from the Rust domain model and orchestration.
 - Preserve compatibility of persisted project memory, runtime manifests, CLI behavior, and published artifacts unless a migration path is included.
 - Human review remains an explicit stage; automation must not claim literary approval on a reviewer's behalf.
 - Heavy models and external tools must remain optional unless a numbered roadmap phase explicitly promotes them after benchmark, licensing, resource, privacy, and failure-mode review.
@@ -39,10 +39,13 @@ This project is independent from every other repository. Do not import assumptio
 - COMET/XCOMET/DocCOMET are optional external quality evidence only. Keep them behind the isolated `quality-engine::comet` process boundary; do not import PyTorch/COMET into the Rust runtime, auto-download models in default CI, or use a COMET score as human approval.
 - Lingua is approved only as optional English/Persian diagnostic evidence. Keep the crate exactly pinned as documented, disable its default all-language feature set, enable only English/Persian models, and keep `language-diagnostics` off by default. Lingua must not change deterministic quality results, rewrite text, reject intentional multilingual prose by itself, or act as human approval.
 - EPUBCheck is approved as an optional external publication validator. Do not vendor its distribution. Keep the installer version/checksum pinned, install only under ignored local tool storage, and keep absence of Java/EPUBCheck from breaking ingestion, translation, DOCX export, or existing runtime behavior.
+- `projectmem` 0.3.3 is approved only as optional **developer-side coding memory**, as documented in `docs/PROJECT_MEMORY_INTEGRATIONS.md`. It is not translation/runtime memory and must never be imported or invoked by production Rust paths. Use the repository's safe initialization profile: no Git hooks, no watcher, no history backfill, no global-memory inheritance, and no automatic `AGENTS.md`/`CLAUDE.md` edits. Its absence or failure must never block build, translation, review, or export.
+- PMC and projectmem have different ownership: PMC is the intended curated durable engineering knowledge vault; projectmem is operational issue/attempt/fix/decision history. Canonical repository docs remain authoritative when either local tool is unavailable. Never put manuscripts, generated book translations, credentials, or private reviewer material in projectmem.
 - ContextWeaver is an architecture reference, not a dependency. Stable IDs, bounded selective context, resume fingerprints, review history, and canon ownership stay native to this repository unless a future gap analysis proves otherwise.
 - Do not copy code from `TranslateBooksWithLLMs`; selective glossary injection is already native in `memory-engine`, and any licensing change must be deliberate.
 - TransAgents may inform agent-role separation but is not a runtime dependency. Provider/model judgments remain separate from deterministic quality checks and human review.
 - FlagEmbedding/BGE-M3, Hazm, DadmaTools, Vecalign, and SacreBLEU are researched phase-scoped candidates, not blanket-approved dependencies. Follow `docs/EXTERNAL_INTEGRATIONS.md` and the roadmap; do not install them merely because they are useful in isolation.
+- Serena, Global Agent Memory, MemoryWiki, and automatic chat-history memory systems are project-memory research references only unless a new gap analysis changes that decision. Do not install multiple overlapping memory systems by default.
 
 ## Coding standards
 
@@ -79,14 +82,17 @@ cargo test -p quality-engine --features language-diagnostics
 
 The normal workspace build must still pass with the feature disabled. For EPUBCheck wrapper changes, syntax-check both scripts without downloading the distribution in default CI. A real publication-validation smoke test should use a project-owned EPUB fixture or generated output.
 
+For projectmem integration changes, run the dedicated `Project Memory Tooling` workflow. Its smoke test must confirm the selected package version and prove that safe initialization does not create/alter Git hooks, create `AGENTS.md`/`CLAUDE.md`, or start watcher state. Do not make normal Rust CI depend on projectmem.
+
 ## Forbidden actions
 
 - Do not replace literary translation with unreviewed word-for-word or generic machine translation.
 - Do not bypass deterministic quality gates or mark automated output as human-approved.
 - Do not silently discard glossary, character, relationship, or translation-memory decisions.
 - Do not introduce Python into the core runtime when Rust can reasonably implement the requirement.
-- Do not turn optional ML models or external validators into hidden runtime requirements.
+- Do not turn optional ML models, external validators, or developer-memory tools into hidden runtime requirements.
 - Do not commit manuscripts, generated translations, credentials, private review material, downloaded model checkpoints, or downloaded EPUBCheck binaries.
+- Do not put manuscript/translation content into PMC or projectmem as a substitute for native runtime memory.
 - Do not break CLI, persistence, manifest, or publishing contracts without migration and documentation.
 - Do not force-push shared branches, bypass failing CI/security checks, or mix this repository with another product.
 

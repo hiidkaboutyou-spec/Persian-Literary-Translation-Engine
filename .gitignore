@@ -5,6 +5,10 @@ __pycache__/
 *.pyc
 .DS_Store
 .tools/
+.projectmem/events.jsonl
+.projectmem/watch.pid
+.projectmem/watch.log
+.projectmem/structure.json
 output/
 target/
 projects/*/output/
