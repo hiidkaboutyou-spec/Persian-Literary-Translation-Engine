@@ -8,7 +8,7 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use zip::write::SimpleFileOptions;
-use zip::ZipWriter;
+use zip::{CompressionMethod, ZipWriter};
 
 fn zip_file(path: &Path, entries: &[(&str, &str)]) {
     let mut archive = ZipWriter::new(File::create(path).unwrap());
@@ -16,6 +16,20 @@ fn zip_file(path: &Path, entries: &[(&str, &str)]) {
         archive
             .start_file(*name, SimpleFileOptions::default())
             .unwrap();
+        archive.write_all(content.as_bytes()).unwrap();
+    }
+    archive.finish().unwrap();
+}
+
+fn epub_file(path: &Path, entries: &[(&str, &str)]) {
+    let mut archive = ZipWriter::new(File::create(path).unwrap());
+    let stored = SimpleFileOptions::default().compression_method(CompressionMethod::Stored);
+    let deflated = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
+
+    archive.start_file("mimetype", stored).unwrap();
+    archive.write_all(b"application/epub+zip").unwrap();
+    for (name, content) in entries {
+        archive.start_file(*name, deflated).unwrap();
         archive.write_all(content.as_bytes()).unwrap();
     }
     archive.finish().unwrap();
@@ -62,24 +76,47 @@ fn imports_markdown_metadata_and_scenes() {
 fn imports_epub_spine_metadata_and_resource_locations() {
     let directory = tempfile::tempdir().unwrap();
     let path = directory.path().join("novel.epub");
-    zip_file(
+    epub_file(
         &path,
         &[
             (
                 "META-INF/container.xml",
-                r#"<container><rootfiles><rootfile full-path="OEBPS/content.opf"/></rootfiles></container>"#,
+                r#"<?xml version="1.0" encoding="UTF-8"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+  <rootfiles>
+    <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
+  </rootfiles>
+</container>"#,
             ),
             (
                 "OEBPS/content.opf",
-                r#"<package><metadata><dc:title>Moon Book</dc:title><dc:creator>M. Author</dc:creator><dc:language>en</dc:language></metadata><manifest><item id="c1" href="one.xhtml"/><item id="c2" href="two.xhtml"/></manifest><spine><itemref idref="c1"/><itemref idref="c2"/></spine></package>"#,
+                r#"<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" unique-identifier="bookid" version="3.0">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:identifier id="bookid">moon-book</dc:identifier>
+    <dc:title>Moon Book</dc:title>
+    <dc:creator>M. Author</dc:creator>
+    <dc:language>en</dc:language>
+  </metadata>
+  <manifest>
+    <item id="c1" href="one.xhtml" media-type="application/xhtml+xml"/>
+    <item id="c2" href="two.xhtml" media-type="application/xhtml+xml"/>
+  </manifest>
+  <spine>
+    <itemref idref="c1"/>
+    <itemref idref="c2"/>
+  </spine>
+</package>"#,
             ),
             (
                 "OEBPS/one.xhtml",
-                "<html><body><h1>Chapter 1</h1><p>Opening paragraph.</p></body></html>",
+                r#"<?xml version="1.0" encoding="utf-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Chapter 1</title></head><body><h1>Chapter 1</h1><p>Opening paragraph.</p></body></html>"#,
             ),
             (
                 "OEBPS/two.xhtml",
-                "<html><body><h1>Chapter 2</h1><p>Closing paragraph.</p></body></html>",
+                r#"<?xml version="1.0" encoding="utf-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Chapter 2</title></head><body><h1>Chapter 2</h1><p>Closing paragraph.</p></body></html>"#,
             ),
         ],
     );

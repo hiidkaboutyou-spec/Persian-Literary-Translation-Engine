@@ -4,10 +4,12 @@ on:
   push:
     paths:
       - 'engine/**'
+      - 'tools/comet-evaluator/**'
       - '.github/workflows/rust-ci.yml'
   pull_request:
     paths:
       - 'engine/**'
+      - 'tools/comet-evaluator/**'
       - '.github/workflows/rust-ci.yml'
 
 permissions:
@@ -33,11 +35,28 @@ jobs:
         with:
           components: rustfmt, clippy
 
+      - name: Lockfile is current
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo generate-lockfile
+          git diff --exit-code -- Cargo.lock
+
       - name: Format check
         run: cargo fmt --all -- --check
 
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Check document-engine compatibility path
+        run: cargo check -p document-engine --no-default-features
+
+      - name: Check COMET sidecar scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile ../tools/comet-evaluator/evaluate.py
+          bash -n ../tools/comet-evaluator/install.sh
 
       - name: Test workspace
         run: cargo test --workspace

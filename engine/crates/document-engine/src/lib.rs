@@ -120,7 +120,26 @@ pub fn load_file(path: impl AsRef<Path>) -> Result<Document, DocumentError> {
 }
 
 pub fn ingest_file(path: impl AsRef<Path>) -> Result<Manuscript, DocumentError> {
-    DocumentIngestor::default().ingest(path)
+    let path = path.as_ref();
+    let result = DocumentIngestor::default().ingest(path);
+
+    // BookForge deliberately reports hostile/decompression preflight failures as
+    // InvalidInput. At this public boundary those inputs are corrupted archives,
+    // not merely well-formed EPUBs with invalid book structure. Preserve the
+    // document-engine error contract while keeping BookForge's stricter checks.
+    #[cfg(feature = "bookforge-epub")]
+    if path.extension().and_then(|value| value.to_str()) == Some("epub") {
+        return match result {
+            Err(DocumentError::InvalidStructure(message))
+                if message.contains("EPUB decompression ") =>
+            {
+                Err(DocumentError::CorruptedFile(message))
+            }
+            other => other,
+        };
+    }
+
+    result
 }
 
 #[cfg(test)]

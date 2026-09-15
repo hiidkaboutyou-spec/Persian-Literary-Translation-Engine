@@ -31,6 +31,15 @@ This project is independent from every other repository. Do not import assumptio
 - Preserve compatibility of persisted project memory, runtime manifests, CLI behavior, and published artifacts unless a migration path is included.
 - Human review remains an explicit stage; automation must not claim literary approval on a reviewer's behalf.
 
+## Approved external integrations
+
+- BookForge is the approved structured EPUB boundary. Keep `bookforge-core` and `bookforge-epub` revision-pinned as documented in `docs/EXTERNAL_INTEGRATIONS.md`; map their IR into native `document-engine` types and never persist BookForge types in project schemas.
+- When the BookForge feature is enabled, a BookForge EPUB validation/parsing failure is actionable and must not silently fall back to the legacy parser. The legacy path exists only for explicit builds without the feature.
+- COMET/XCOMET/DocCOMET are optional external quality evidence only. Keep them behind the isolated `quality-engine::comet` process boundary; do not import PyTorch/COMET into the Rust runtime, auto-download models in default CI, or use a COMET score as human approval.
+- ContextWeaver is an architecture reference, not a dependency. Stable IDs, bounded selective context, resume fingerprints, review history, and canon ownership stay native to this repository unless a future gap analysis proves otherwise.
+- Do not copy code from `TranslateBooksWithLLMs`; selective glossary injection is already native in `memory-engine`, and any licensing change must be deliberate.
+- TransAgents may inform agent-role separation but is not a runtime dependency. Provider/model judgments remain separate from deterministic quality checks and human review.
+
 ## Coding standards
 
 - Follow idiomatic stable Rust and the module patterns already present in `engine/`.
@@ -56,6 +65,8 @@ cargo run --quiet -p literary-engine -- --version
 
 For pipeline changes, also run a credential-free `EchoProvider` smoke test through ingestion, translation, quality gate, artifact generation, and `manuscript.docx` export. Run `cargo audit` when dependencies change. Test each affected document format and verify Persian RTL output when parsing or publishing code changes. Real provider tests require explicit credentials and must never expose manuscript content or secrets.
 
+For BookForge changes, exercise EPUB ingestion with the default feature and verify an explicit `--no-default-features` document-engine build where practical. For COMET changes, test the JSON protocol without downloading a model in default CI; a real model smoke test requires explicit local setup and any model-specific license/authentication approval.
+
 ## Forbidden actions
 
 - Do not replace literary translation with unreviewed word-for-word or generic machine translation.
@@ -72,6 +83,6 @@ For pipeline changes, also run a credential-free `EchoProvider` smoke test throu
 2. Make the smallest coherent change on a focused branch.
 3. Add tests for behavior, literary-decision consistency, and regressions.
 4. Run formatting, Clippy, tests, build, and task-specific smoke checks; fix failures.
-5. Review the diff for secret/manuscript exposure, persistence compatibility, provider coupling, and quality-gate regressions.
+5. Review the diff for secret/manuscript exposure, persistence compatibility, provider coupling, external-dependency provenance, and quality-gate regressions.
 6. Open a concise pull request describing behavior, contracts, and validation.
 7. Merge only after required CI and security checks pass and the change is safe; otherwise record the blocker and leave the pull request open.
