@@ -224,11 +224,17 @@ impl fmt::Display for ReviewProviderError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidRequest(message) => write!(formatter, "invalid review request: {message}"),
-            Self::Authentication(message) => write!(formatter, "review provider auth error: {message}"),
-            Self::Unavailable(message) => write!(formatter, "review provider unavailable: {message}"),
+            Self::Authentication(message) => {
+                write!(formatter, "review provider auth error: {message}")
+            }
+            Self::Unavailable(message) => {
+                write!(formatter, "review provider unavailable: {message}")
+            }
             Self::RateLimited => write!(formatter, "review provider rate limited"),
             Self::Failed(message) => write!(formatter, "review provider failed: {message}"),
-            Self::ParseError(message) => write!(formatter, "review provider parse error: {message}"),
+            Self::ParseError(message) => {
+                write!(formatter, "review provider parse error: {message}")
+            }
             Self::SchemaViolation(message) => {
                 write!(formatter, "review provider schema violation: {message}")
             }
@@ -320,7 +326,9 @@ impl OpenAIReviewProvider {
         let api_key = api_key.into();
         let model = model.into();
         if api_key.trim().is_empty() {
-            return Err(ReviewProviderError::InvalidRequest("API key is empty".into()));
+            return Err(ReviewProviderError::InvalidRequest(
+                "API key is empty".into(),
+            ));
         }
         if model.trim().is_empty() {
             return Err(ReviewProviderError::InvalidRequest("model is empty".into()));
@@ -582,7 +590,8 @@ pub fn attach_provider_review(report: &mut LiteraryReviewReport, result: &Review
             finding.source_indices.iter().copied(),
             finding.target_indices.iter().copied(),
         );
-        if !finding.revision_rationale.trim().is_empty() || !finding.suggested_text.trim().is_empty()
+        if !finding.revision_rationale.trim().is_empty()
+            || !finding.suggested_text.trim().is_empty()
         {
             review_finding.revision_proposal = Some(RevisionProposal {
                 rationale: finding.revision_rationale.clone(),
@@ -688,7 +697,16 @@ mod tests {
                 suggested_text: String::new(),
             }],
         });
-        let result = provider.review(&request()).unwrap_err();
+        let restricted_request = ReviewProviderRequest::from_text(
+            "chapter-1",
+            "He laughed.\n\nShe did not answer.",
+            "خندید.\n\nاو جوابی نداد.",
+            "",
+            vec![ReviewDimension::SemanticFidelity],
+            ReviewRequestLimits::default(),
+        )
+        .unwrap();
+        let result = provider.review(&restricted_request).unwrap_err();
         assert!(matches!(result, ReviewProviderError::SchemaViolation(_)));
 
         let naturalness_request = ReviewProviderRequest::from_text(
@@ -724,6 +742,9 @@ mod tests {
         })
         .to_string();
         let parsed = OpenAIReviewProvider::parse_response_body(&body).unwrap();
-        assert_eq!(parsed.evaluated_dimensions, vec![ReviewDimension::SemanticFidelity]);
+        assert_eq!(
+            parsed.evaluated_dimensions,
+            vec![ReviewDimension::SemanticFidelity]
+        );
     }
 }

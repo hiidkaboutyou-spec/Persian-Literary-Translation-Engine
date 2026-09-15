@@ -111,7 +111,9 @@ pub enum AlignmentSidecarError {
 impl fmt::Display for AlignmentSidecarError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InvalidRequest(message) => write!(formatter, "invalid alignment request: {message}"),
+            Self::InvalidRequest(message) => {
+                write!(formatter, "invalid alignment request: {message}")
+            }
             Self::Io(error) => write!(formatter, "alignment tool I/O error: {error}"),
             Self::Timeout { timeout_ms } => {
                 write!(formatter, "alignment tool timed out after {timeout_ms} ms")

@@ -3,9 +3,7 @@ use std::fmt;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    EvidenceSource, LiteraryReviewReport, ReviewDimension, ReviewFinding, ReviewSeverity,
-};
+use crate::{EvidenceSource, LiteraryReviewReport, ReviewDimension, ReviewFinding, ReviewSeverity};
 
 pub const ALIGNMENT_SCHEMA_VERSION: u32 = 1;
 
@@ -84,9 +82,16 @@ pub struct AlignmentResult {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AlignmentError {
     InvalidInput(String),
-    MissingSpan { side: &'static str, start: usize, len: usize },
+    MissingSpan {
+        side: &'static str,
+        start: usize,
+        len: usize,
+    },
     NoPath,
-    UnitMismatch { report: String, alignment: String },
+    UnitMismatch {
+        report: String,
+        alignment: String,
+    },
 }
 
 impl fmt::Display for AlignmentError {
@@ -94,7 +99,10 @@ impl fmt::Display for AlignmentError {
         match self {
             Self::InvalidInput(message) => write!(formatter, "invalid alignment input: {message}"),
             Self::MissingSpan { side, start, len } => {
-                write!(formatter, "missing {side} embedding span start={start} len={len}")
+                write!(
+                    formatter,
+                    "missing {side} embedding span start={start} len={len}"
+                )
             }
             Self::NoPath => write!(formatter, "semantic alignment produced no monotonic path"),
             Self::UnitMismatch { report, alignment } => write!(
@@ -143,8 +151,18 @@ pub fn align_embeddings(input: &AlignmentInput) -> Result<AlignmentResult, Align
     let dimension = validate_input(input)?;
     let source = span_map(&input.source_spans);
     let target = span_map(&input.target_spans);
-    require_span_coverage("source", input.source_count, input.config.max_block_size, &source)?;
-    require_span_coverage("target", input.target_count, input.config.max_block_size, &target)?;
+    require_span_coverage(
+        "source",
+        input.source_count,
+        input.config.max_block_size,
+        &source,
+    )?;
+    require_span_coverage(
+        "target",
+        input.target_count,
+        input.config.max_block_size,
+        &target,
+    )?;
 
     let width = input.target_count + 1;
     let mut cells = vec![Cell::default(); (input.source_count + 1) * width];
@@ -200,20 +218,22 @@ pub fn align_embeddings(input: &AlignmentInput) -> Result<AlignmentResult, Align
             let max_target_take = input.config.max_block_size.min(input.target_count - j);
             for source_take in 1..=max_source_take {
                 for target_take in 1..=max_target_take {
-                    let source_embedding = source
-                        .get(&(i, source_take))
-                        .ok_or(AlignmentError::MissingSpan {
-                            side: "source",
-                            start: i,
-                            len: source_take,
-                        })?;
-                    let target_embedding = target
-                        .get(&(j, target_take))
-                        .ok_or(AlignmentError::MissingSpan {
-                            side: "target",
-                            start: j,
-                            len: target_take,
-                        })?;
+                    let source_embedding =
+                        source
+                            .get(&(i, source_take))
+                            .ok_or(AlignmentError::MissingSpan {
+                                side: "source",
+                                start: i,
+                                len: source_take,
+                            })?;
+                    let target_embedding =
+                        target
+                            .get(&(j, target_take))
+                            .ok_or(AlignmentError::MissingSpan {
+                                side: "target",
+                                start: j,
+                                len: target_take,
+                            })?;
                     debug_assert_eq!(source_embedding.len(), dimension);
                     debug_assert_eq!(target_embedding.len(), dimension);
                     let similarity = cosine_similarity(source_embedding, target_embedding);
@@ -366,7 +386,9 @@ fn validate_input(input: &AlignmentInput) -> Result<usize, AlignmentError> {
         return Err(AlignmentError::InvalidInput("unit_id is empty".into()));
     }
     if input.embedding_model.trim().is_empty() {
-        return Err(AlignmentError::InvalidInput("embedding_model is empty".into()));
+        return Err(AlignmentError::InvalidInput(
+            "embedding_model is empty".into(),
+        ));
     }
     if input.source_count > input.config.max_segments
         || input.target_count > input.config.max_segments
@@ -405,7 +427,11 @@ fn validate_input(input: &AlignmentInput) -> Result<usize, AlignmentError> {
                     span.len
                 )));
             }
-            if span.start.checked_add(span.len).is_none_or(|end| end > count) {
+            if span
+                .start
+                .checked_add(span.len)
+                .is_none_or(|end| end > count)
+            {
                 return Err(AlignmentError::InvalidInput(format!(
                     "{side} span start={} len={} exceeds segment count {count}",
                     span.start, span.len
@@ -508,7 +534,10 @@ fn merge_adjacent_gaps(blocks: Vec<AlignmentBlock>) -> Vec<AlignmentBlock> {
     for block in blocks {
         if let Some(previous) = merged.last_mut() {
             if previous.kind == block.kind
-                && matches!(block.kind, AlignmentKind::SourceOnly | AlignmentKind::TargetOnly)
+                && matches!(
+                    block.kind,
+                    AlignmentKind::SourceOnly | AlignmentKind::TargetOnly
+                )
             {
                 previous.source_indices.extend(block.source_indices);
                 previous.target_indices.extend(block.target_indices);
