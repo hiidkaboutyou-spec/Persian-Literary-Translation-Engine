@@ -73,7 +73,7 @@ pub fn load_epub_file(path: impl AsRef<Path>) -> Result<Document, DocumentError>
 pub(crate) fn parse_epub(path: &Path) -> Result<ParsedDocument, DocumentError> {
     #[cfg(feature = "bookforge-epub")]
     {
-        return parse_epub_bookforge(path);
+        parse_epub_bookforge(path)
     }
 
     #[cfg(not(feature = "bookforge-epub"))]
