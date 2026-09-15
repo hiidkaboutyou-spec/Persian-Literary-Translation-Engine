@@ -54,9 +54,7 @@ pub fn diagnose_persian_output(text: &str) -> LanguageDiagnostics {
     }
 
     let detector = detector();
-    let dominant_language = detector
-        .detect_language_of(text)
-        .and_then(map_language);
+    let dominant_language = detector.detect_language_of(text).and_then(map_language);
     let persian_confidence = detector.compute_language_confidence(text, Persian);
     let english_confidence = detector.compute_language_confidence(text, English);
 
