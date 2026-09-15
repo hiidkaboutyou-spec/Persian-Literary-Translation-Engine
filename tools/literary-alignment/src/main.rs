@@ -1,11 +1,11 @@
-use std::env;
 use std::error::Error;
 use std::io::{self, Read};
-use std::path::PathBuf;
+#[cfg(any(feature = "bge", test))]
+use std::{env, path::PathBuf};
 
-use literary_review_engine::{
-    align_embeddings, AlignmentConfig, AlignmentInput, EmbeddedSpan, ALIGNMENT_SCHEMA_VERSION,
-};
+use literary_review_engine::{AlignmentConfig, ALIGNMENT_SCHEMA_VERSION};
+#[cfg(feature = "bge")]
+use literary_review_engine::{align_embeddings, AlignmentInput, EmbeddedSpan};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -18,12 +18,14 @@ struct AlignmentToolRequest {
     config: AlignmentConfig,
 }
 
+#[cfg(any(feature = "bge", test))]
 #[derive(Debug, Clone, Copy)]
 enum Side {
     Source,
     Target,
 }
 
+#[cfg(any(feature = "bge", test))]
 #[derive(Debug, Clone)]
 struct SpanSpec {
     side: Side,
@@ -103,6 +105,7 @@ fn validate_request(request: &AlignmentToolRequest) -> Result<(), Box<dyn Error>
     Ok(())
 }
 
+#[cfg(any(feature = "bge", test))]
 fn span_specs(segments: &[String], side: Side, max_block_size: usize) -> Vec<SpanSpec> {
     let mut spans = Vec::new();
     for start in 0..segments.len() {
@@ -118,6 +121,7 @@ fn span_specs(segments: &[String], side: Side, max_block_size: usize) -> Vec<Spa
     spans
 }
 
+#[cfg(any(feature = "bge", test))]
 fn model_cache_dir() -> PathBuf {
     env::var_os("PERSIAN_TRANSLATOR_MODEL_CACHE")
         .map(PathBuf::from)
@@ -226,10 +230,12 @@ mod tests {
             request.config.max_block_size,
         );
         assert_eq!(spans.len(), 3);
+        assert!(matches!(spans[0].side, Side::Source));
         assert_eq!(spans[0].start, 0);
         assert_eq!(spans[0].len, 1);
         assert_eq!(spans[1].start, 0);
         assert_eq!(spans[1].len, 2);
+        assert_eq!(spans[1].text, "He laughed.\nShe left.");
         assert_eq!(spans[2].start, 1);
         assert_eq!(spans[2].len, 1);
     }
