@@ -5,6 +5,7 @@ members = [
   "crates/memory-engine",
   "crates/character-engine",
   "crates/quality-engine",
+  "crates/literary-review-engine",
   "crates/document-engine",
   "crates/project-engine",
   "crates/literary-intelligence-engine",
