@@ -117,7 +117,10 @@ fn literary_review_is_non_mutating_persisted_and_staleness_aware() {
     let stale = service
         .get_literary_review(&project, 0)
         .expect("old artifact should remain readable after an edit");
-    assert!(stale.stale, "manual edits must invalidate old review evidence");
+    assert!(
+        stale.stale,
+        "manual edits must invalidate old review evidence"
+    );
 }
 
 #[test]
@@ -141,7 +144,10 @@ fn mock_provider_evidence_is_recorded_without_becoming_human_approval() {
     assert_eq!(summary.reviewed_chapters, 1);
     assert_eq!(summary.provider_failures, 0);
     let artifact = service.get_literary_review(&project, 0).unwrap();
-    assert_eq!(artifact.artifact.provider_review.state, EvidenceRunState::Completed);
+    assert_eq!(
+        artifact.artifact.provider_review.state,
+        EvidenceRunState::Completed
+    );
     assert!(!artifact.stale);
     assert_eq!(service.snapshot(&project).unwrap().review, review_before);
 }
