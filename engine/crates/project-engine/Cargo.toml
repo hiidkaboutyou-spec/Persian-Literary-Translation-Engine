@@ -12,6 +12,7 @@ character-engine = { path = "../character-engine" }
 document-engine = { path = "../document-engine" }
 human-review-workflow = { path = "../human-review-workflow" }
 literary-intelligence-engine = { path = "../literary-intelligence-engine" }
+literary-review-engine = { path = "../literary-review-engine" }
 memory-engine = { path = "../memory-engine" }
 quality-engine = { path = "../quality-engine" }
 translation-core = { path = "../translation-core" }
