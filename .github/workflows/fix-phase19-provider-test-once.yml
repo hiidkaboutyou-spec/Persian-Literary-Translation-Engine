@@ -1,0 +1,99 @@
+name: Fix Phase 19 Provider Test Once
+
+on:
+  push:
+    branches: [phase-19-literary-review-stack]
+    paths:
+      - '.github/workflows/fix-phase19-provider-test-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout Phase 19 branch
+        uses: actions/checkout@v7
+        with:
+          ref: phase-19-literary-review-stack
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Repair dimension-scope test
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('engine/crates/literary-review-engine/src/provider.rs')
+          text = path.read_text()
+          old = '''        let result = provider.review(&request()).unwrap_err();
+        assert!(matches!(result, ReviewProviderError::SchemaViolation(_)));
+
+        let naturalness_request = ReviewProviderRequest::from_text(
+'''
+          new = '''        let restricted_request = ReviewProviderRequest::from_text(
+            "chapter-1",
+            "He laughed.\\n\\nShe did not answer.",
+            "خندید.\\n\\nاو جوابی نداد.",
+            "",
+            vec![ReviewDimension::SemanticFidelity],
+            ReviewRequestLimits::default(),
+        )
+        .unwrap();
+        let result = provider.review(&restricted_request).unwrap_err();
+        assert!(matches!(result, ReviewProviderError::SchemaViolation(_)));
+
+        let naturalness_request = ReviewProviderRequest::from_text(
+'''
+          if old not in text:
+              raise SystemExit('expected provider test fragment not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+
+      - name: Format and sync lockfile
+        working-directory: engine
+        run: |
+          cargo fmt --all
+          cargo generate-lockfile
+
+      - name: Clippy review engine
+        working-directory: engine
+        run: cargo clippy -p literary-review-engine --all-targets -- -D warnings
+
+      - name: Test review engine offline
+        working-directory: engine
+        env:
+          OPENAI_API_KEY: ''
+        run: cargo test -p literary-review-engine
+
+      - name: Verify build is credential-free
+        working-directory: engine
+        env:
+          OPENAI_API_KEY: ''
+        run: cargo check -p literary-review-engine
+
+      - name: Audit Rust dependency graph
+        working-directory: engine
+        run: |
+          cargo install cargo-audit --locked
+          cargo audit
+
+      - name: Commit validated repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add engine/Cargo.lock engine/crates/literary-review-engine/src/provider.rs
+          if git diff --cached --quiet; then
+            echo 'No repair changes required.'
+            exit 0
+          fi
+          git commit -m 'test: enforce Phase 19 review dimension scoping'
+          git push origin HEAD:phase-19-literary-review-stack
