@@ -5,11 +5,13 @@ on:
     paths:
       - 'engine/**'
       - 'tools/comet-evaluator/**'
+      - 'tools/epubcheck-validator/**'
       - '.github/workflows/rust-ci.yml'
   pull_request:
     paths:
       - 'engine/**'
       - 'tools/comet-evaluator/**'
+      - 'tools/epubcheck-validator/**'
       - '.github/workflows/rust-ci.yml'
 
 permissions:
@@ -57,6 +59,16 @@ jobs:
           set -euo pipefail
           python3 -m py_compile ../tools/comet-evaluator/evaluate.py
           bash -n ../tools/comet-evaluator/install.sh
+
+      - name: Check optional language diagnostics
+        run: cargo test -p quality-engine --features language-diagnostics
+
+      - name: Check EPUBCheck wrapper scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n ../tools/epubcheck-validator/install.sh
+          bash -n ../tools/epubcheck-validator/validate.sh
 
       - name: Test workspace
         run: cargo test --workspace
