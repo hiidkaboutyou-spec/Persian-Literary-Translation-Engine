@@ -1,0 +1,78 @@
+name: Phase 18 Context and Semantic Retrieval
+
+on:
+  push:
+    paths:
+      - 'engine/crates/memory-engine/**'
+      - 'tools/semantic-retrieval/**'
+      - 'docs/PHASE_18_RESEARCH.md'
+      - 'docs/IMPLEMENTATION_ROADMAP.md'
+      - 'docs/IMPLEMENTATION_STATUS.md'
+      - 'docs/PMC_BOOTSTRAP.md'
+      - 'AGENTS.md'
+      - '.github/workflows/phase18-semantic-retrieval.yml'
+  pull_request:
+    paths:
+      - 'engine/crates/memory-engine/**'
+      - 'tools/semantic-retrieval/**'
+      - 'docs/PHASE_18_RESEARCH.md'
+      - 'docs/IMPLEMENTATION_ROADMAP.md'
+      - 'docs/IMPLEMENTATION_STATUS.md'
+      - 'docs/PMC_BOOTSTRAP.md'
+      - 'AGENTS.md'
+      - '.github/workflows/phase18-semantic-retrieval.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase18-retrieval-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-context:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Format
+        working-directory: engine
+        run: cargo fmt --all -- --check
+
+      - name: Clippy memory engine
+        working-directory: engine
+        run: cargo clippy -p memory-engine --all-targets -- -D warnings
+
+      - name: Test memory engine
+        working-directory: engine
+        run: cargo test -p memory-engine
+
+  semantic-tool:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Test protocol-only build
+        run: cargo test --manifest-path tools/semantic-retrieval/Cargo.toml --no-default-features
+
+      - name: Check pinned BGE integration
+        run: cargo check --manifest-path tools/semantic-retrieval/Cargo.toml --features bge
+
+      - name: Confirm no model weights were downloaded by compilation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -d .tools/models/fastembed
+          test ! -d .fastembed_cache
