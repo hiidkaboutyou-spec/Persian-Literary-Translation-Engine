@@ -227,7 +227,11 @@ pub fn manuscript_context_candidates(
         "recurring_motifs",
         &inferred.recurring_motifs,
     );
-    push_list(&mut inferred_lines, "humor_signals", &inferred.humor_signals);
+    push_list(
+        &mut inferred_lines,
+        "humor_signals",
+        &inferred.humor_signals,
+    );
     push_list(
         &mut inferred_lines,
         "sarcasm_signals",
@@ -269,7 +273,11 @@ pub fn manuscript_context_candidates(
             "important_named_entities",
             &chapter.important_named_entities,
         );
-        push_list(&mut chapter_lines, "recurring_terms", &chapter.recurring_terms);
+        push_list(
+            &mut chapter_lines,
+            "recurring_terms",
+            &chapter.recurring_terms,
+        );
         push_list(
             &mut chapter_lines,
             "continuity_hooks",

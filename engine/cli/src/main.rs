@@ -1,12 +1,13 @@
 use character_engine::CharacterBible;
 use document_engine::{export_persian_docx, ingest_file, Chapter};
 use literary_intelligence_engine::{
-    AnalysisCanon, DeterministicManuscriptAnalyzer, ManuscriptAnalyzer, ManuscriptIntelligence,
+    build_chapter_context_packet, AnalysisCanon, ChapterContextPacketInput,
+    DeterministicManuscriptAnalyzer, ManuscriptAnalyzer, ManuscriptIntelligence, NeighborContext,
 };
 use memory_engine::glossary::Glossary;
 use memory_engine::{
-    build_memory_context, load_glossary, load_translation_memory, MemoryContextConfig,
-    TranslationMemory,
+    build_memory_context, load_glossary, load_translation_memory, ContextPacketConfig,
+    MemoryContextConfig, TranslationMemory,
 };
 use quality_engine::{evaluate_translation, TerminologyRule};
 use serde::{Deserialize, Serialize};
@@ -590,15 +591,45 @@ fn run_pipeline(
             chapter.index + 1,
             chapter_literary_lines.len()
         ));
-        let context = chapter_context(
-            &document_title,
-            &chapter.title,
-            &source_text,
-            &runtime_memory,
-            intelligence.initialization.context_for_chapter(&chapter.id),
-            &chapter_literary_lines,
+        let previous = chapter.index.checked_sub(1).and_then(|index| {
+            chapters.get(index).map(|neighbor| NeighborContext {
+                id: &neighbor.id,
+                title: &neighbor.title,
+                text: &neighbor.content,
+            })
+        });
+        let next = chapters
+            .get(chapter.index.saturating_add(1))
+            .map(|neighbor| NeighborContext {
+                id: &neighbor.id,
+                title: &neighbor.title,
+                text: &neighbor.content,
+            });
+        let context_packet = build_chapter_context_packet(
+            ChapterContextPacketInput {
+                document_title: &document_title,
+                chapter_id: &chapter.id,
+                chapter_title: &chapter.title,
+                source_text: &source_text,
+                previous,
+                next,
+                characters: &runtime_memory.characters,
+                glossary: &runtime_memory.glossary,
+                translation_memory: &runtime_memory.translation,
+                intelligence: &intelligence,
+                reviewed_literary_lines: &chapter_literary_lines,
+            },
+            &ContextPacketConfig::default(),
         );
-        let context_fingerprint = source_fingerprint(&context);
+        manifest_text.push_str(&format!(
+            "chapter.{}.context_packet_items={}\nchapter.{}.context_packet_excluded={}\n",
+            chapter.index + 1,
+            context_packet.selected_count,
+            chapter.index + 1,
+            context_packet.excluded_count
+        ));
+        let context = context_packet.rendered_context.clone();
+        let context_fingerprint = context_packet.packet_fingerprint.clone();
 
         if resume {
             if let Some(existing) = resumable_translation(
