@@ -1,9 +1,11 @@
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::fmt;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::thread;
+use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
 
@@ -186,6 +188,7 @@ fn finite_nonnegative(value: f32) -> f32 {
 pub enum SemanticError {
     InvalidRequest(String),
     Io(std::io::Error),
+    Timeout { timeout_ms: u64 },
     SidecarFailed { status: Option<i32>, stderr: String },
     Protocol(String),
 }
@@ -197,6 +200,10 @@ impl fmt::Display for SemanticError {
                 write!(formatter, "invalid semantic request: {message}")
             }
             Self::Io(error) => write!(formatter, "semantic sidecar I/O error: {error}"),
+            Self::Timeout { timeout_ms } => write!(
+                formatter,
+                "semantic sidecar timed out after {timeout_ms} ms"
+            ),
             Self::SidecarFailed { status, stderr } => write!(
                 formatter,
                 "semantic sidecar failed with status {:?}: {}",
@@ -222,6 +229,7 @@ impl From<std::io::Error> for SemanticError {
 pub struct SemanticSidecar {
     executable: PathBuf,
     max_candidates: usize,
+    timeout: Duration,
 }
 
 impl SemanticSidecar {
@@ -229,11 +237,17 @@ impl SemanticSidecar {
         Self {
             executable: executable.into(),
             max_candidates: 512,
+            timeout: Duration::from_secs(180),
         }
     }
 
     pub fn with_max_candidates(mut self, max_candidates: usize) -> Self {
         self.max_candidates = max_candidates.max(1);
+        self
+    }
+
+    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = timeout.max(Duration::from_millis(1));
         self
     }
 
@@ -254,21 +268,45 @@ impl SemanticSidecar {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()?;
-        child
+        let mut stdin = child
             .stdin
-            .as_mut()
-            .ok_or_else(|| SemanticError::Protocol("sidecar stdin was not available".into()))?
-            .write_all(&payload)?;
+            .take()
+            .ok_or_else(|| SemanticError::Protocol("sidecar stdin was not available".into()))?;
+        stdin.write_all(&payload)?;
+        drop(stdin);
 
-        let output = child.wait_with_output()?;
-        if !output.status.success() {
+        let started = Instant::now();
+        let status = loop {
+            if let Some(status) = child.try_wait()? {
+                break status;
+            }
+            if started.elapsed() >= self.timeout {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(SemanticError::Timeout {
+                    timeout_ms: self.timeout.as_millis().min(u128::from(u64::MAX)) as u64,
+                });
+            }
+            thread::sleep(Duration::from_millis(25));
+        };
+
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+        if let Some(mut pipe) = child.stdout.take() {
+            pipe.read_to_end(&mut stdout)?;
+        }
+        if let Some(mut pipe) = child.stderr.take() {
+            pipe.read_to_end(&mut stderr)?;
+        }
+
+        if !status.success() {
             return Err(SemanticError::SidecarFailed {
-                status: output.status.code(),
-                stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
+                status: status.code(),
+                stderr: String::from_utf8_lossy(&stderr).into_owned(),
             });
         }
 
-        let response: SemanticRerankResponse = serde_json::from_slice(&output.stdout)
+        let response: SemanticRerankResponse = serde_json::from_slice(&stdout)
             .map_err(|error| SemanticError::Protocol(format!("invalid JSON response: {error}")))?;
         validate_response(request, &response)?;
         Ok(response)
@@ -378,6 +416,36 @@ fn validate_response(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(unix)]
+    #[test]
+    fn sidecar_timeout_is_bounded() {
+        use std::fs;
+        use std::os::unix::fs::PermissionsExt;
+
+        let script = std::env::temp_dir().join(format!(
+            "literary-engine-semantic-timeout-{}-{}",
+            std::process::id(),
+            std::thread::current().name().unwrap_or("test")
+        ));
+        fs::write(&script, "#!/bin/sh\nsleep 5\n").unwrap();
+        let mut permissions = fs::metadata(&script).unwrap().permissions();
+        permissions.set_mode(0o700);
+        fs::set_permissions(&script, permissions).unwrap();
+
+        let request = SemanticRerankRequest::new(
+            "query",
+            vec![SemanticCandidate {
+                id: "known".into(),
+                text: "candidate".into(),
+            }],
+            1,
+        );
+        let sidecar = SemanticSidecar::new(&script).with_timeout(Duration::from_millis(50));
+        let result = sidecar.rerank(&request);
+        let _ = fs::remove_file(&script);
+        assert!(matches!(result, Err(SemanticError::Timeout { .. })));
+    }
 
     #[test]
     fn request_protocol_round_trips() {
