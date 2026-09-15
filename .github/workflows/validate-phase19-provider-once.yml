@@ -1,0 +1,65 @@
+name: Validate Phase 19 Provider Once
+
+on:
+  push:
+    branches: [phase-19-literary-review-stack]
+    paths:
+      - '.github/workflows/validate-phase19-provider-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout Phase 19 branch
+        uses: actions/checkout@v7
+        with:
+          ref: phase-19-literary-review-stack
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Format and sync lockfile
+        working-directory: engine
+        run: |
+          cargo fmt --all
+          cargo generate-lockfile
+
+      - name: Clippy review engine
+        working-directory: engine
+        run: cargo clippy -p literary-review-engine --all-targets -- -D warnings
+
+      - name: Test review engine offline
+        working-directory: engine
+        env:
+          OPENAI_API_KEY: ''
+        run: cargo test -p literary-review-engine
+
+      - name: Verify provider adapter never needs credentials for build/tests
+        working-directory: engine
+        run: cargo test -p literary-review-engine provider::tests -- --nocapture
+
+      - name: Audit Rust dependency graph
+        working-directory: engine
+        run: |
+          cargo install cargo-audit --locked
+          cargo audit
+
+      - name: Commit validated formatting and lockfile
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add engine/Cargo.lock engine/crates/literary-review-engine/src/lib.rs engine/crates/literary-review-engine/src/provider.rs
+          if git diff --cached --quiet; then
+            echo 'No generated changes required.'
+            exit 0
+          fi
+          git commit -m 'chore: validate Phase 19 provider review boundary'
+          git push origin HEAD:phase-19-literary-review-stack
