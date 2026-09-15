@@ -3,20 +3,11 @@ use std::io::{self, Read};
 #[cfg(any(feature = "bge", test))]
 use std::{env, path::PathBuf};
 
-use literary_review_engine::{AlignmentConfig, ALIGNMENT_SCHEMA_VERSION};
+use literary_review_engine::{AlignmentToolRequest, ALIGNMENT_SCHEMA_VERSION};
+#[cfg(any(feature = "bge", test))]
+use literary_review_engine::AlignmentConfig;
 #[cfg(feature = "bge")]
 use literary_review_engine::{align_embeddings, AlignmentInput, EmbeddedSpan};
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct AlignmentToolRequest {
-    schema_version: u32,
-    unit_id: String,
-    source_segments: Vec<String>,
-    target_segments: Vec<String>,
-    #[serde(default)]
-    config: AlignmentConfig,
-}
 
 #[cfg(any(feature = "bge", test))]
 #[derive(Debug, Clone, Copy)]
@@ -45,7 +36,7 @@ fn run() -> Result<(), Box<dyn Error>> {
     let mut input = String::new();
     io::stdin().read_to_string(&mut input)?;
     let request: AlignmentToolRequest = serde_json::from_str(&input)?;
-    validate_request(&request)?;
+    request.validate(500_000)?;
     run_request(request)
 }
 
@@ -60,49 +51,6 @@ fn run_request(request: AlignmentToolRequest) -> Result<(), Box<dyn Error>> {
 #[cfg(not(feature = "bge"))]
 fn run_request(_request: AlignmentToolRequest) -> Result<(), Box<dyn Error>> {
     Err("this binary was built without BGE embeddings; rebuild with `--features bge`".into())
-}
-
-fn validate_request(request: &AlignmentToolRequest) -> Result<(), Box<dyn Error>> {
-    if request.schema_version != ALIGNMENT_SCHEMA_VERSION {
-        return Err(format!(
-            "unsupported protocol version {}; expected {}",
-            request.schema_version, ALIGNMENT_SCHEMA_VERSION
-        )
-        .into());
-    }
-    if request.unit_id.trim().is_empty() {
-        return Err("unit_id must not be empty".into());
-    }
-    if request.source_segments.len() > request.config.max_segments
-        || request.target_segments.len() > request.config.max_segments
-    {
-        return Err(format!(
-            "segment count exceeds configured limit {}",
-            request.config.max_segments
-        )
-        .into());
-    }
-    if request.config.max_block_size == 0 || request.config.max_block_size > 8 {
-        return Err("max_block_size must be between 1 and 8".into());
-    }
-    if request
-        .source_segments
-        .iter()
-        .chain(&request.target_segments)
-        .any(|segment| segment.trim().is_empty())
-    {
-        return Err("source/target segments must not be empty".into());
-    }
-    let total_chars = request
-        .source_segments
-        .iter()
-        .chain(&request.target_segments)
-        .map(|segment| segment.chars().count())
-        .sum::<usize>();
-    if total_chars > 500_000 {
-        return Err("alignment request exceeds the 500000-character safety limit".into());
-    }
-    Ok(())
 }
 
 #[cfg(any(feature = "bge", test))]
@@ -244,14 +192,14 @@ mod tests {
     fn request_limits_apply_without_loading_a_model() {
         let mut request = request();
         request.config.max_segments = 1;
-        assert!(validate_request(&request).is_err());
+        assert!(request.validate(500_000).is_err());
     }
 
     #[test]
     fn empty_segments_are_rejected_before_model_loading() {
         let mut request = request();
         request.target_segments[0].clear();
-        assert!(validate_request(&request).is_err());
+        assert!(request.validate(500_000).is_err());
     }
 
     #[test]
