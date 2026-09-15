@@ -129,12 +129,14 @@ pub fn ingest_file(path: impl AsRef<Path>) -> Result<Manuscript, DocumentError> 
     // document-engine error contract while keeping BookForge's stricter checks.
     #[cfg(feature = "bookforge-epub")]
     if path.extension().and_then(|value| value.to_str()) == Some("epub") {
-        if let Err(DocumentError::InvalidStructure(message)) = result {
-            if message.contains("EPUB decompression ") {
-                return Err(DocumentError::CorruptedFile(message));
+        return match result {
+            Err(DocumentError::InvalidStructure(message))
+                if message.contains("EPUB decompression ") =>
+            {
+                Err(DocumentError::CorruptedFile(message))
             }
-            return Err(DocumentError::InvalidStructure(message));
-        }
+            other => other,
+        };
     }
 
     result
