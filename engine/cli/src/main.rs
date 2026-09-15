@@ -1,13 +1,12 @@
 use character_engine::CharacterBible;
 use document_engine::{export_persian_docx, ingest_file, Chapter};
 use literary_intelligence_engine::{
-    build_chapter_context_packet, AnalysisCanon, ChapterContextPacketInput,
+    build_chapter_context_packet_with_semantic, AnalysisCanon, ChapterContextPacketInput,
     DeterministicManuscriptAnalyzer, ManuscriptAnalyzer, ManuscriptIntelligence, NeighborContext,
 };
 use memory_engine::glossary::Glossary;
 use memory_engine::{
-    build_memory_context, load_glossary, load_translation_memory, ContextPacketConfig,
-    MemoryContextConfig, TranslationMemory,
+    load_glossary, load_translation_memory, ContextPacketConfig, SemanticSidecar, TranslationMemory,
 };
 use quality_engine::{evaluate_translation, TerminologyRule};
 use serde::{Deserialize, Serialize};
@@ -160,6 +159,7 @@ fn usage() {
     println!("  - LITERARY_ENGINE_GLOSSARY_FILE=/path/to/glossary.json");
     println!("  - LITERARY_ENGINE_CHARACTER_BIBLE_FILE=/path/to/character-bible.json");
     println!("  - LITERARY_ENGINE_REVIEW_FILE=/path/to/intelligence-review.json");
+    println!("  - LITERARY_ENGINE_SEMANTIC_RETRIEVAL_TOOL=/path/to/semantic-retrieval (optional; deterministic fallback on failure)");
 }
 
 fn analyze(path: &str, format: &OutputFormat) -> Result<(), String> {
@@ -410,6 +410,14 @@ fn configured_provider() -> Result<Box<dyn TranslationProvider>, String> {
     }
 }
 
+fn configured_semantic_sidecar() -> Option<SemanticSidecar> {
+    env::var("LITERARY_ENGINE_SEMANTIC_RETRIEVAL_TOOL")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .map(SemanticSidecar::new)
+}
+
 fn configured_runtime_memory() -> Result<RuntimeMemory, String> {
     let translation = match env::var("LITERARY_ENGINE_MEMORY_FILE") {
         Ok(path) if !path.trim().is_empty() => load_translation_memory(&path)
@@ -434,49 +442,6 @@ fn configured_runtime_memory() -> Result<RuntimeMemory, String> {
         glossary,
         characters,
     })
-}
-
-fn chapter_context(
-    document_title: &str,
-    chapter_title: &str,
-    source_text: &str,
-    memory: &RuntimeMemory,
-    seed_context: Option<&str>,
-    reviewed_literary_lines: &[String],
-) -> String {
-    let mut sections = vec![format!(
-        "document_title={document_title}\nchapter_title={chapter_title}"
-    )];
-
-    let character_context = memory.characters.context_for_text(source_text);
-    if !character_context.trim().is_empty() {
-        sections.push(format!(
-            "CHARACTER BIBLE — preserve voice and relationship continuity:\n{character_context}"
-        ));
-    }
-
-    let memory_context = build_memory_context(
-        source_text,
-        &memory.translation,
-        &memory.glossary,
-        &MemoryContextConfig::default(),
-    );
-    if !memory_context.text.trim().is_empty() {
-        sections.push(memory_context.text);
-    }
-
-    if let Some(seed_context) = seed_context.filter(|value| !value.trim().is_empty()) {
-        sections.push(seed_context.to_string());
-    }
-
-    if !reviewed_literary_lines.is_empty() {
-        sections.push(format!(
-            "REVIEWED LITERARY FINDINGS — human-approved context:\n{}",
-            reviewed_literary_lines.join("\n")
-        ));
-    }
-
-    sections.join("\n\n")
 }
 
 fn terminology_rules(memory: &RuntimeMemory, source_text: &str) -> Vec<TerminologyRule> {
@@ -507,6 +472,7 @@ fn run_pipeline(
     let manuscript =
         ingest_file(path).map_err(|error| format!("failed to read {path}: {error}"))?;
     let runtime_memory = configured_runtime_memory()?;
+    let semantic_sidecar = configured_semantic_sidecar();
     let intelligence = DeterministicManuscriptAnalyzer::default()
         .analyze(
             &manuscript,
@@ -537,6 +503,10 @@ fn run_pipeline(
     manifest_text.push_str(&format!("provider={provider_name}\n"));
     manifest_text.push_str(&format!("resume={resume}\n"));
     manifest_text.push_str(&format!("chapters={}\n", chapters.len()));
+    manifest_text.push_str(&format!(
+        "semantic_retrieval_configured={}\n",
+        semantic_sidecar.is_some()
+    ));
     manifest_text.push_str(&format!(
         "translation_memory_entries={}\n",
         runtime_memory.translation.entries().len()
@@ -605,7 +575,7 @@ fn run_pipeline(
                 title: &neighbor.title,
                 text: &neighbor.content,
             });
-        let context_packet = build_chapter_context_packet(
+        let context_build = build_chapter_context_packet_with_semantic(
             ChapterContextPacketInput {
                 document_title: &document_title,
                 chapter_id: &chapter.id,
@@ -620,7 +590,27 @@ fn run_pipeline(
                 reviewed_literary_lines: &chapter_literary_lines,
             },
             &ContextPacketConfig::default(),
+            semantic_sidecar.as_ref(),
         );
+        if let Some(error) = &context_build.semantic.error {
+            eprintln!(
+                "semantic retrieval [{}] unavailable; deterministic fallback: {}",
+                chapter.title, error
+            );
+            manifest_text.push_str(&format!(
+                "chapter.{}.semantic_retrieval_fallback={}\n",
+                chapter.index + 1,
+                manifest_value(error)
+            ));
+        }
+        if let Some(model) = &context_build.semantic.model {
+            manifest_text.push_str(&format!(
+                "chapter.{}.semantic_retrieval_model={}\n",
+                chapter.index + 1,
+                manifest_value(model)
+            ));
+        }
+        let context_packet = context_build.packet;
         manifest_text.push_str(&format!(
             "chapter.{}.context_packet_items={}\nchapter.{}.context_packet_excluded={}\n",
             chapter.index + 1,

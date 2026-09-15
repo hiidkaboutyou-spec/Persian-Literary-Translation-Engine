@@ -18,11 +18,9 @@ use chrono::Utc;
 use document_engine::Chapter as ManuscriptChapter;
 use human_review_workflow::ReviewKind;
 use literary_intelligence_engine::{
-    build_chapter_context_packet, ChapterContextPacketInput, NeighborContext,
+    build_chapter_context_packet_with_semantic, ChapterContextPacketInput, NeighborContext,
 };
-use memory_engine::{
-    build_memory_context, ContextPacketConfig, MemoryContextConfig, TranslationMemory,
-};
+use memory_engine::{ContextPacketConfig, SemanticSidecar, TranslationMemory};
 use quality_engine::{evaluate_translation, TerminologyRule};
 use std::fs;
 use std::path::PathBuf;
@@ -133,54 +131,16 @@ fn configured_translation_provider(
 }
 
 // ---------------------------------------------------------------------------
-// Context assembly (mirrors the CLI chapter context so CLI and app behave
-// identically)
+// Context assembly: both CLI and ApplicationService consume the same shared
+// Context Packet v2 builder. Semantic retrieval is explicitly opt-in.
 // ---------------------------------------------------------------------------
 
-#[allow(clippy::too_many_arguments)]
-fn chapter_context(
-    document_title: &str,
-    chapter_title: &str,
-    source_text: &str,
-    characters: &character_engine::CharacterBible,
-    glossary: &memory_engine::glossary::Glossary,
-    translation_memory: &TranslationMemory,
-    seed_context: Option<&str>,
-    reviewed_literary_lines: &[String],
-) -> String {
-    let mut sections = vec![format!(
-        "document_title={document_title}\nchapter_title={chapter_title}"
-    )];
-
-    let character_context = characters.context_for_text(source_text);
-    if !character_context.trim().is_empty() {
-        sections.push(format!(
-            "CHARACTER BIBLE — preserve voice and relationship continuity:\n{character_context}"
-        ));
-    }
-
-    let memory_context = build_memory_context(
-        source_text,
-        translation_memory,
-        glossary,
-        &MemoryContextConfig::default(),
-    );
-    if !memory_context.text.trim().is_empty() {
-        sections.push(memory_context.text);
-    }
-
-    if let Some(seed_context) = seed_context.filter(|value| !value.trim().is_empty()) {
-        sections.push(seed_context.to_string());
-    }
-
-    if !reviewed_literary_lines.is_empty() {
-        sections.push(format!(
-            "REVIEWED LITERARY FINDINGS — human-approved context:\n{}",
-            reviewed_literary_lines.join("\n")
-        ));
-    }
-
-    sections.join("\n\n")
+fn configured_semantic_sidecar() -> Option<SemanticSidecar> {
+    std::env::var("LITERARY_ENGINE_SEMANTIC_RETRIEVAL_TOOL")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .map(SemanticSidecar::new)
 }
 
 fn terminology_rules(
@@ -394,6 +354,7 @@ pub fn run_translation(
     let manuscript = load_manuscript(layout)?;
     let (characters, glossary) = load_canon(layout)?;
     let translation_memory = load_translation_memory()?;
+    let semantic_sidecar = configured_semantic_sidecar();
     let pipeline = TranslationPipeline::default_literary_pipeline();
     let provider = configured_translation_provider(config)?;
     let provider_name = provider.name().to_string();
@@ -487,7 +448,7 @@ pub fn run_translation(
                 title: &neighbor.title,
                 text: &neighbor.content,
             });
-        let context_packet = build_chapter_context_packet(
+        let context_build = build_chapter_context_packet_with_semantic(
             ChapterContextPacketInput {
                 document_title: &manuscript.book.title,
                 chapter_id: &chapter.id,
@@ -502,7 +463,18 @@ pub fn run_translation(
                 reviewed_literary_lines: &literary_lines,
             },
             &ContextPacketConfig::default(),
+            semantic_sidecar.as_ref(),
         );
+        if let Some(error) = &context_build.semantic.error {
+            let warning = format!(
+                "semantic retrieval for {} fell back to deterministic retrieval: {}",
+                chapter.title, error
+            );
+            if !progress.warnings.contains(&warning) {
+                progress.warnings.push(warning);
+            }
+        }
+        let context_packet = context_build.packet;
         let context = context_packet.rendered_context.clone();
         let source_fingerprint = content_fingerprint(source_text.as_bytes());
         let context_fingerprint = context_packet.packet_fingerprint.clone();

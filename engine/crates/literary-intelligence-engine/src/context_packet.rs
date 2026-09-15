@@ -1,9 +1,9 @@
 use character_engine::{build_character_context, CharacterBible, RelationshipProfile};
 use memory_engine::glossary::Glossary;
 use memory_engine::{
-    build_context_packet_v2, native_memory_candidates, stable_evidence_id, ContextAuthority,
+    build_context_packet_v2, hybrid_memory_candidates, stable_evidence_id, ContextAuthority,
     ContextCandidate, ContextKind, ContextPacketConfig, ContextPacketV2, MemoryContextConfig,
-    TranslationMemory,
+    SemanticRetrievalStatus, SemanticSidecar, TranslationMemory,
 };
 
 use crate::ManuscriptIntelligence;
@@ -32,13 +32,20 @@ pub struct ChapterContextPacketInput<'a> {
     pub reviewed_literary_lines: &'a [String],
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct ChapterContextPacketBuild {
+    pub packet: ContextPacketV2,
+    pub semantic: SemanticRetrievalStatus,
+}
+
 /// Shared context assembly for CLI and ApplicationService. The function only
 /// consumes canon/evidence owned by existing engines and emits a bounded packet;
 /// it does not promote inferred data or mutate any source of truth.
-pub fn build_chapter_context_packet(
+pub fn build_chapter_context_packet_with_semantic(
     input: ChapterContextPacketInput<'_>,
     config: &ContextPacketConfig,
-) -> ContextPacketV2 {
+    semantic_sidecar: Option<&SemanticSidecar>,
+) -> ChapterContextPacketBuild {
     let mut candidates = Vec::new();
 
     let metadata = format!(
@@ -81,12 +88,15 @@ pub fn build_chapter_context_packet(
         ));
     }
 
-    candidates.extend(native_memory_candidates(
+    let memory_candidates = hybrid_memory_candidates(
         input.source_text,
         input.translation_memory,
         input.glossary,
         &MemoryContextConfig::default(),
-    ));
+        semantic_sidecar,
+    );
+    let semantic = memory_candidates.semantic;
+    candidates.extend(memory_candidates.candidates);
     candidates.extend(manuscript_context_candidates(
         input.intelligence,
         input.chapter_id,
@@ -158,7 +168,19 @@ pub fn build_chapter_context_packet(
         );
     }
 
-    build_context_packet_v2(input.chapter_id, input.source_text, &candidates, config)
+    ChapterContextPacketBuild {
+        packet: build_context_packet_v2(input.chapter_id, input.source_text, &candidates, config),
+        semantic,
+    }
+}
+
+/// Deterministic compatibility wrapper. Existing callers keep exactly the old
+/// behavior unless they explicitly provide a semantic sidecar.
+pub fn build_chapter_context_packet(
+    input: ChapterContextPacketInput<'_>,
+    config: &ContextPacketConfig,
+) -> ContextPacketV2 {
+    build_chapter_context_packet_with_semantic(input, config, None).packet
 }
 
 /// Convert deterministic manuscript intelligence into typed Phase 18 context

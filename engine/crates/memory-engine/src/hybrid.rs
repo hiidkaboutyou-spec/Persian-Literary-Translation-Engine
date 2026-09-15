@@ -98,7 +98,12 @@ pub fn hybrid_memory_candidates(
             } else {
                 format!("\nTags: {}", entry.tags.join(" | "))
             };
-            format!("{}\nContext: {}{}", entry.source, entry.context.trim(), tags)
+            format!(
+                "{}\nContext: {}{}",
+                entry.source,
+                entry.context.trim(),
+                tags
+            )
         };
         deterministic_ids.push(id.clone());
         semantic_candidates.push(SemanticCandidate {
@@ -114,11 +119,8 @@ pub fn hybrid_memory_candidates(
         .max(config.max_memory_hits)
         .max(1)
         .min(semantic_candidates.len());
-    let request = SemanticRerankRequest::new(
-        source_text,
-        semantic_candidates,
-        semantic_result_limit,
-    );
+    let request =
+        SemanticRerankRequest::new(source_text, semantic_candidates, semantic_result_limit);
 
     let response = match sidecar.rerank(&request) {
         Ok(response) => response,
