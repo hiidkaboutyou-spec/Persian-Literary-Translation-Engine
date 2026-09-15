@@ -7,7 +7,10 @@ use zip::ZipArchive;
 use std::collections::HashMap;
 
 #[cfg(feature = "bookforge-epub")]
-use bookforge_core::ir::{Block as BookForgeBlock, BlockKind as BookForgeBlockKind};
+use bookforge_core::{
+    ir::{Block as BookForgeBlock, BlockKind as BookForgeBlockKind},
+    BookforgeError,
+};
 
 use crate::models::DocumentFormat;
 use crate::parser::{
@@ -84,11 +87,20 @@ pub(crate) fn parse_epub(path: &Path) -> Result<ParsedDocument, DocumentError> {
 
 #[cfg(feature = "bookforge-epub")]
 fn parse_epub_bookforge(path: &Path) -> Result<ParsedDocument, DocumentError> {
-    let book = bookforge_epub::read_epub(path).map_err(|error| {
-        DocumentError::ParsingFailure(format!(
-            "BookForge EPUB reader rejected {}: {error}",
+    let book = bookforge_epub::read_epub(path).map_err(|error| match error {
+        BookforgeError::Io(error) => DocumentError::Io(error),
+        BookforgeError::Zip(error) => DocumentError::CorruptedFile(format!(
+            "BookForge could not read {} as an EPUB ZIP archive: {error}",
             path.display()
-        ))
+        )),
+        BookforgeError::Xml(error) => DocumentError::CorruptedFile(format!(
+            "BookForge found invalid EPUB XML in {}: {error}",
+            path.display()
+        )),
+        BookforgeError::InvalidInput(message) => DocumentError::InvalidStructure(format!(
+            "BookForge EPUB validation rejected {}: {message}",
+            path.display()
+        )),
     })?;
 
     let title = book
