@@ -1,0 +1,99 @@
+name: Bootstrap Phase 19 Review Stack Once
+
+on:
+  push:
+    branches: [phase-19-literary-review-stack]
+    paths:
+      - '.github/workflows/bootstrap-phase19-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout Phase 19 branch
+        uses: actions/checkout@v7
+        with:
+          ref: phase-19-literary-review-stack
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Format and sync engine lockfile
+        working-directory: engine
+        run: |
+          cargo fmt --all
+          cargo generate-lockfile
+
+      - name: Clippy literary review engine
+        working-directory: engine
+        run: cargo clippy -p literary-review-engine --all-targets -- -D warnings
+
+      - name: Test literary review engine
+        working-directory: engine
+        run: cargo test -p literary-review-engine
+
+      - name: Validate Hazm installer shell
+        run: bash -n tools/hazm-diagnostics/install.sh
+
+      - name: Install isolated Hazm diagnostics
+        shell: bash
+        run: |
+          python3.13 -m venv "$RUNNER_TEMP/hazm"
+          "$RUNNER_TEMP/hazm/bin/python" -m pip install --upgrade pip
+          "$RUNNER_TEMP/hazm/bin/python" -m pip install -r tools/hazm-diagnostics/requirements.txt
+
+      - name: Run Hazm protocol smoke with network-disabled model access
+        shell: bash
+        env:
+          HF_HUB_OFFLINE: '1'
+          TRANSFORMERS_OFFLINE: '1'
+          HF_HOME: ${{ runner.temp }}/hf-cache
+        run: |
+          set -euo pipefail
+          printf '%s' '{"schema_version":1,"unit_id":"smoke","text":"فارسي  را کمی درست‌تر می‌نویسیم."}' \
+            | "$RUNNER_TEMP/hazm/bin/python" tools/hazm-diagnostics/diagnose.py \
+            > "$RUNNER_TEMP/hazm-result.json"
+          "$RUNNER_TEMP/hazm/bin/python" - <<'PY'
+          import json, os
+          from pathlib import Path
+          result = json.loads(Path(os.environ['RUNNER_TEMP'], 'hazm-result.json').read_text())
+          assert result['schema_version'] == 1
+          assert result['unit_id'] == 'smoke'
+          assert result['tool'] == 'hazm'
+          assert result['tool_version'] == '0.12.1'
+          assert result['word_count'] > 0
+          assert result['normalized_changed'] is True
+          assert result['arabic_variant_count'] >= 1
+          PY
+          test ! -d "$RUNNER_TEMP/hf-cache/hub" || test -z "$(find "$RUNNER_TEMP/hf-cache/hub" -type f -print -quit)"
+
+      - name: Audit Hazm dependency set
+        shell: bash
+        run: |
+          "$RUNNER_TEMP/hazm/bin/python" -m pip install pip-audit
+          "$RUNNER_TEMP/hazm/bin/python" -m pip_audit -r tools/hazm-diagnostics/requirements.txt
+
+      - name: Commit validated formatting and lockfile
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add engine/Cargo.lock engine/crates/literary-review-engine/src/lib.rs
+          if git diff --cached --quiet; then
+            echo 'No formatting/lockfile changes required.'
+            exit 0
+          fi
+          git commit -m 'chore: sync Phase 19 review lockfile and formatting'
+          git push origin HEAD:phase-19-literary-review-stack
