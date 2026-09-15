@@ -59,6 +59,13 @@ jobs:
           assert version('projectmem') == '0.3.3'
           PY
 
+      - name: Audit Python dependency graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'pip-audit==2.10.1' >/dev/null
+          python -m pip_audit -r tools/projectmem/requirements.txt
+
       - name: Safe-init smoke test
         shell: bash
         run: |
