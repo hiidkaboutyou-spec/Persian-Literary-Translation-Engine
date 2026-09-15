@@ -3,7 +3,12 @@ use std::collections::BTreeSet;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
+pub mod alignment;
 pub mod provider;
+pub use alignment::{
+    align_embeddings, attach_alignment_evidence, AlignmentBlock, AlignmentConfig, AlignmentError,
+    AlignmentInput, AlignmentKind, AlignmentResult, EmbeddedSpan, ALIGNMENT_SCHEMA_VERSION,
+};
 pub use provider::{
     attach_provider_review, LiteraryReviewProvider, MockReviewProvider, OpenAIReviewProvider,
     ProviderFinding, ProviderReviewResponse, ReviewProviderError, ReviewProviderRequest,
@@ -36,6 +41,7 @@ pub enum ReviewSeverity {
 #[serde(rename_all = "snake_case")]
 pub enum EvidenceSource {
     Native,
+    SemanticAlignment,
     Hazm,
     Vecalign,
     Lingua,
