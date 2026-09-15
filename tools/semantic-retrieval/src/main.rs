@@ -3,10 +3,9 @@ use std::error::Error;
 use std::io::{self, Read};
 use std::path::PathBuf;
 
-use memory_engine::{
-    SemanticMode, SemanticRerankRequest, SemanticRerankResponse, SemanticScore,
-    SEMANTIC_PROTOCOL_VERSION,
-};
+use memory_engine::{SemanticRerankRequest, SEMANTIC_PROTOCOL_VERSION};
+#[cfg(feature = "bge")]
+use memory_engine::{SemanticMode, SemanticRerankResponse, SemanticScore};
 
 fn main() {
     if let Err(error) = run() {
@@ -20,20 +19,19 @@ fn run() -> Result<(), Box<dyn Error>> {
     io::stdin().read_to_string(&mut input)?;
     let request: SemanticRerankRequest = serde_json::from_str(&input)?;
     validate_request(&request)?;
+    run_request(request)
+}
 
-    #[cfg(feature = "bge")]
+#[cfg(feature = "bge")]
+fn run_request(request: SemanticRerankRequest) -> Result<(), Box<dyn Error>> {
     let response = bge::rank(&request)?;
-
-    #[cfg(not(feature = "bge"))]
-    let response = {
-        let _ = request;
-        return Err(
-            "this binary was built without semantic models; rebuild with `--features bge`".into(),
-        );
-    };
-
     println!("{}", serde_json::to_string(&response)?);
     Ok(())
+}
+
+#[cfg(not(feature = "bge"))]
+fn run_request(_request: SemanticRerankRequest) -> Result<(), Box<dyn Error>> {
+    Err("this binary was built without semantic models; rebuild with `--features bge`".into())
 }
 
 fn validate_request(request: &SemanticRerankRequest) -> Result<(), Box<dyn Error>> {
@@ -147,7 +145,12 @@ mod bge {
 
         let mut texts = Vec::with_capacity(request.candidates.len() + 1);
         texts.push(request.query.as_str());
-        texts.extend(request.candidates.iter().map(|candidate| candidate.text.as_str()));
+        texts.extend(
+            request
+                .candidates
+                .iter()
+                .map(|candidate| candidate.text.as_str()),
+        );
         let output = model.embed(texts, Some(16))?;
         let query = output
             .dense
