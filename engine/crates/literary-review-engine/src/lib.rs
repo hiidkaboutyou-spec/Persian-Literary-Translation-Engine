@@ -4,10 +4,15 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 pub mod alignment;
+pub mod alignment_sidecar;
 pub mod provider;
 pub use alignment::{
     align_embeddings, attach_alignment_evidence, AlignmentBlock, AlignmentConfig, AlignmentError,
     AlignmentInput, AlignmentKind, AlignmentResult, EmbeddedSpan, ALIGNMENT_SCHEMA_VERSION,
+};
+pub use alignment_sidecar::{
+    validate_result as validate_alignment_result, AlignmentSidecar, AlignmentSidecarError,
+    AlignmentToolRequest,
 };
 pub use provider::{
     attach_provider_review, LiteraryReviewProvider, MockReviewProvider, OpenAIReviewProvider,
