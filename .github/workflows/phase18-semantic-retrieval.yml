@@ -1,0 +1,147 @@
+name: Phase 18 Context and Semantic Retrieval
+
+on:
+  push:
+    paths:
+      - 'engine/crates/memory-engine/**'
+      - 'engine/crates/literary-intelligence-engine/**'
+      - 'engine/crates/project-engine/**'
+      - 'engine/cli/**'
+      - 'engine/Cargo.lock'
+      - 'tools/semantic-retrieval/**'
+      - 'docs/PHASE_18_RESEARCH.md'
+      - 'docs/IMPLEMENTATION_ROADMAP.md'
+      - 'docs/IMPLEMENTATION_STATUS.md'
+      - 'docs/PMC_BOOTSTRAP.md'
+      - 'AGENTS.md'
+      - '.github/workflows/phase18-semantic-retrieval.yml'
+  pull_request:
+    paths:
+      - 'engine/crates/memory-engine/**'
+      - 'engine/crates/literary-intelligence-engine/**'
+      - 'engine/crates/project-engine/**'
+      - 'engine/cli/**'
+      - 'engine/Cargo.lock'
+      - 'tools/semantic-retrieval/**'
+      - 'docs/PHASE_18_RESEARCH.md'
+      - 'docs/IMPLEMENTATION_ROADMAP.md'
+      - 'docs/IMPLEMENTATION_STATUS.md'
+      - 'docs/PMC_BOOTSTRAP.md'
+      - 'AGENTS.md'
+      - '.github/workflows/phase18-semantic-retrieval.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase18-retrieval-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-context:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Engine lockfile is current
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd engine && cargo generate-lockfile)
+          git diff --exit-code -- engine/Cargo.lock
+
+      - name: Format
+        working-directory: engine
+        run: cargo fmt --all -- --check
+
+      - name: Clippy affected engine surfaces
+        working-directory: engine
+        run: cargo clippy -p memory-engine -p literary-intelligence-engine -p project-engine -p literary-engine --all-targets -- -D warnings
+
+      - name: Test affected engine surfaces
+        working-directory: engine
+        run: cargo test -p memory-engine -p literary-intelligence-engine -p project-engine -p literary-engine
+
+      - name: Deterministic CLI remains usable without semantic tool
+        working-directory: engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          unset LITERARY_ENGINE_SEMANTIC_RETRIEVAL_TOOL
+          cargo run --quiet -p literary-engine -- --help >/dev/null
+          printf 'Chapter 1\nMina looked away.\n' > /tmp/phase18-smoke.txt
+          cargo run --quiet -p literary-engine -- run /tmp/phase18-smoke.txt fa /tmp/phase18-smoke-output --format json >/dev/null
+          test -f /tmp/phase18-smoke-output/manifest.json
+
+  semantic-tool:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Semantic-tool lockfile is current
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo generate-lockfile --manifest-path tools/semantic-retrieval/Cargo.toml
+          git diff --exit-code -- tools/semantic-retrieval/Cargo.lock
+
+      - name: Test protocol-only build
+        run: cargo test --locked --manifest-path tools/semantic-retrieval/Cargo.toml --no-default-features
+
+      - name: Check pinned BGE integration
+        run: cargo check --locked --manifest-path tools/semantic-retrieval/Cargo.toml --features bge
+
+      - name: Validate installer
+        run: bash -n tools/semantic-retrieval/install.sh
+
+      - name: Audit semantic dependency graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo install cargo-audit --locked 2>/dev/null || true
+          cargo audit --file tools/semantic-retrieval/Cargo.lock
+
+      - name: Confirm compilation did not fetch model weights
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -d .tools/models/fastembed
+          test ! -d .fastembed_cache
+
+  semantic-tool-macos-arm64:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Verify Apple Silicon runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = "arm64"
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Check pinned BGE integration on Apple Silicon
+        run: cargo check --locked --manifest-path tools/semantic-retrieval/Cargo.toml --features bge
+
+      - name: Confirm compilation did not fetch model weights
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -d .tools/models/fastembed
+          test ! -d .fastembed_cache

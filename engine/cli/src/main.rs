@@ -1,12 +1,12 @@
 use character_engine::CharacterBible;
 use document_engine::{export_persian_docx, ingest_file, Chapter};
 use literary_intelligence_engine::{
-    AnalysisCanon, DeterministicManuscriptAnalyzer, ManuscriptAnalyzer, ManuscriptIntelligence,
+    build_chapter_context_packet_with_semantic, AnalysisCanon, ChapterContextPacketInput,
+    DeterministicManuscriptAnalyzer, ManuscriptAnalyzer, ManuscriptIntelligence, NeighborContext,
 };
 use memory_engine::glossary::Glossary;
 use memory_engine::{
-    build_memory_context, load_glossary, load_translation_memory, MemoryContextConfig,
-    TranslationMemory,
+    load_glossary, load_translation_memory, ContextPacketConfig, SemanticSidecar, TranslationMemory,
 };
 use quality_engine::{evaluate_translation, TerminologyRule};
 use serde::{Deserialize, Serialize};
@@ -159,6 +159,7 @@ fn usage() {
     println!("  - LITERARY_ENGINE_GLOSSARY_FILE=/path/to/glossary.json");
     println!("  - LITERARY_ENGINE_CHARACTER_BIBLE_FILE=/path/to/character-bible.json");
     println!("  - LITERARY_ENGINE_REVIEW_FILE=/path/to/intelligence-review.json");
+    println!("  - LITERARY_ENGINE_SEMANTIC_RETRIEVAL_TOOL=/path/to/semantic-retrieval (optional; deterministic fallback on failure)");
 }
 
 fn analyze(path: &str, format: &OutputFormat) -> Result<(), String> {
@@ -409,6 +410,14 @@ fn configured_provider() -> Result<Box<dyn TranslationProvider>, String> {
     }
 }
 
+fn configured_semantic_sidecar() -> Option<SemanticSidecar> {
+    env::var("LITERARY_ENGINE_SEMANTIC_RETRIEVAL_TOOL")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .map(SemanticSidecar::new)
+}
+
 fn configured_runtime_memory() -> Result<RuntimeMemory, String> {
     let translation = match env::var("LITERARY_ENGINE_MEMORY_FILE") {
         Ok(path) if !path.trim().is_empty() => load_translation_memory(&path)
@@ -433,49 +442,6 @@ fn configured_runtime_memory() -> Result<RuntimeMemory, String> {
         glossary,
         characters,
     })
-}
-
-fn chapter_context(
-    document_title: &str,
-    chapter_title: &str,
-    source_text: &str,
-    memory: &RuntimeMemory,
-    seed_context: Option<&str>,
-    reviewed_literary_lines: &[String],
-) -> String {
-    let mut sections = vec![format!(
-        "document_title={document_title}\nchapter_title={chapter_title}"
-    )];
-
-    let character_context = memory.characters.context_for_text(source_text);
-    if !character_context.trim().is_empty() {
-        sections.push(format!(
-            "CHARACTER BIBLE — preserve voice and relationship continuity:\n{character_context}"
-        ));
-    }
-
-    let memory_context = build_memory_context(
-        source_text,
-        &memory.translation,
-        &memory.glossary,
-        &MemoryContextConfig::default(),
-    );
-    if !memory_context.text.trim().is_empty() {
-        sections.push(memory_context.text);
-    }
-
-    if let Some(seed_context) = seed_context.filter(|value| !value.trim().is_empty()) {
-        sections.push(seed_context.to_string());
-    }
-
-    if !reviewed_literary_lines.is_empty() {
-        sections.push(format!(
-            "REVIEWED LITERARY FINDINGS — human-approved context:\n{}",
-            reviewed_literary_lines.join("\n")
-        ));
-    }
-
-    sections.join("\n\n")
 }
 
 fn terminology_rules(memory: &RuntimeMemory, source_text: &str) -> Vec<TerminologyRule> {
@@ -506,6 +472,7 @@ fn run_pipeline(
     let manuscript =
         ingest_file(path).map_err(|error| format!("failed to read {path}: {error}"))?;
     let runtime_memory = configured_runtime_memory()?;
+    let semantic_sidecar = configured_semantic_sidecar();
     let intelligence = DeterministicManuscriptAnalyzer::default()
         .analyze(
             &manuscript,
@@ -536,6 +503,10 @@ fn run_pipeline(
     manifest_text.push_str(&format!("provider={provider_name}\n"));
     manifest_text.push_str(&format!("resume={resume}\n"));
     manifest_text.push_str(&format!("chapters={}\n", chapters.len()));
+    manifest_text.push_str(&format!(
+        "semantic_retrieval_configured={}\n",
+        semantic_sidecar.is_some()
+    ));
     manifest_text.push_str(&format!(
         "translation_memory_entries={}\n",
         runtime_memory.translation.entries().len()
@@ -590,15 +561,65 @@ fn run_pipeline(
             chapter.index + 1,
             chapter_literary_lines.len()
         ));
-        let context = chapter_context(
-            &document_title,
-            &chapter.title,
-            &source_text,
-            &runtime_memory,
-            intelligence.initialization.context_for_chapter(&chapter.id),
-            &chapter_literary_lines,
+        let previous = chapter.index.checked_sub(1).and_then(|index| {
+            chapters.get(index).map(|neighbor| NeighborContext {
+                id: &neighbor.id,
+                title: &neighbor.title,
+                text: &neighbor.content,
+            })
+        });
+        let next = chapters
+            .get(chapter.index.saturating_add(1))
+            .map(|neighbor| NeighborContext {
+                id: &neighbor.id,
+                title: &neighbor.title,
+                text: &neighbor.content,
+            });
+        let context_build = build_chapter_context_packet_with_semantic(
+            ChapterContextPacketInput {
+                document_title: &document_title,
+                chapter_id: &chapter.id,
+                chapter_title: &chapter.title,
+                source_text: &source_text,
+                previous,
+                next,
+                characters: &runtime_memory.characters,
+                glossary: &runtime_memory.glossary,
+                translation_memory: &runtime_memory.translation,
+                intelligence: &intelligence,
+                reviewed_literary_lines: &chapter_literary_lines,
+            },
+            &ContextPacketConfig::default(),
+            semantic_sidecar.as_ref(),
         );
-        let context_fingerprint = source_fingerprint(&context);
+        if let Some(error) = &context_build.semantic.error {
+            eprintln!(
+                "semantic retrieval [{}] unavailable; deterministic fallback: {}",
+                chapter.title, error
+            );
+            manifest_text.push_str(&format!(
+                "chapter.{}.semantic_retrieval_fallback={}\n",
+                chapter.index + 1,
+                manifest_value(error)
+            ));
+        }
+        if let Some(model) = &context_build.semantic.model {
+            manifest_text.push_str(&format!(
+                "chapter.{}.semantic_retrieval_model={}\n",
+                chapter.index + 1,
+                manifest_value(model)
+            ));
+        }
+        let context_packet = context_build.packet;
+        manifest_text.push_str(&format!(
+            "chapter.{}.context_packet_items={}\nchapter.{}.context_packet_excluded={}\n",
+            chapter.index + 1,
+            context_packet.selected_count,
+            chapter.index + 1,
+            context_packet.excluded_count
+        ));
+        let context = context_packet.rendered_context.clone();
+        let context_fingerprint = context_packet.packet_fingerprint.clone();
 
         if resume {
             if let Some(existing) = resumable_translation(
@@ -923,9 +944,7 @@ fn main() -> ExitCode {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use character_engine::{CharacterProfile, RelationshipProfile};
     use memory_engine::glossary::GlossaryEntry;
-    use memory_engine::MemoryEntry;
 
     #[test]
     fn output_file_stems_are_deterministic_and_safe() {
@@ -967,114 +986,6 @@ mod tests {
     fn unsupported_provider_is_rejected() {
         let error = selected_provider_name(Some("unknown"), true).unwrap_err();
         assert!(error.contains("unsupported provider"));
-    }
-
-    #[test]
-    fn chapter_context_combines_character_glossary_and_translation_memory() {
-        let mut runtime = RuntimeMemory::default();
-        runtime.translation.add(MemoryEntry::new(
-            "Magnus whispered softly".into(),
-            "مگنوس آرام زمزمه کرد".into(),
-            "intimate dialogue".into(),
-        ));
-        runtime.glossary.add(GlossaryEntry {
-            source_term: "High Warlock".into(),
-            preferred_translation: "جادوگر اعظم".into(),
-            context: "title".into(),
-        });
-        runtime.characters.add(CharacterProfile {
-            name: "Magnus".into(),
-            voice_notes: "witty and affectionate".into(),
-            personality_notes: "confident".into(),
-        });
-        let mut relationship = RelationshipProfile::new("Magnus", "Alec");
-        relationship.dynamic_notes = "tender banter".into();
-        runtime.characters.add(CharacterProfile {
-            name: "Alec".into(),
-            voice_notes: "restrained".into(),
-            personality_notes: "loyal".into(),
-        });
-        runtime.characters.add_relationship(relationship);
-
-        let context = chapter_context(
-            "Book",
-            "Chapter 1",
-            "Magnus, the High Warlock, whispered softly to Alec.",
-            &runtime,
-            None,
-            &[],
-        );
-
-        assert!(context.contains("CHARACTER BIBLE"));
-        assert!(context.contains("witty and affectionate"));
-        assert!(context.contains("tender banter"));
-        assert!(context.contains("High Warlock => جادوگر اعظم"));
-        assert!(context.contains("TRANSLATION MEMORY"));
-        assert!(context.contains("مگنوس آرام زمزمه کرد"));
-    }
-
-    #[test]
-    fn approved_context_precedes_manuscript_seed_context() {
-        let mut runtime = RuntimeMemory::default();
-        runtime.characters.add(CharacterProfile {
-            name: "Mina".into(),
-            voice_notes: "approved voice".into(),
-            personality_notes: String::new(),
-        });
-        let context = chapter_context(
-            "Book",
-            "Chapter 1",
-            "Mina met Reza.",
-            &runtime,
-            Some("MANUSCRIPT SEEDS — inferred evidence only:\n- character candidate: Reza"),
-            &[],
-        );
-
-        assert!(
-            context.find("approved voice").unwrap() < context.find("MANUSCRIPT SEEDS").unwrap()
-        );
-    }
-
-    #[test]
-    fn reviewed_literary_findings_are_injected_only_into_their_own_chapter() {
-        let runtime = RuntimeMemory::default();
-        let chapter_a_lines = vec![
-            "[character_voice] Reza (chapter 1 [chapter-1]) — clipped, formal speech".to_string(),
-        ];
-        let chapter_b_lines = vec![
-            "[character_voice] Mina (chapter 2 [chapter-2]) — warm, expansive speech".to_string(),
-        ];
-        let context_a = chapter_context(
-            "Book",
-            "Chapter 1",
-            "Reza said nothing for a long moment.",
-            &runtime,
-            None,
-            &chapter_a_lines,
-        );
-        let context_b = chapter_context(
-            "Book",
-            "Chapter 2",
-            "Mina laughed.",
-            &runtime,
-            None,
-            &chapter_b_lines,
-        );
-        assert!(context_a.contains("REVIEWED LITERARY FINDINGS"));
-        assert!(context_a.contains("Reza"));
-        assert!(!context_a.contains("Mina"));
-        assert!(context_b.contains("REVIEWED LITERARY FINDINGS"));
-        assert!(context_b.contains("Mina"));
-        assert!(!context_b.contains("Reza"));
-        assert!(!chapter_context(
-            "Book",
-            "Chapter 3",
-            "A stranger arrived.",
-            &runtime,
-            None,
-            &[],
-        )
-        .contains("REVIEWED LITERARY FINDINGS"));
     }
 
     #[test]
