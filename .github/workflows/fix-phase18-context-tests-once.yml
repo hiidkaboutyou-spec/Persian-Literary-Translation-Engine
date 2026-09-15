@@ -1,0 +1,85 @@
+name: Fix Phase 18 Context Tests Once
+
+on:
+  push:
+    branches: [phase-18-semantic-integration-safety]
+    paths:
+      - '.github/workflows/fix-phase18-context-tests-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout safety branch
+        uses: actions/checkout@v7
+        with:
+          ref: phase-18-semantic-integration-safety
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Update Phase 18 fixtures to current Document Engine API
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('engine/crates/literary-intelligence-engine/src/context_packet.rs')
+          text = path.read_text()
+          old_import = '    use document_engine::{Book, Chapter, ParsedDocument};\n'
+          new_import = (
+              '    use document_engine::{Book, Chapter, DocumentFormat, Manuscript, SourceLocation};\n'
+              '    use std::collections::BTreeMap;\n'
+          )
+          if text.count(old_import) != 1:
+              raise SystemExit('unexpected document-engine test import shape')
+          text = text.replace(old_import, new_import, 1)
+
+          marker = '    use memory_engine::MemoryEntry;\n\n'
+          helper = '''    use memory_engine::MemoryEntry;\n\n    fn test_manuscript(content: &str) -> Manuscript {\n        Manuscript {\n            book: Book {\n                id: "book-test".into(),\n                title: "Test".into(),\n                author: None,\n                language: Some("en".into()),\n                metadata: BTreeMap::new(),\n            },\n            chapters: vec![Chapter::translated(0, "Chapter 1", content)],\n            source: SourceLocation::new("test.txt", DocumentFormat::Txt),\n        }\n    }\n\n'''
+          if text.count(marker) != 1:
+              raise SystemExit('unexpected memory test import shape')
+          text = text.replace(marker, helper, 1)
+
+          old_first = '''        let document = ParsedDocument {\n            book: Book {\n                title: "Test".into(),\n                author: None,\n            },\n            chapters: vec![Chapter::source(\n                0,\n                "Chapter 1".into(),\n                "Mina whispered. The door remained open.".into(),\n            )],\n            ..ParsedDocument::default()\n        };'''
+          new_first = '''        let document = test_manuscript("Mina whispered. The door remained open.");'''
+          if text.count(old_first) != 1:
+              raise SystemExit('unexpected first fixture shape')
+          text = text.replace(old_first, new_first, 1)
+
+          old_second = '''        let document = ParsedDocument {\n            book: Book {\n                title: "Test".into(),\n                author: None,\n            },\n            chapters: vec![Chapter::source(\n                0,\n                "Chapter 1".into(),\n                "Mina met Reza near the Portal.".into(),\n            )],\n            ..ParsedDocument::default()\n        };'''
+          new_second = '''        let document = test_manuscript("Mina met Reza near the Portal.");'''
+          if text.count(old_second) != 1:
+              raise SystemExit('unexpected second fixture shape')
+          text = text.replace(old_second, new_second, 1)
+          path.write_text(text)
+          PY
+
+      - name: Format
+        working-directory: engine
+        run: cargo fmt --all
+
+      - name: Clippy literary intelligence
+        working-directory: engine
+        run: cargo clippy -p literary-intelligence-engine --all-targets -- -D warnings
+
+      - name: Test literary intelligence
+        working-directory: engine
+        run: cargo test -p literary-intelligence-engine
+
+      - name: Commit fixture repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add engine/crates/literary-intelligence-engine/src/context_packet.rs
+          git commit -m 'test: align Phase 18 context fixtures with document model'
+          git push origin HEAD:phase-18-semantic-integration-safety
