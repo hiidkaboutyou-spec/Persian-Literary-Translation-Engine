@@ -9,18 +9,13 @@ use serde::{Deserialize, Serialize};
 
 pub const SEMANTIC_PROTOCOL_VERSION: u32 = 1;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum SemanticMode {
     Dense,
     Rerank,
+    #[default]
     DenseThenRerank,
-}
-
-impl Default for SemanticMode {
-    fn default() -> Self {
-        Self::DenseThenRerank
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
