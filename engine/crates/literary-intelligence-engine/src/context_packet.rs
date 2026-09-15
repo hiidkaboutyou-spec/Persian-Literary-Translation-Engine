@@ -1,6 +1,165 @@
-use memory_engine::{stable_evidence_id, ContextAuthority, ContextCandidate, ContextKind};
+use character_engine::{build_character_context, CharacterBible, RelationshipProfile};
+use memory_engine::glossary::Glossary;
+use memory_engine::{
+    build_context_packet_v2, native_memory_candidates, stable_evidence_id, ContextAuthority,
+    ContextCandidate, ContextKind, ContextPacketConfig, ContextPacketV2, MemoryContextConfig,
+    TranslationMemory,
+};
 
 use crate::ManuscriptIntelligence;
+
+const NEIGHBOR_EXCERPT_CHARS: usize = 900;
+
+#[derive(Debug, Clone, Copy)]
+pub struct NeighborContext<'a> {
+    pub id: &'a str,
+    pub title: &'a str,
+    pub text: &'a str,
+}
+
+#[derive(Debug)]
+pub struct ChapterContextPacketInput<'a> {
+    pub document_title: &'a str,
+    pub chapter_id: &'a str,
+    pub chapter_title: &'a str,
+    pub source_text: &'a str,
+    pub previous: Option<NeighborContext<'a>>,
+    pub next: Option<NeighborContext<'a>>,
+    pub characters: &'a CharacterBible,
+    pub glossary: &'a Glossary,
+    pub translation_memory: &'a TranslationMemory,
+    pub intelligence: &'a ManuscriptIntelligence,
+    pub reviewed_literary_lines: &'a [String],
+}
+
+/// Shared context assembly for CLI and ApplicationService. The function only
+/// consumes canon/evidence owned by existing engines and emits a bounded packet;
+/// it does not promote inferred data or mutate any source of truth.
+pub fn build_chapter_context_packet(
+    input: ChapterContextPacketInput<'_>,
+    config: &ContextPacketConfig,
+) -> ContextPacketV2 {
+    let mut candidates = Vec::new();
+
+    let metadata = format!(
+        "document_title={}\nchapter_title={}",
+        input.document_title, input.chapter_title
+    );
+    candidates.push(ContextCandidate::new(
+        stable_evidence_id("chapter-metadata", &[input.chapter_id, &metadata]),
+        ContextKind::Reference,
+        ContextAuthority::Deterministic,
+        metadata,
+        "document/chapter identity for the current translation unit",
+        1.0,
+    ));
+
+    for profile in input.characters.relevant_to_text(input.source_text) {
+        let text = build_character_context(profile);
+        candidates.push(ContextCandidate::new(
+            stable_evidence_id("character-canon", &[&profile.name, &text]),
+            ContextKind::Character,
+            ContextAuthority::Canonical,
+            text,
+            "canonical character is present in the current source unit",
+            1.0,
+        ));
+    }
+
+    for relationship in input.characters.relevant_relationships(input.source_text) {
+        let text = relationship_context(relationship);
+        candidates.push(ContextCandidate::new(
+            stable_evidence_id(
+                "relationship-canon",
+                &[&relationship.character_a, &relationship.character_b, &text],
+            ),
+            ContextKind::Relationship,
+            ContextAuthority::Canonical,
+            text,
+            "both endpoints of a canonical relationship are present in the current unit",
+            1.0,
+        ));
+    }
+
+    candidates.extend(native_memory_candidates(
+        input.source_text,
+        input.translation_memory,
+        input.glossary,
+        &MemoryContextConfig::default(),
+    ));
+    candidates.extend(manuscript_context_candidates(
+        input.intelligence,
+        input.chapter_id,
+    ));
+
+    if let Some(previous) = input.previous {
+        let excerpt = tail_chars(previous.text, NEIGHBOR_EXCERPT_CHARS);
+        if !excerpt.trim().is_empty() {
+            let text = format!(
+                "PREVIOUS CHAPTER CONTINUITY — source evidence from {}:\n{}",
+                previous.title, excerpt
+            );
+            candidates.push(
+                ContextCandidate::new(
+                    stable_evidence_id("previous-chapter", &[previous.id, &text]),
+                    ContextKind::LocalContinuity,
+                    ContextAuthority::Deterministic,
+                    text,
+                    "bounded tail of the immediately preceding source chapter",
+                    0.82,
+                )
+                .with_evidence_ids([previous.id.to_string()]),
+            );
+        }
+    }
+
+    if let Some(next) = input.next {
+        let excerpt = head_chars(next.text, NEIGHBOR_EXCERPT_CHARS);
+        if !excerpt.trim().is_empty() {
+            let text = format!(
+                "NEXT CHAPTER CONTINUITY — source evidence from {}:\n{}",
+                next.title, excerpt
+            );
+            candidates.push(
+                ContextCandidate::new(
+                    stable_evidence_id("next-chapter", &[next.id, &text]),
+                    ContextKind::LocalContinuity,
+                    ContextAuthority::Deterministic,
+                    text,
+                    "bounded head of the immediately following source chapter",
+                    0.74,
+                )
+                .with_evidence_ids([next.id.to_string()]),
+            );
+        }
+    }
+
+    for (index, line) in input.reviewed_literary_lines.iter().enumerate() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        let text = format!(
+            "REVIEWED LITERARY FINDING — human-approved context:\n{}",
+            line.trim()
+        );
+        candidates.push(
+            ContextCandidate::new(
+                stable_evidence_id(
+                    "reviewed-literary",
+                    &[input.chapter_id, &index.to_string(), line],
+                ),
+                ContextKind::TranslationDecision,
+                ContextAuthority::HumanApproved,
+                text,
+                "approved or edited literary-review finding scoped to this chapter",
+                1.0,
+            )
+            .with_evidence_ids([input.chapter_id.to_string()]),
+        );
+    }
+
+    build_context_packet_v2(input.chapter_id, input.source_text, &candidates, config)
+}
 
 /// Convert deterministic manuscript intelligence into typed Phase 18 context
 /// candidates without changing canon ownership. Observed evidence is
@@ -38,7 +197,11 @@ pub fn manuscript_context_candidates(
 
     let inferred = &intelligence.literary_profile.inferred;
     let mut inferred_lines = Vec::new();
-    push_optional(&mut inferred_lines, "narrative_pov", inferred.narrative_pov.as_deref());
+    push_optional(
+        &mut inferred_lines,
+        "narrative_pov",
+        inferred.narrative_pov.as_deref(),
+    );
     push_optional(
         &mut inferred_lines,
         "narrative_tense",
@@ -54,10 +217,22 @@ pub fn manuscript_context_candidates(
         "dialogue_register",
         inferred.dialogue_register.as_deref(),
     );
-    push_list(&mut inferred_lines, "recurring_imagery", &inferred.recurring_imagery);
-    push_list(&mut inferred_lines, "recurring_motifs", &inferred.recurring_motifs);
+    push_list(
+        &mut inferred_lines,
+        "recurring_imagery",
+        &inferred.recurring_imagery,
+    );
+    push_list(
+        &mut inferred_lines,
+        "recurring_motifs",
+        &inferred.recurring_motifs,
+    );
     push_list(&mut inferred_lines, "humor_signals", &inferred.humor_signals);
-    push_list(&mut inferred_lines, "sarcasm_signals", &inferred.sarcasm_signals);
+    push_list(
+        &mut inferred_lines,
+        "sarcasm_signals",
+        &inferred.sarcasm_signals,
+    );
     if !inferred_lines.is_empty() {
         let inferred_text = format!(
             "BOOK PROFILE — inferred evidence only:\n{}",
@@ -114,10 +289,7 @@ pub fn manuscript_context_candidates(
             .collect::<Vec<_>>();
         candidates.push(
             ContextCandidate::new(
-                stable_evidence_id(
-                    "chapter-map",
-                    &[&chapter.chapter_id, &chapter_text],
-                ),
+                stable_evidence_id("chapter-map", &[&chapter.chapter_id, &chapter_text]),
                 ContextKind::ChapterSummary,
                 ContextAuthority::Deterministic,
                 chapter_text,
@@ -149,6 +321,38 @@ pub fn manuscript_context_candidates(
     candidates
 }
 
+fn relationship_context(relationship: &RelationshipProfile) -> String {
+    let mut parts = vec![format!(
+        "Relationship: {} ↔ {}",
+        relationship.character_a, relationship.character_b
+    )];
+    if !relationship.dynamic_notes.trim().is_empty() {
+        parts.push(format!("Dynamic: {}", relationship.dynamic_notes.trim()));
+    }
+    if !relationship.address_notes.trim().is_empty() {
+        parts.push(format!(
+            "Forms of address: {}",
+            relationship.address_notes.trim()
+        ));
+    }
+    if !relationship.boundaries_notes.trim().is_empty() {
+        parts.push(format!(
+            "Continuity constraints: {}",
+            relationship.boundaries_notes.trim()
+        ));
+    }
+    parts.join("\n")
+}
+
+fn head_chars(text: &str, max_chars: usize) -> String {
+    text.chars().take(max_chars).collect()
+}
+
+fn tail_chars(text: &str, max_chars: usize) -> String {
+    let count = text.chars().count();
+    text.chars().skip(count.saturating_sub(max_chars)).collect()
+}
+
 fn push_optional(lines: &mut Vec<String>, label: &str, value: Option<&str>) {
     if let Some(value) = value.filter(|value| !value.trim().is_empty()) {
         lines.push(format!("{label}={}", value.trim()));
@@ -173,9 +377,10 @@ fn list_line(label: &str, values: &[String]) -> String {
 mod tests {
     use super::*;
     use crate::{AnalysisCanon, DeterministicManuscriptAnalyzer, ManuscriptAnalyzer};
-    use character_engine::CharacterBible;
+    use character_engine::{CharacterProfile, RelationshipProfile};
     use document_engine::{Book, Chapter, ParsedDocument};
-    use memory_engine::glossary::Glossary;
+    use memory_engine::glossary::{Glossary, GlossaryEntry};
+    use memory_engine::MemoryEntry;
 
     #[test]
     fn candidates_keep_observed_and_inferred_authority_separate() {
@@ -213,5 +418,96 @@ mod tests {
             candidate.kind == ContextKind::ChapterSummary
                 && candidate.authority == ContextAuthority::Deterministic
         }));
+    }
+
+    #[test]
+    fn shared_packet_prioritizes_human_and_canonical_context_and_neighbors() {
+        let document = ParsedDocument {
+            book: Book {
+                title: "Test".into(),
+                author: None,
+            },
+            chapters: vec![Chapter::source(
+                0,
+                "Chapter 1".into(),
+                "Mina met Reza near the Portal.".into(),
+            )],
+            ..ParsedDocument::default()
+        };
+        let mut characters = CharacterBible::new();
+        characters.add(CharacterProfile {
+            name: "Mina".into(),
+            voice_notes: "quiet and precise".into(),
+            personality_notes: "guarded".into(),
+        });
+        characters.add(CharacterProfile {
+            name: "Reza".into(),
+            voice_notes: "warm".into(),
+            personality_notes: "patient".into(),
+        });
+        let mut relationship = RelationshipProfile::new("Mina", "Reza");
+        relationship.address_notes = "informal in private".into();
+        characters.add_relationship(relationship);
+        let mut glossary = Glossary::default();
+        glossary.add(GlossaryEntry {
+            source_term: "Portal".into(),
+            preferred_translation: "پرتال".into(),
+            context: "fantasy term".into(),
+        });
+        let mut translation_memory = TranslationMemory::new();
+        translation_memory.add(MemoryEntry::new(
+            "Mina met Reza".into(),
+            "مینا رضا را دید".into(),
+            "prior scene".into(),
+        ));
+        let intelligence = DeterministicManuscriptAnalyzer::default()
+            .analyze(
+                &document,
+                AnalysisCanon {
+                    characters: &characters,
+                    glossary: &glossary,
+                },
+            )
+            .unwrap();
+        let chapter_id = intelligence.chapter_maps[0].chapter_id.clone();
+        let reviewed = vec!["Preserve their private informal register.".to_string()];
+        let packet = build_chapter_context_packet(
+            ChapterContextPacketInput {
+                document_title: "Test",
+                chapter_id: &chapter_id,
+                chapter_title: "Chapter 1",
+                source_text: "Mina met Reza near the Portal.",
+                previous: Some(NeighborContext {
+                    id: "prev",
+                    title: "Previous",
+                    text: "They had argued the previous night.",
+                }),
+                next: None,
+                characters: &characters,
+                glossary: &glossary,
+                translation_memory: &translation_memory,
+                intelligence: &intelligence,
+                reviewed_literary_lines: &reviewed,
+            },
+            &ContextPacketConfig::default(),
+        );
+
+        assert!(packet
+            .items
+            .iter()
+            .any(|item| item.authority == ContextAuthority::HumanApproved));
+        assert!(packet
+            .items
+            .iter()
+            .any(|item| item.kind == ContextKind::Character));
+        assert!(packet
+            .items
+            .iter()
+            .any(|item| item.kind == ContextKind::Relationship));
+        assert!(packet
+            .items
+            .iter()
+            .any(|item| item.kind == ContextKind::LocalContinuity));
+        assert!(packet.rendered_context.contains("پرتال"));
     }
 }
