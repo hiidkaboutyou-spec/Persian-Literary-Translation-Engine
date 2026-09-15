@@ -3,11 +3,19 @@ use std::io::Read;
 use std::path::Path;
 use zip::ZipArchive;
 
+#[cfg(feature = "bookforge-epub")]
+use std::collections::HashMap;
+
+#[cfg(feature = "bookforge-epub")]
+use bookforge_core::ir::{Block as BookForgeBlock, BlockKind as BookForgeBlockKind};
+
 use crate::models::DocumentFormat;
 use crate::parser::{
     base_source, file_stem_title as parser_file_stem_title, BlockKind, ParsedBlock, ParsedDocument,
 };
 use crate::{load_document, Document, DocumentError};
+
+const BOOKFORGE_REVISION: &str = "23f8c9d3c97a06f48e13424698441bfb4b037844";
 
 pub fn load_epub_file(path: impl AsRef<Path>) -> Result<Document, DocumentError> {
     let path = path.as_ref();
@@ -63,6 +71,177 @@ pub fn load_epub_file(path: impl AsRef<Path>) -> Result<Document, DocumentError>
 }
 
 pub(crate) fn parse_epub(path: &Path) -> Result<ParsedDocument, DocumentError> {
+    #[cfg(feature = "bookforge-epub")]
+    {
+        return parse_epub_bookforge(path);
+    }
+
+    #[cfg(not(feature = "bookforge-epub"))]
+    {
+        parse_epub_builtin(path)
+    }
+}
+
+#[cfg(feature = "bookforge-epub")]
+fn parse_epub_bookforge(path: &Path) -> Result<ParsedDocument, DocumentError> {
+    let book = bookforge_epub::read_epub(path).map_err(|error| {
+        DocumentError::ParsingFailure(format!(
+            "BookForge EPUB reader rejected {}: {error}",
+            path.display()
+        ))
+    })?;
+
+    let title = book
+        .metadata
+        .title
+        .clone()
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| parser_file_stem_title(path));
+    let author = book
+        .metadata
+        .creators
+        .iter()
+        .find(|value| !value.trim().is_empty())
+        .cloned();
+    let language = book
+        .metadata
+        .language
+        .clone()
+        .filter(|value| !value.trim().is_empty());
+
+    let root = base_source(path, DocumentFormat::Epub);
+    let block_by_id = book
+        .blocks
+        .iter()
+        .map(|block| (block.id.0.as_str(), block))
+        .collect::<HashMap<_, _>>();
+    let mut parsed_blocks = Vec::new();
+
+    // BookForge exposes synthetic sections for OPF/nav/NCX metadata in addition
+    // to real spine content. Only real spine sections are translation input.
+    for section in book
+        .sections
+        .iter()
+        .filter(|section| section.spine_index < book.spine.len())
+    {
+        let mut section_blocks = Vec::new();
+        for block_id in &section.block_ids {
+            let Some(block) = block_by_id.get(block_id.0.as_str()) else {
+                continue;
+            };
+            let Some(kind) = map_bookforge_block_kind(&block.kind) else {
+                continue;
+            };
+            let text = bookforge_block_text(block);
+            if text.is_empty() {
+                continue;
+            }
+            let kind = if matches!(text.as_str(), "***" | "---" | "* * *") {
+                BlockKind::SceneBreak
+            } else {
+                kind
+            };
+            section_blocks.push((kind, text));
+        }
+
+        if section_blocks.is_empty() {
+            continue;
+        }
+
+        let mut paragraph_index = 0usize;
+        let has_explicit_heading = section_blocks
+            .first()
+            .is_some_and(|(kind, _)| matches!(kind, BlockKind::Heading(_)));
+        if !has_explicit_heading {
+            let section_title = section
+                .title
+                .clone()
+                .filter(|value| !value.trim().is_empty())
+                .unwrap_or_else(|| {
+                    Path::new(&section.href)
+                        .file_stem()
+                        .and_then(|value| value.to_str())
+                        .unwrap_or("Chapter")
+                        .replace(['-', '_'], " ")
+                });
+            paragraph_index += 1;
+            let mut source = root.clone();
+            source.resource = Some(section.href.clone());
+            source.paragraph = Some(paragraph_index);
+            parsed_blocks.push(ParsedBlock {
+                kind: BlockKind::Heading(section.heading_level.unwrap_or(1).max(1)),
+                text: section_title,
+                source,
+            });
+        }
+
+        for (kind, text) in section_blocks {
+            paragraph_index += 1;
+            let mut source = root.clone();
+            source.resource = Some(section.href.clone());
+            source.paragraph = Some(paragraph_index);
+            parsed_blocks.push(ParsedBlock { kind, text, source });
+        }
+    }
+
+    if parsed_blocks.is_empty() {
+        return Err(DocumentError::EmptyDocument(path.to_path_buf()));
+    }
+
+    let mut metadata = std::collections::BTreeMap::new();
+    metadata.insert("epub_reader".into(), "bookforge".into());
+    metadata.insert("bookforge_revision".into(), BOOKFORGE_REVISION.into());
+    metadata.insert("bookforge_book_id".into(), book.id.0.clone());
+    metadata.insert("manifest_count".into(), book.manifest.len().to_string());
+    metadata.insert("spine_count".into(), book.spine.len().to_string());
+    metadata.insert("section_count".into(), book.sections.len().to_string());
+    metadata.insert("block_count".into(), book.blocks.len().to_string());
+    if let Some(value) = &author {
+        metadata.insert("author".into(), value.clone());
+    }
+    if let Some(value) = &language {
+        metadata.insert("language".into(), value.clone());
+    }
+
+    Ok(ParsedDocument {
+        title,
+        author,
+        language,
+        metadata,
+        source: root,
+        blocks: parsed_blocks,
+    })
+}
+
+#[cfg(feature = "bookforge-epub")]
+fn map_bookforge_block_kind(kind: &BookForgeBlockKind) -> Option<BlockKind> {
+    match kind {
+        BookForgeBlockKind::Heading(level) => Some(BlockKind::Heading((*level).max(1))),
+        BookForgeBlockKind::PageFurniture | BookForgeBlockKind::Code => None,
+        BookForgeBlockKind::Paragraph
+        | BookForgeBlockKind::ListItem
+        | BookForgeBlockKind::Quote
+        | BookForgeBlockKind::TableCell
+        | BookForgeBlockKind::TableRow
+        | BookForgeBlockKind::Footnote
+        | BookForgeBlockKind::Caption
+        | BookForgeBlockKind::Unknown => Some(BlockKind::Paragraph),
+    }
+}
+
+#[cfg(feature = "bookforge-epub")]
+fn bookforge_block_text(block: &BookForgeBlock) -> String {
+    block
+        .text_runs
+        .iter()
+        .map(|run| run.text.as_str())
+        .collect::<String>()
+        .trim()
+        .to_string()
+}
+
+#[cfg(not(feature = "bookforge-epub"))]
+fn parse_epub_builtin(path: &Path) -> Result<ParsedDocument, DocumentError> {
     let file = File::open(path)?;
     let mut archive = ZipArchive::new(file).map_err(|error| {
         DocumentError::CorruptedFile(format!(
@@ -158,6 +337,7 @@ pub(crate) fn parse_epub(path: &Path) -> Result<ParsedDocument, DocumentError> {
         return Err(DocumentError::EmptyDocument(path.to_path_buf()));
     }
     let mut metadata = std::collections::BTreeMap::new();
+    metadata.insert("epub_reader".into(), "builtin".into());
     metadata.insert("package_path".into(), opf_path);
     if let Some(value) = &author {
         metadata.insert("author".into(), value.clone());
@@ -411,6 +591,17 @@ mod tests {
         assert_eq!(
             normalize_archive_path(Path::new("OEBPS/text"), "../chapter1.xhtml"),
             "OEBPS/chapter1.xhtml"
+        );
+    }
+
+    #[cfg(feature = "bookforge-epub")]
+    #[test]
+    fn bookforge_page_furniture_and_code_are_not_translation_units() {
+        assert_eq!(map_bookforge_block_kind(&BookForgeBlockKind::PageFurniture), None);
+        assert_eq!(map_bookforge_block_kind(&BookForgeBlockKind::Code), None);
+        assert_eq!(
+            map_bookforge_block_kind(&BookForgeBlockKind::Footnote),
+            Some(BlockKind::Paragraph)
         );
     }
 }
