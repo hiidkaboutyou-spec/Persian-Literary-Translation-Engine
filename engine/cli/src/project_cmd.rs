@@ -9,8 +9,8 @@
 use crate::OutputFormat;
 use human_review_workflow::{ReviewedRelationship, ReviewedTerminology};
 use project_engine::application::{
-    AdvancedAnalysisSettings, ApplicationService, DecisionAction, Project, ReviewedValue,
-    TranslationConfig, VecEventSink,
+    AdvancedAnalysisSettings, ApplicationService, DecisionAction, LiteraryReviewSettings, Project,
+    ReviewedValue, TranslationConfig, VecEventSink,
 };
 use serde::Serialize;
 use std::collections::BTreeSet;
@@ -31,6 +31,7 @@ pub fn run_project(args: &[String], format: &OutputFormat) -> Result<()> {
         "analyze" => analyze(&service, rest),
         "analyze-advanced" => analyze_advanced(&service, rest),
         "review" => review(&service, rest, format),
+        "review-translation" => review_translation(&service, rest, format),
         "translate" => translate(&service, rest),
         "resume" => resume(&service, rest),
         "progress" => progress(&service, rest, format),
@@ -57,6 +58,7 @@ fn project_help() -> &'static str {
        analyze <dir>                                    deterministic Phase 13 analysis + review reconcile\n\
        analyze-advanced <dir> [--provider mock|openai]  provider-assisted Phase 15 literary findings\n\
        review <dir> <list|approve-all|promote>          review lifecycle through the application layer\n\
+       review-translation <dir> [--provider none|mock|openai] [--no-alignment] [--max-chapters <n>]\n\
        translate <dir> [--provider echo|auto|openai] [--max-chapters <n>]\n\
        resume <dir>                                     resume an existing translation run\n\
        progress <dir>                                   current translation progress\n\
@@ -505,6 +507,57 @@ fn review(service: &ApplicationService, args: &[String], format: &OutputFormat) 
             "usage: literary-engine project review <dir> <list|approve-all|promote>".to_string(),
         ),
     }
+}
+
+// ---------------------------------------------------------------------------
+// Phase 19 translation review
+// ---------------------------------------------------------------------------
+
+fn review_translation(
+    service: &ApplicationService,
+    args: &[String],
+    format: &OutputFormat,
+) -> Result<()> {
+    let dir = project_path(args, true)?;
+    let project = open(service, &dir)?;
+    let max_chapters = match flag_value(args, "--max-chapters") {
+        Some(value) => Some(
+            value
+                .parse::<usize>()
+                .map_err(|error| format!("invalid --max-chapters '{value}': {error}"))?,
+        ),
+        None => None,
+    };
+    let settings = LiteraryReviewSettings {
+        provider: flag_value(args, "--provider").unwrap_or("none").to_string(),
+        model: flag_value(args, "--model").map(str::to_string),
+        semantic_alignment: !args.iter().any(|arg| arg == "--no-alignment"),
+        max_chapters,
+    };
+    let summary = service
+        .review_translation(&project, &settings)
+        .map_err(|error| format!("literary review failed: {error}"))?;
+    match format {
+        OutputFormat::Json => println!(
+            "{}",
+            serde_json::to_string_pretty(&summary)
+                .map_err(|error| format!("serialization failed: {error}"))?
+        ),
+        OutputFormat::Text => {
+            println!(
+                "literary review: {} chapters, {} findings, {} chapters requiring attention",
+                summary.reviewed_chapters, summary.findings, summary.chapters_requiring_attention
+            );
+            println!(
+                "optional evidence failures: alignment {}, provider {}",
+                summary.alignment_failures, summary.provider_failures
+            );
+            for artifact in &summary.artifacts {
+                println!("- {artifact}");
+            }
+        }
+    }
+    Ok(())
 }
 
 // ---------------------------------------------------------------------------

@@ -7,6 +7,7 @@
 
 use super::analysis::{analyze_book, run_advanced_analysis, AdvancedAnalysisSettings};
 use super::error::{ApplicationError, ApplicationErrorPayload};
+use super::literary_review as literary_review_ops;
 use super::models::{
     ApplicationCapabilities, ArtifactState, HistoryEvent, NextAction, ProjectEvent,
     ProjectEventSink, ProjectSnapshot, ReviewItemSummary, TranslatedChapter, TranslationProgress,
@@ -355,6 +356,27 @@ impl ApplicationService {
         let mut manifest = load_manifest(&project.layout)?;
         manifest.canon_fingerprint = snapshot_ops::canon_fingerprint(&project.layout)?;
         save_manifest(&project.layout, &manifest)
+    }
+
+    // ------------------------------------------------------------------
+    // Phase 19 literary translation review
+    // ------------------------------------------------------------------
+
+    pub fn review_translation(
+        &self,
+        project: &Project,
+        settings: &literary_review_ops::LiteraryReviewSettings,
+    ) -> Result<literary_review_ops::LiteraryReviewRunSummary, ApplicationError> {
+        let _lock = ProjectLock::acquire(&project.layout, "literary-review")?;
+        literary_review_ops::run_literary_review(&project.layout, settings)
+    }
+
+    pub fn get_literary_review(
+        &self,
+        project: &Project,
+        chapter_index: usize,
+    ) -> Result<literary_review_ops::LiteraryReviewArtifactView, ApplicationError> {
+        literary_review_ops::get_literary_review(&project.layout, chapter_index)
     }
 
     // ------------------------------------------------------------------

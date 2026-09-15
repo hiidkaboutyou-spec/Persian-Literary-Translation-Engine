@@ -21,7 +21,7 @@ use literary_review_engine::{
 };
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub const LITERARY_REVIEW_ARTIFACT_SCHEMA_VERSION: u32 = 1;
 const APPROVED_CONTEXT_CHAR_LIMIT: usize = 12_000;
@@ -172,15 +172,13 @@ pub fn run_literary_review(
         };
         let target = translated_text(&translated.paragraphs);
         let source = chapter.content.as_str();
-        let mut report = review_native(
-            chapter.id.clone(),
-            source,
-            &target,
-            Default::default(),
-        );
+        let mut report = review_native(chapter.id.clone(), source, &target, Default::default());
 
         let (semantic_alignment, alignment_failed) = if !settings.semantic_alignment {
-            (EvidenceRunStatus::not_requested("semantic_alignment"), false)
+            (
+                EvidenceRunStatus::not_requested("semantic_alignment"),
+                false,
+            )
         } else if let Some(sidecar) = alignment_sidecar.as_ref() {
             let source_segments = paragraph_segments(source);
             let target_segments = paragraph_segments(&target);
@@ -223,9 +221,9 @@ pub fn run_literary_review(
                 },
                 Err(error) => {
                     let message = error.to_string();
-                    report.advisory_notes.push(format!(
-                        "Semantic alignment request was not run: {message}"
-                    ));
+                    report
+                        .advisory_notes
+                        .push(format!("Semantic alignment request was not run: {message}"));
                     (
                         EvidenceRunStatus::failed("semantic_alignment", message),
                         true,
@@ -243,13 +241,8 @@ pub fn run_literary_review(
         };
         summary.alignment_failures += usize::from(alignment_failed);
 
-        let approved_context = approved_context(
-            layout,
-            &chapter.id,
-            source,
-            &characters,
-            &glossary,
-        );
+        let approved_context =
+            approved_context(layout, &chapter.id, source, &characters, &glossary);
         let (provider_review, provider_failed) = if let Some(provider) = provider.as_deref() {
             let dimensions = provider_dimensions();
             match ReviewProviderRequest::from_text(
@@ -394,7 +387,9 @@ fn configured_provider(
     }
 }
 
-fn map_provider_config_error(error: literary_review_engine::ReviewProviderError) -> ApplicationError {
+fn map_provider_config_error(
+    error: literary_review_engine::ReviewProviderError,
+) -> ApplicationError {
     match error {
         literary_review_engine::ReviewProviderError::Authentication(message) => {
             ApplicationError::ProviderAuthenticationFailed(message)
@@ -527,13 +522,6 @@ fn artifact_path(layout: &ProjectLayout, chapter_index: usize) -> PathBuf {
 
 pub fn artifact_exists(layout: &ProjectLayout, chapter_index: usize) -> bool {
     artifact_path(layout, chapter_index).is_file()
-}
-
-pub fn artifact_path_for_display(layout: &ProjectLayout, chapter_index: usize) -> &Path {
-    // Kept private from persistence ownership; callers should normally use
-    // `get_literary_review`. This helper exists only for internal diagnostics.
-    let _ = (layout, chapter_index);
-    Path::new("translation/reviews")
 }
 
 #[cfg(test)]

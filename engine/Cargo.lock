@@ -1409,6 +1409,7 @@ dependencies = [
  "document-engine",
  "human-review-workflow",
  "literary-intelligence-engine",
+ "literary-review-engine",
  "memory-engine",
  "quality-engine",
  "serde",
