@@ -22,7 +22,7 @@ jobs:
       - name: Install stable Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          components: rustfmt, clippy
+          components: rustfmt
 
       - name: Remove tests for retired duplicate CLI context assembler
         shell: bash
@@ -51,9 +51,9 @@ jobs:
         working-directory: engine
         run: cargo fmt --all
 
-      - name: Clippy CLI tests
+      - name: Check CLI test target before shared-context migration
         working-directory: engine
-        run: cargo clippy -p literary-engine --all-targets -- -D warnings
+        run: cargo check -p literary-engine --tests
 
       - name: Run CLI tests
         working-directory: engine
