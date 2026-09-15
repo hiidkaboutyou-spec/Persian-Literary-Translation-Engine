@@ -1,0 +1,89 @@
+name: Wire Phase 18 Context Once
+
+on:
+  push:
+    branches: [phase-18-context-packet-v2]
+    paths:
+      - '.github/workflows/wire-phase18-context-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  wire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v7
+        with:
+          ref: phase-18-context-packet-v2
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Wire shared packet into CLI and ApplicationService
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: Path, old: str, new: str) -> None:
+              text = path.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected exactly one match, found {count}")
+              path.write_text(text.replace(old, new, 1))
+
+          cli = Path('engine/cli/src/main.rs')
+          replace_once(
+              cli,
+              '''use literary_intelligence_engine::{\n    AnalysisCanon, DeterministicManuscriptAnalyzer, ManuscriptAnalyzer, ManuscriptIntelligence,\n};''',
+              '''use literary_intelligence_engine::{\n    build_chapter_context_packet, AnalysisCanon, ChapterContextPacketInput,\n    DeterministicManuscriptAnalyzer, ManuscriptAnalyzer, ManuscriptIntelligence, NeighborContext,\n};'''
+          )
+          replace_once(
+              cli,
+              '''    build_memory_context, load_glossary, load_translation_memory, MemoryContextConfig,\n    TranslationMemory,\n};''',
+              '''    build_memory_context, load_glossary, load_translation_memory, ContextPacketConfig,\n    MemoryContextConfig, TranslationMemory,\n};'''
+          )
+          replace_once(
+              cli,
+              '''        let context = chapter_context(\n            &document_title,\n            &chapter.title,\n            &source_text,\n            &runtime_memory,\n            intelligence.initialization.context_for_chapter(&chapter.id),\n            &chapter_literary_lines,\n        );\n        let context_fingerprint = source_fingerprint(&context);''',
+              '''        let previous = chapter.index.checked_sub(1).and_then(|index| {\n            chapters.get(index).map(|neighbor| NeighborContext {\n                id: &neighbor.id,\n                title: &neighbor.title,\n                text: &neighbor.content,\n            })\n        });\n        let next = chapters.get(chapter.index.saturating_add(1)).map(|neighbor| {\n            NeighborContext {\n                id: &neighbor.id,\n                title: &neighbor.title,\n                text: &neighbor.content,\n            }\n        });\n        let context_packet = build_chapter_context_packet(\n            ChapterContextPacketInput {\n                document_title: &document_title,\n                chapter_id: &chapter.id,\n                chapter_title: &chapter.title,\n                source_text: &source_text,\n                previous,\n                next,\n                characters: &runtime_memory.characters,\n                glossary: &runtime_memory.glossary,\n                translation_memory: &runtime_memory.translation,\n                intelligence: &intelligence,\n                reviewed_literary_lines: &chapter_literary_lines,\n            },\n            &ContextPacketConfig::default(),\n        );\n        manifest_text.push_str(&format!(\n            "chapter.{}.context_packet_items={}\\nchapter.{}.context_packet_excluded={}\\n",\n            chapter.index + 1,\n            context_packet.selected_count,\n            chapter.index + 1,\n            context_packet.excluded_count\n        ));\n        let context = context_packet.rendered_context.clone();\n        let context_fingerprint = context_packet.packet_fingerprint.clone();'''
+          )
+
+          app = Path('engine/crates/project-engine/src/application/translation.rs')
+          replace_once(
+              app,
+              '''use human_review_workflow::ReviewKind;\nuse memory_engine::{build_memory_context, MemoryContextConfig, TranslationMemory};''',
+              '''use human_review_workflow::ReviewKind;\nuse literary_intelligence_engine::{\n    build_chapter_context_packet, ChapterContextPacketInput, NeighborContext,\n};\nuse memory_engine::{\n    build_memory_context, ContextPacketConfig, MemoryContextConfig, TranslationMemory,\n};'''
+          )
+          replace_once(
+              app,
+              '''        let context = chapter_context(\n            &manuscript.book.title,\n            &chapter.title,\n            &source_text,\n            &characters,\n            &glossary,\n            &translation_memory,\n            intelligence.initialization.context_for_chapter(&chapter.id),\n            &literary_lines,\n        );\n        let source_fingerprint = content_fingerprint(source_text.as_bytes());\n        let context_fingerprint = content_fingerprint(context.as_bytes());''',
+              '''        let previous = chapter.index.checked_sub(1).and_then(|index| {\n            manuscript.chapters.get(index).map(|neighbor| NeighborContext {\n                id: &neighbor.id,\n                title: &neighbor.title,\n                text: &neighbor.content,\n            })\n        });\n        let next = manuscript\n            .chapters\n            .get(chapter.index.saturating_add(1))\n            .map(|neighbor| NeighborContext {\n                id: &neighbor.id,\n                title: &neighbor.title,\n                text: &neighbor.content,\n            });\n        let context_packet = build_chapter_context_packet(\n            ChapterContextPacketInput {\n                document_title: &manuscript.book.title,\n                chapter_id: &chapter.id,\n                chapter_title: &chapter.title,\n                source_text: &source_text,\n                previous,\n                next,\n                characters: &characters,\n                glossary: &glossary,\n                translation_memory: &translation_memory,\n                intelligence: &intelligence,\n                reviewed_literary_lines: &literary_lines,\n            },\n            &ContextPacketConfig::default(),\n        );\n        let context = context_packet.rendered_context.clone();\n        let source_fingerprint = content_fingerprint(source_text.as_bytes());\n        let context_fingerprint = context_packet.packet_fingerprint.clone();'''
+          )
+          PY
+
+      - name: Format
+        working-directory: engine
+        run: cargo fmt --all
+
+      - name: Check affected crates
+        working-directory: engine
+        run: |
+          set -euo pipefail
+          cargo check -p literary-intelligence-engine -p project-engine -p literary-engine
+
+      - name: Commit wiring
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add engine/cli/src/main.rs engine/crates/project-engine/src/application/translation.rs engine/crates/literary-intelligence-engine/src/context_packet.rs engine/crates/literary-intelligence-engine/src/lib.rs
+          git commit -m 'feat: wire Context Packet v2 into translation paths'
+          git push origin HEAD:phase-18-context-packet-v2
