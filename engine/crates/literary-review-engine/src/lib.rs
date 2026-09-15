@@ -3,6 +3,13 @@ use std::collections::BTreeSet;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
+pub mod provider;
+pub use provider::{
+    attach_provider_review, LiteraryReviewProvider, MockReviewProvider, OpenAIReviewProvider,
+    ProviderFinding, ProviderReviewResponse, ReviewProviderError, ReviewProviderRequest,
+    ReviewProviderResult, ReviewRequestLimits, REVIEW_PROMPT_VERSION,
+};
+
 pub const REVIEW_SCHEMA_VERSION: u32 = 1;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
