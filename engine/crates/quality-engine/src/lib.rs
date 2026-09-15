@@ -1,6 +1,10 @@
+pub mod comet;
 pub mod consistency;
 pub mod evaluation;
 
+pub use comet::{
+    CometError, CometEvaluationItem, CometEvaluationResult, CometScoredItem, CometSidecar,
+};
 pub use consistency::{
     audit_consistency, check_consistency, ConsistencyConflict, ConsistencyObservation,
     ConsistencyResult,
