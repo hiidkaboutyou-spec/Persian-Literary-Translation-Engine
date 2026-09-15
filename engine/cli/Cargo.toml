@@ -2,10 +2,15 @@
 name = "literary-engine"
 version = "0.1.0"
 edition = "2021"
+default-run = "literary-engine"
 
 [[bin]]
 name = "literary-engine"
 path = "src/main.rs"
+
+[[bin]]
+name = "literary-project"
+path = "src/project.rs"
 
 [dependencies]
 character-engine = { path = "../crates/character-engine" }
@@ -15,6 +20,7 @@ human-review-workflow = { path = "../crates/human-review-workflow" }
 advanced-literary-analysis = { path = "../crates/advanced-literary-analysis" }
 project-engine = { path = "../crates/project-engine" }
 memory-engine = { path = "../crates/memory-engine" }
+project-engine = { path = "../crates/project-engine" }
 quality-engine = { path = "../crates/quality-engine" }
 translation-core = { path = "../crates/translation-core" }
 serde = { version = "1", features = ["derive"] }
