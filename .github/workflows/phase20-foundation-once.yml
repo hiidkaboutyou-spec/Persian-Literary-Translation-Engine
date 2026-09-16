@@ -32,38 +32,30 @@ jobs:
           cargo fmt --all
           cargo fmt --all -- --check
       - name: Check workspace
-        id: workspace_check
-        continue-on-error: true
         working-directory: engine
-        run: cargo check --locked --workspace 2>&1 | tee ../phase20-foundation-check.log
-      - name: Persist compile diagnostic
-        if: steps.workspace_check.outcome == 'failure'
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add phase20-foundation-check.log
-          git commit -m 'chore: capture Phase 20 foundation compile diagnostic'
-          git push origin HEAD:phase-20-publication-epub-roundtrip
-          exit 1
+        run: cargo check --locked --workspace
       - name: Clippy affected crates
-        id: clippy
+        working-directory: engine
+        run: cargo clippy --locked -p translation-core -p document-engine -p literary-review-engine -p project-engine -p literary-engine --all-targets -- -D warnings
+      - name: Test affected crates
+        id: tests
         continue-on-error: true
         working-directory: engine
-        run: cargo clippy --locked -p translation-core -p document-engine -p literary-review-engine -p project-engine -p literary-engine --all-targets -- -D warnings 2>&1 | tee ../phase20-foundation-clippy.log
-      - name: Persist clippy diagnostic
-        if: steps.clippy.outcome == 'failure'
+        shell: bash
+        run: |
+          set -o pipefail
+          cargo test --locked -p translation-core -p document-engine -p literary-review-engine -p project-engine -p literary-engine 2>&1 | tee ../phase20-foundation-tests.log
+      - name: Persist test diagnostic
+        if: steps.tests.outcome == 'failure'
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add phase20-foundation-clippy.log
-          git commit -m 'chore: capture Phase 20 foundation clippy diagnostic'
+          git add phase20-foundation-tests.log
+          git commit -m 'chore: capture Phase 20 foundation test diagnostic'
           git push origin HEAD:phase-20-publication-epub-roundtrip
           exit 1
-      - name: Test affected crates
-        working-directory: engine
-        run: cargo test --locked -p translation-core -p document-engine -p literary-review-engine -p project-engine -p literary-engine
       - name: Remove temporary migration tooling
-        run: rm -f .github/scripts/phase20_foundation.py .github/workflows/phase20-foundation-once.yml phase20-foundation-check.log phase20-foundation-clippy.log
+        run: rm -f .github/scripts/phase20_foundation.py .github/workflows/phase20-foundation-once.yml phase20-foundation-tests.log
       - name: Commit validated foundation
         run: |
           git config user.name 'github-actions[bot]'
