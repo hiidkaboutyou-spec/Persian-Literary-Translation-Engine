@@ -1,0 +1,477 @@
+[1m[92m    Updating[0m crates.io index
+[1m[92m    Updating[0m git repository `https://github.com/JunjoSick/bookforge`
+[1m[92m Downloading[0m crates ...
+[1m[92m  Downloaded[0m adobe-cmap-parser v0.4.1
+[1m[92m  Downloaded[0m block-buffer v0.10.4
+[1m[92m  Downloaded[0m atomic-waker v1.1.2
+[1m[92m  Downloaded[0m autocfg v1.5.1
+[1m[92m  Downloaded[0m bitflags v1.3.2
+[1m[92m  Downloaded[0m pdf-extract v0.12.0
+[1m[92m  Downloaded[0m defmt-macros v1.1.1
+[1m[92m  Downloaded[0m base64 v0.22.1
+[1m[92m  Downloaded[0m digest v0.10.7
+[1m[92m  Downloaded[0m aes v0.8.4
+[1m[92m  Downloaded[0m generic-array v0.14.7
+[1m[92m  Downloaded[0m http-body-util v0.1.5
+[1m[92m  Downloaded[0m itoa v1.0.18
+[1m[92m  Downloaded[0m futures-core v0.3.34
+[1m[92m  Downloaded[0m potential_utf v0.1.6
+[1m[92m  Downloaded[0m rand_core v0.10.1
+[1m[92m  Downloaded[0m postscript v0.14.1
+[1m[92m  Downloaded[0m proc-macro2 v1.0.107
+[1m[92m  Downloaded[0m scopeguard v1.2.0
+[1m[92m  Downloaded[0m type1-encoding-parser v0.1.1
+[1m[92m  Downloaded[0m powerfmt v0.2.0
+[1m[92m  Downloaded[0m rand_pcg v0.10.2
+[1m[92m  Downloaded[0m rustls-pki-types v1.15.1
+[1m[92m  Downloaded[0m serde_urlencoded v0.7.1
+[1m[92m  Downloaded[0m stringprep v0.1.5
+[1m[92m  Downloaded[0m try-lock v0.2.5
+[1m[92m  Downloaded[0m sha2 v0.10.9
+[1m[92m  Downloaded[0m rangemap v1.8.0
+[1m[92m  Downloaded[0m rustc-hash v2.1.3
+[1m[92m  Downloaded[0m rustversion v1.0.23
+[1m[92m  Downloaded[0m serde_core v1.0.229
+[1m[92m  Downloaded[0m simdutf8 v0.1.5
+[1m[92m  Downloaded[0m quinn-udp v0.5.15
+[1m[92m  Downloaded[0m shlex v2.0.1
+[1m[92m  Downloaded[0m subtle v2.6.1
+[1m[92m  Downloaded[0m sync_wrapper v1.0.2
+[1m[92m  Downloaded[0m synstructure v0.14.0
+[1m[92m  Downloaded[0m tower-layer v0.3.3
+[1m[92m  Downloaded[0m serde_derive v1.0.229
+[1m[92m  Downloaded[0m want v0.3.1
+[1m[92m  Downloaded[0m untrusted v0.9.0
+[1m[92m  Downloaded[0m tower-service v0.3.3
+[1m[92m  Downloaded[0m tinystr v0.8.4
+[1m[92m  Downloaded[0m version_check v0.9.5
+[1m[92m  Downloaded[0m stable_deref_trait v1.2.1
+[1m[92m  Downloaded[0m smallvec v1.16.1
+[1m[92m  Downloaded[0m time-core v0.1.9
+[1m[92m  Downloaded[0m quinn v0.11.12
+[1m[92m  Downloaded[0m thiserror v1.0.69
+[1m[92m  Downloaded[0m utf8_iter v1.0.4
+[1m[92m  Downloaded[0m writeable v0.6.4
+[1m[92m  Downloaded[0m zerofrom v0.1.8
+[1m[92m  Downloaded[0m zerofrom-derive v0.1.8
+[1m[92m  Downloaded[0m sha2 v0.11.0
+[1m[92m  Downloaded[0m tokio-rustls v0.26.5
+[1m[92m  Downloaded[0m zeroize v1.9.0
+[1m[92m  Downloaded[0m zmij v1.0.23
+[1m[92m  Downloaded[0m cfg_aliases v0.2.2
+[1m[92m  Downloaded[0m ryu v1.0.23
+[1m[92m  Downloaded[0m simd-adler32 v0.3.10
+[1m[92m  Downloaded[0m thiserror-impl v1.0.69
+[1m[92m  Downloaded[0m tracing-attributes v0.1.31
+[1m[92m  Downloaded[0m yoke-derive v0.8.3
+[1m[92m  Downloaded[0m slab v0.4.12
+[1m[92m  Downloaded[0m thiserror v2.0.20
+[1m[92m  Downloaded[0m tracing-core v0.1.36
+[1m[92m  Downloaded[0m quote v1.0.47
+[1m[92m  Downloaded[0m rustls-webpki v0.103.15
+[1m[92m  Downloaded[0m time-macros v0.2.32
+[1m[92m  Downloaded[0m zerovec-derive v0.11.6
+[1m[92m  Downloaded[0m uuid v1.26.1
+[1m[92m  Downloaded[0m weezl v0.1.12
+[1m[92m  Downloaded[0m rand v0.10.2
+[1m[92m  Downloaded[0m serde v1.0.229
+[1m[92m  Downloaded[0m unicode-bidi v0.3.18
+[1m[92m  Downloaded[0m unicode-ident v1.0.24
+[1m[92m  Downloaded[0m unicode-properties v0.1.4
+[1m[92m  Downloaded[0m yoke v0.8.3
+[1m[92m  Downloaded[0m zopfli v0.8.3
+[1m[92m  Downloaded[0m cfg-if v1.0.4
+[1m[92m  Downloaded[0m form_urlencoded v1.2.2
+[1m[92m  Downloaded[0m socket2 v0.6.5
+[1m[92m  Downloaded[0m thiserror-impl v2.0.20
+[1m[92m  Downloaded[0m rayon-core v1.13.0
+[1m[92m  Downloaded[0m tinyvec v1.13.3
+[1m[92m  Downloaded[0m url v2.5.8
+[1m[92m  Downloaded[0m tower-http v0.6.11
+[1m[92m  Downloaded[0m typenum v1.20.1
+[1m[92m  Downloaded[0m zerotrie v0.2.5
+[1m[92m  Downloaded[0m cpufeatures v0.2.17
+[1m[92m  Downloaded[0m md-5 v0.10.6
+[1m[92m  Downloaded[0m multiversion_no_op v1.0.0
+[1m[92m  Downloaded[0m serde_json v1.0.151
+[1m[92m  Downloaded[0m zip v2.4.2
+[1m[92m  Downloaded[0m reqwest v0.12.28
+[1m[92m  Downloaded[0m zip v8.6.0
+[1m[92m  Downloaded[0m pom v1.1.0
+[1m[92m  Downloaded[0m equivalent v1.0.2
+[1m[92m  Downloaded[0m futures-sink v0.3.34
+[1m[92m  Downloaded[0m tower v0.5.3
+[1m[92m  Downloaded[0m typed-path v0.12.3
+[1m[92m  Downloaded[0m unicode-normalization v0.1.25
+[1m[92m  Downloaded[0m rayon v1.12.0
+[1m[92m  Downloaded[0m ecb v0.1.2
+[1m[92m  Downloaded[0m futures-task v0.3.34
+[1m[92m  Downloaded[0m inout v0.1.4
+[1m[92m  Downloaded[0m num-conv v0.2.2
+[1m[92m  Downloaded[0m quick-xml v0.41.0
+[1m[92m  Downloaded[0m ttf-parser v0.25.1
+[1m[92m  Downloaded[0m http-body v1.1.0
+[1m[92m  Downloaded[0m percent-encoding v2.3.2
+[1m[92m  Downloaded[0m webpki-roots v1.0.9
+[1m[92m  Downloaded[0m zlib-rs v0.6.8
+[1m[92m  Downloaded[0m defmt-parser v1.0.0
+[1m[92m  Downloaded[0m futures-io v0.3.34
+[1m[92m  Downloaded[0m adler2 v2.0.1
+[1m[92m  Downloaded[0m idna_adapter v1.2.2
+[1m[92m  Downloaded[0m jiff-static v0.2.37
+[1m[92m  Downloaded[0m multiversion-macros v0.9.0
+[1m[92m  Downloaded[0m syn v2.0.119
+[1m[92m  Downloaded[0m block-buffer v0.12.1
+[1m[92m  Downloaded[0m block-padding v0.3.3
+[1m[92m  Downloaded[0m cpufeatures v0.3.1
+[1m[92m  Downloaded[0m crossbeam-deque v0.8.8
+[1m[92m  Downloaded[0m crypto-common v0.2.2
+[1m[92m  Downloaded[0m quinn-proto v0.11.18
+[1m[92m  Downloaded[0m hyper-rustls v0.27.9
+[1m[92m  Downloaded[0m ipnet v2.12.2
+[1m[92m  Downloaded[0m multiversion v0.9.0
+[1m[92m  Downloaded[0m time v0.3.55
+[1m[92m  Downloaded[0m cff-parser v0.2.0
+[1m[92m  Downloaded[0m digest v0.11.3
+[1m[92m  Downloaded[0m displaydoc v0.2.7
+[1m[92m  Downloaded[0m syn v3.0.5
+[1m[92m  Downloaded[0m rustls v0.23.45
+[1m[92m  Downloaded[0m lru-slab v0.1.3
+[1m[92m  Downloaded[0m tracing v0.1.44
+[1m[92m  Downloaded[0m cbc v0.1.2
+[1m[92m  Downloaded[0m cipher v0.4.4
+[1m[92m  Downloaded[0m core_detect v1.0.0
+[1m[92m  Downloaded[0m crypto-common v0.1.7
+[1m[92m  Downloaded[0m defmt v1.1.1
+[1m[92m  Downloaded[0m either v1.18.0
+[1m[92m  Downloaded[0m find-msvc-tools v0.1.12
+[1m[92m  Downloaded[0m hybrid-array v0.4.15
+[1m[92m  Downloaded[0m litemap v0.8.3
+[1m[92m  Downloaded[0m pin-project-lite v0.2.17
+[1m[92m  Downloaded[0m chacha20 v0.10.2
+[1m[92m  Downloaded[0m futures-channel v0.3.34
+[1m[92m  Downloaded[0m httparse v1.10.1
+[1m[92m  Downloaded[0m once_cell v1.21.4
+[1m[92m  Downloaded[0m crc32fast v1.5.2
+[1m[92m  Downloaded[0m crossbeam-epoch v0.9.21
+[1m[92m  Downloaded[0m crossbeam-utils v0.8.23
+[1m[92m  Downloaded[0m deranged v0.5.8
+[1m[92m  Downloaded[0m getrandom v0.2.17
+[1m[92m  Downloaded[0m iana-time-zone v0.1.65
+[1m[92m  Downloaded[0m icu_provider v2.3.1
+[1m[92m  Downloaded[0m getrandom v0.4.3
+[1m[92m  Downloaded[0m log v0.4.34
+[1m[92m  Downloaded[0m miniz_oxide v0.9.1
+[1m[92m  Downloaded[0m num-traits v0.2.19
+[1m[92m  Downloaded[0m bitflags v2.13.2
+[1m[92m  Downloaded[0m bytes v1.12.1
+[1m[92m  Downloaded[0m const-oid v0.10.2
+[1m[92m  Downloaded[0m flate2 v1.1.10
+[1m[92m  Downloaded[0m icu_normalizer_data v2.3.0
+[1m[92m  Downloaded[0m icu_locale_core v2.3.0
+[1m[92m  Downloaded[0m bumpalo v3.20.3
+[1m[92m  Downloaded[0m euclid v0.20.14
+[1m[92m  Downloaded[0m hyper-util v0.1.20
+[1m[92m  Downloaded[0m indexmap v2.14.2
+[1m[92m  Downloaded[0m icu_properties v2.3.0
+[1m[92m  Downloaded[0m memchr v2.8.3
+[1m[92m  Downloaded[0m tokio v1.53.1
+[1m[92m  Downloaded[0m http v1.5.0
+[1m[92m  Downloaded[0m mio v1.2.3
+[1m[92m  Downloaded[0m cc v1.4.6
+[1m[92m  Downloaded[0m icu_collections v2.3.0
+[1m[92m  Downloaded[0m jiff-core v0.1.1
+[1m[92m  Downloaded[0m nom v8.0.0
+[1m[92m  Downloaded[0m idna v1.1.0
+[1m[92m  Downloaded[0m hashbrown v0.17.1
+[1m[92m  Downloaded[0m hyper v1.11.1
+[1m[92m  Downloaded[0m futures-util v0.3.34
+[1m[92m  Downloaded[0m icu_properties_data v2.3.0
+[1m[92m  Downloaded[0m lopdf v0.42.0
+[1m[92m  Downloaded[0m ring v0.17.14
+[1m[92m  Downloaded[0m chrono v0.4.45
+[1m[92m  Downloaded[0m icu_normalizer v2.3.0
+[1m[92m  Downloaded[0m encoding_rs v0.8.41
+[1m[92m  Downloaded[0m jiff v0.2.37
+[1m[92m  Downloaded[0m libc v0.2.189
+[1m[92m  Downloaded[0m zerovec v0.11.8
+[1m[92m   Compiling[0m proc-macro2 v1.0.107
+[1m[92m   Compiling[0m unicode-ident v1.0.24
+[1m[92m   Compiling[0m quote v1.0.47
+[1m[92m    Checking[0m cfg-if v1.0.4
+[1m[92m   Compiling[0m libc v0.2.189
+[1m[92m    Checking[0m typenum v1.20.1
+[1m[92m    Checking[0m memchr v2.8.3
+[1m[92m    Checking[0m itoa v1.0.18
+[1m[92m   Compiling[0m serde_core v1.0.229
+[1m[92m   Compiling[0m version_check v0.9.5
+[1m[92m   Compiling[0m generic-array v0.14.7
+[1m[92m   Compiling[0m syn v3.0.5
+[1m[92m   Compiling[0m serde v1.0.229
+[1m[92m    Checking[0m stable_deref_trait v1.2.1
+[1m[92m    Checking[0m pin-project-lite v0.2.17
+[1m[92m   Compiling[0m zmij v1.0.23
+[1m[92m    Checking[0m crypto-common v0.1.7
+[1m[92m   Compiling[0m syn v2.0.119
+[1m[92m   Compiling[0m serde_json v1.0.151
+[1m[92m   Compiling[0m crc32fast v1.5.2
+[1m[92m    Checking[0m bytes v1.12.1
+[1m[92m    Checking[0m once_cell v1.21.4
+[1m[92m   Compiling[0m rustversion v1.0.23
+[1m[92m    Checking[0m simd-adler32 v0.3.10
+[1m[92m   Compiling[0m find-msvc-tools v0.1.12
+[1m[92m   Compiling[0m shlex v2.0.1
+[1m[92m    Checking[0m futures-core v0.3.34
+[1m[92m   Compiling[0m cc v1.4.6
+[1m[92m    Checking[0m litemap v0.8.3
+[1m[92m    Checking[0m smallvec v1.16.1
+[1m[92m    Checking[0m adler2 v2.0.1
+[1m[92m    Checking[0m writeable v0.6.4
+[1m[92m   Compiling[0m crossbeam-utils v0.8.23
+[1m[92m   Compiling[0m autocfg v1.5.1
+[1m[92m   Compiling[0m synstructure v0.14.0
+[1m[92m   Compiling[0m num-traits v0.2.19
+[1m[92m   Compiling[0m ring v0.17.14
+[1m[92m    Checking[0m miniz_oxide v0.9.1
+[1m[92m    Checking[0m tracing-core v0.1.36
+[1m[92m    Checking[0m block-padding v0.3.3
+[1m[92m    Checking[0m block-buffer v0.10.4
+[1m[92m    Checking[0m socket2 v0.6.5
+[1m[92m    Checking[0m mio v1.2.3
+[1m[92m   Compiling[0m tracing-attributes v0.1.31
+[1m[92m    Checking[0m log v0.4.34
+[1m[92m   Compiling[0m crossbeam-epoch v0.9.21
+[1m[92m    Checking[0m futures-sink v0.3.34
+[1m[92m   Compiling[0m displaydoc v0.2.7
+[1m[92m   Compiling[0m zerofrom-derive v0.1.8
+[1m[92m   Compiling[0m yoke-derive v0.8.3
+[1m[92m   Compiling[0m serde_derive v1.0.229
+[1m[92m   Compiling[0m zerovec-derive v0.11.6
+[1m[92m    Checking[0m hashbrown v0.17.1
+[1m[92m    Checking[0m zerofrom v0.1.8
+[1m[92m    Checking[0m yoke v0.8.3
+[1m[92m    Checking[0m zerotrie v0.2.5
+[1m[92m    Checking[0m rand_core v0.10.1
+[1m[92m    Checking[0m cpufeatures v0.3.1
+[1m[92m   Compiling[0m thiserror v2.0.20
+[1m[92m    Checking[0m utf8_iter v1.0.4
+[1m[92m   Compiling[0m icu_properties_data v2.3.0
+[1m[92m   Compiling[0m getrandom v0.4.3
+[1m[92m    Checking[0m zlib-rs v0.6.8
+[1m[92m    Checking[0m zerovec v0.11.8
+[1m[92m    Checking[0m equivalent v1.0.2
+[1m[92m   Compiling[0m icu_normalizer_data v2.3.0
+[1m[92m    Checking[0m indexmap v2.14.2
+[1m[92m    Checking[0m tinystr v0.8.4
+[1m[92m    Checking[0m icu_locale_core v2.3.0
+[1m[92m    Checking[0m potential_utf v0.1.6
+[1m[92m    Checking[0m icu_collections v2.3.0
+[1m[92m    Checking[0m flate2 v1.1.10
+[1m[92m    Checking[0m tracing v0.1.44
+[1m[92m    Checking[0m icu_provider v2.3.1
+[1m[92m   Compiling[0m thiserror-impl v2.0.20
+[1m[92m    Checking[0m tokio v1.53.1
+[1m[92m    Checking[0m digest v0.10.7
+[1m[92m    Checking[0m inout v0.1.4
+[1m[92m    Checking[0m http v1.5.0
+[1m[92m    Checking[0m hybrid-array v0.4.15
+[1m[92m    Checking[0m cpufeatures v0.2.17
+[1m[92m    Checking[0m bitflags v2.13.2
+[1m[92m    Checking[0m zeroize v1.9.0
+[1m[92m    Checking[0m percent-encoding v2.3.2
+[1m[92m   Compiling[0m crossbeam-deque v0.8.8
+[1m[92m    Checking[0m rustls-pki-types v1.15.1
+[1m[92m    Checking[0m http-body v1.1.0
+[1m[92m    Checking[0m cipher v0.4.4
+[1m[92m    Checking[0m getrandom v0.2.17
+[1m[92m   Compiling[0m httparse v1.10.1
+[1m[92m    Checking[0m futures-task v0.3.34
+[1m[92m    Checking[0m slab v0.4.12
+[1m[92m    Checking[0m untrusted v0.9.0
+[1m[92m   Compiling[0m rayon-core v1.13.0
+[1m[92m    Checking[0m futures-io v0.3.34
+[1m[92m    Checking[0m futures-util v0.3.34
+[1m[92m    Checking[0m icu_normalizer v2.3.0
+[1m[92m    Checking[0m icu_properties v2.3.0
+[1m[92m    Checking[0m crypto-common v0.2.2
+[1m[92m    Checking[0m block-buffer v0.12.1
+[1m[92m    Checking[0m sha2 v0.10.9
+[1m[92m   Compiling[0m multiversion-macros v0.9.0
+[1m[92m   Compiling[0m encoding_rs v0.8.41
+[1m[92m    Checking[0m try-lock v0.2.5
+[1m[92m    Checking[0m tower-service v0.3.3
+[1m[92m    Checking[0m iana-time-zone v0.1.65
+[1m[92m    Checking[0m tinyvec v1.13.3
+[1m[92m   Compiling[0m rustls v0.23.45
+[1m[92m    Checking[0m const-oid v0.10.2
+[1m[92m    Checking[0m unicode-normalization v0.1.25
+[1m[92m    Checking[0m digest v0.11.3
+[1m[92m    Checking[0m multiversion v0.9.0
+[1m[92m    Checking[0m chrono v0.4.45
+[1m[92m    Checking[0m want v0.3.1
+[1m[92m    Checking[0m idna_adapter v1.2.2
+[1m[92m    Checking[0m form_urlencoded v1.2.2
+[1m[92m    Checking[0m chacha20 v0.10.2
+[1m[92m    Checking[0m futures-channel v0.3.34
+[1m[92m    Checking[0m core_detect v1.0.0
+[1m[92m    Checking[0m unicode-bidi v0.3.18
+[1m[92m    Checking[0m num-conv v0.2.2
+[1m[92m    Checking[0m scopeguard v1.2.0
+[1m[92m    Checking[0m either v1.18.0
+[1m[92m    Checking[0m powerfmt v0.2.0
+[1m[92m    Checking[0m subtle v2.6.1
+[1m[92m    Checking[0m unicode-properties v0.1.4
+[1m[92m    Checking[0m jiff-core v0.1.1
+[1m[92m    Checking[0m atomic-waker v1.1.2
+[1m[92m   Compiling[0m multiversion_no_op v1.0.0
+[1m[92m    Checking[0m simdutf8 v0.1.5
+[1m[92m    Checking[0m rustls-webpki v0.103.15
+[1m[92m    Checking[0m deranged v0.5.8
+[1m[92m    Checking[0m time-core v0.1.9
+[1m[92m    Checking[0m pom v1.1.0
+[1m[92m    Checking[0m typed-path v0.12.3
+[1m[92m    Checking[0m jiff v0.2.37
+[1m[92m    Checking[0m time v0.3.55
+[1m[92m    Checking[0m zip v8.6.0
+[1m[92m    Checking[0m stringprep v0.1.5
+[1m[92m    Checking[0m hyper v1.11.1
+[1m[92m    Checking[0m rayon v1.12.0
+[1m[92m    Checking[0m rand v0.10.2
+[1m[92m    Checking[0m idna v1.1.0
+[1m[92m    Checking[0m sha2 v0.11.0
+[1m[92m    Checking[0m ecb v0.1.2
+[1m[92m    Checking[0m cbc v0.1.2
+[1m[92m    Checking[0m aes v0.8.4
+[1m[92m    Checking[0m md-5 v0.10.6
+[1m[92m    Checking[0m sync_wrapper v1.0.2
+[1m[92m    Checking[0m nom v8.0.0
+[1m[92m    Checking[0m quick-xml v0.41.0
+[1m[92m    Checking[0m weezl v0.1.12
+[1m[92m    Checking[0m tower-layer v0.3.3
+[1m[92m    Checking[0m base64 v0.22.1
+[1m[92m    Checking[0m ipnet v2.12.2
+[1m[92m    Checking[0m bumpalo v3.20.3
+[1m[92m    Checking[0m ttf-parser v0.25.1
+[1m[92m   Compiling[0m thiserror v1.0.69
+[1m[92m   Compiling[0m zip v2.4.2
+[1m[92m    Checking[0m rangemap v1.8.0
+[1m[92m    Checking[0m zopfli v0.8.3
+[1m[92m    Checking[0m hyper-util v0.1.20
+[1m[92m    Checking[0m bookforge-core v3.0.0 (https://github.com/JunjoSick/bookforge?rev=23f8c9d3c97a06f48e13424698441bfb4b037844#23f8c9d3)
+[1m[92m    Checking[0m tower v0.5.3
+[1m[92m    Checking[0m url v2.5.8
+[1m[92m    Checking[0m tokio-rustls v0.26.5
+[1m[92m    Checking[0m lopdf v0.42.0
+[1m[92m    Checking[0m type1-encoding-parser v0.1.1
+[1m[92m    Checking[0m adobe-cmap-parser v0.4.1
+[1m[92m    Checking[0m euclid v0.20.14
+[1m[92m    Checking[0m webpki-roots v1.0.9
+[1m[92m   Compiling[0m thiserror-impl v1.0.69
+[1m[92m    Checking[0m cff-parser v0.2.0
+[1m[92m    Checking[0m text-normalization v0.1.0 (/home/runner/work/Persian-Literary-Translation-Engine/Persian-Literary-Translation-Engine/engine/crates/text-normalization)
+[1m[92m    Checking[0m postscript v0.14.1
+[1m[92m    Checking[0m ryu v1.0.23
+[1m[92m    Checking[0m hyper-rustls v0.27.9
+[1m[92m    Checking[0m serde_urlencoded v0.7.1
+[1m[92m    Checking[0m bookforge-epub v3.0.0 (https://github.com/JunjoSick/bookforge?rev=23f8c9d3c97a06f48e13424698441bfb4b037844#23f8c9d3)
+[1m[92m    Checking[0m tower-http v0.6.11
+[1m[92m    Checking[0m http-body-util v0.1.5
+[1m[92m    Checking[0m reqwest v0.12.28
+[1m[92m    Checking[0m uuid v1.26.1
+[1m[92m    Checking[0m character-engine v0.1.0 (/home/runner/work/Persian-Literary-Translation-Engine/Persian-Literary-Translation-Engine/engine/crates/character-engine)
+[1m[92m    Checking[0m memory-engine v0.1.0 (/home/runner/work/Persian-Literary-Translation-Engine/Persian-Literary-Translation-Engine/engine/crates/memory-engine)
+[1m[92m    Checking[0m quality-engine v0.1.0 (/home/runner/work/Persian-Literary-Translation-Engine/Persian-Literary-Translation-Engine/engine/crates/quality-engine)
+[1m[92m    Checking[0m literary-reference-knowledge v0.1.0 (/home/runner/work/Persian-Literary-Translation-Engine/Persian-Literary-Translation-Engine/engine/crates/literary-reference-knowledge)
+[1m[92m    Checking[0m literary-review-engine v0.1.0 (/home/runner/work/Persian-Literary-Translation-Engine/Persian-Literary-Translation-Engine/engine/crates/literary-review-engine)
+[1m[92m    Checking[0m translation-core v0.1.0 (/home/runner/work/Persian-Literary-Translation-Engine/Persian-Literary-Translation-Engine/engine/crates/translation-core)
+[1m[92m    Checking[0m pdf-extract v0.12.0
+[1m[92m    Checking[0m document-engine v0.1.0 (/home/runner/work/Persian-Literary-Translation-Engine/Persian-Literary-Translation-Engine/engine/crates/document-engine)
+[1m[92m    Checking[0m literary-intelligence-engine v0.1.0 (/home/runner/work/Persian-Literary-Translation-Engine/Persian-Literary-Translation-Engine/engine/crates/literary-intelligence-engine)
+[1m[92m    Checking[0m advanced-literary-analysis v0.1.0 (/home/runner/work/Persian-Literary-Translation-Engine/Persian-Literary-Translation-Engine/engine/crates/advanced-literary-analysis)
+[1m[92m    Checking[0m human-review-workflow v0.1.0 (/home/runner/work/Persian-Literary-Translation-Engine/Persian-Literary-Translation-Engine/engine/crates/human-review-workflow)
+[1m[92m    Checking[0m project-engine v0.1.0 (/home/runner/work/Persian-Literary-Translation-Engine/Persian-Literary-Translation-Engine/engine/crates/project-engine)
+[1m[91merror[E0774][0m[1m: `derive` may only be applied to `struct`s, `enum`s and `union`s[0m
+   [1m[94m--> [0mcrates/project-engine/src/application/models.rs:304:1
+    [1m[94m|[0m
+[1m[94m304[0m [1m[94m|[0m   #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+    [1m[94m|[0m   [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91mnot applicable here[0m
+[1m[94m305[0m [1m[94m|[0m [1m[94m/[0m fn default_translation_style_profile() -> String {
+[1m[94m306[0m [1m[94m|[0m [1m[94m|[0m     "literary".to_string()
+[1m[94m307[0m [1m[94m|[0m [1m[94m|[0m }
+    [1m[94m|[0m [1m[94m|_-[0m [1m[94mnot a `struct`, `enum` or `union`[0m
+
+[1m[91merror[0m[1m: cannot find attribute `serde` in this scope[0m
+   [1m[94m--> [0mcrates/project-engine/src/application/models.rs:318:7
+    [1m[94m|[0m
+[1m[94m318[0m [1m[94m|[0m     #[serde(default = "default_translation_style_profile")]
+    [1m[94m|[0m       [1m[91m^^^^^[0m
+    [1m[94m|[0m
+    [1m[94m= [0m[1mnote[0m: `serde` is an attribute that can be used by the derive macros `Deserialize` and `Serialize`, you might be missing a `derive` attribute
+    [1m[94m= [0m[1mnote[0m: `serde` is in scope, but it is a crate, not an attribute
+
+[1m[91merror[E0277][0m[1m: the trait bound `TranslatedChapter: serde::Serialize` is not satisfied[0m
+   [1m[94m--> [0mcrates/project-engine/src/application/translation.rs:268:77
+    [1m[94m|[0m
+[1m[94m268[0m [1m[94m|[0m     super::project::atomic_write_json(&chapter_artifact_path(layout, stem), artifact)
+    [1m[94m|[0m     [1m[94m---------------------------------[0m                                       [1m[91m^^^^^^^^[0m [1m[91munsatisfied trait bound[0m
+    [1m[94m|[0m     [1m[94m|[0m
+    [1m[94m|[0m     [1m[94mrequired by a bound introduced by this call[0m
+    [1m[94m|[0m
+[1m[96mhelp[0m: the trait `Serialize` is not implemented for `TranslatedChapter`
+   [1m[94m--> [0mcrates/project-engine/src/application/models.rs:309:1
+    [1m[94m|[0m
+[1m[94m309[0m [1m[94m|[0m pub struct TranslatedChapter {
+    [1m[94m|[0m [1m[96m^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+    [1m[94m= [0m[1mnote[0m: for local types consider adding `#[derive(serde::Serialize)]` to your `TranslatedChapter` type
+    [1m[94m= [0m[1mnote[0m: for types from other crates check whether the crate offers a `serde` feature flag
+    [1m[94m= [0m[1mhelp[0m: the following other types implement trait `Serialize`:
+              &'a T
+              &'a mut T
+              ()
+              (T,)
+              (T0, T1)
+              (T0, T1, T2)
+              (T0, T1, T2, T3)
+              (T0, T1, T2, T3, T4)
+            and 374 others
+[1m[92mnote[0m: required by a bound in `atomic_write_json`
+   [1m[94m--> [0mcrates/project-engine/src/application/project.rs:284:29
+    [1m[94m|[0m
+[1m[94m284[0m [1m[94m|[0m pub fn atomic_write_json<T: serde::Serialize>(
+    [1m[94m|[0m                             [1m[92m^^^^^^^^^^^^^^^^[0m [1m[92mrequired by this bound in `atomic_write_json`[0m
+
+[1m[91merror[E0277][0m[1m: the trait bound `TranslatedChapter: serde::Deserialize<'de>` is not satisfied[0m
+    [1m[94m--> [0mcrates/project-engine/src/application/translation.rs:282:5
+     [1m[94m|[0m
+[1m[94m 282[0m [1m[94m|[0m     serde_json::from_slice(&bytes).map(Some).map_err(|error| {
+     [1m[94m|[0m     [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m [1m[91munsatisfied trait bound[0m
+     [1m[94m|[0m
+[1m[96mhelp[0m: the trait `Deserialize<'_>` is not implemented for `TranslatedChapter`
+    [1m[94m--> [0mcrates/project-engine/src/application/models.rs:309:1
+     [1m[94m|[0m
+[1m[94m 309[0m [1m[94m|[0m pub struct TranslatedChapter {
+     [1m[94m|[0m [1m[96m^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+     [1m[94m= [0m[1mnote[0m: for local types consider adding `#[derive(serde::Deserialize)]` to your `TranslatedChapter` type
+     [1m[94m= [0m[1mnote[0m: for types from other crates check whether the crate offers a `serde` feature flag
+     [1m[94m= [0m[1mhelp[0m: the following other types implement trait `Deserialize<'de>`:
+               &'a Path
+               &'a [u8]
+               &'a str
+               ()
+               (T,)
+               (T0, T1)
+               (T0, T1, T2)
+               (T0, T1, T2, T3)
+             and 386 others
+[1m[92mnote[0m: required by a bound in `from_slice`
+    [1m[94m--> [0m/home/runner/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde_json-1.0.151/src/de.rs:2669:8
+     [1m[94m|[0m
+[1m[94m2667[0m [1m[94m|[0m pub fn from_slice<'a, T>(v: &'a [u8]) -> Result<T>
+     [1m[94m|[0m        [1m[94m----------[0m [1m[94mrequired by a bound in this function[0m
+[1m[94m2668[0m [1m[94m|[0m where
+[1m[94m2669[0m [1m[94m|[0m     T: de::Deserialize<'a>,
+     [1m[94m|[0m        [1m[92m^^^^^^^^^^^^^^^^^^^[0m [1m[92mrequired by this bound in `from_slice`[0m
+
+[1mSome errors have detailed explanations: E0277, E0774.[0m
+[1mFor more information about an error, try `rustc --explain E0277`.[0m
+[1m[91merror[0m: could not compile `project-engine` (lib) due to 4 previous errors
