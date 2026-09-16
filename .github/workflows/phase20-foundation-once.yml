@@ -81,6 +81,38 @@ jobs:
               raise SystemExit('TranslationStyleProfile default block not found')
           p.write_text(s.replace(old, new, 1))
           PY
+      - name: Update style-aware review tests
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('engine/crates/project-engine/src/application/literary_review.rs')
+          s = p.read_text()
+          old = '''    fn provider_dimensions_leave_structural_omission_to_native_alignment_stack() {
+              let dimensions = provider_dimensions();
+              assert!(!dimensions.contains(&ReviewDimension::OmissionAddition));
+              assert!(dimensions.contains(&ReviewDimension::PersianNaturalness));
+              assert!(dimensions.contains(&ReviewDimension::DialogueSubtext));
+          }
+          '''
+          new = '''    fn provider_dimensions_leave_structural_omission_to_native_alignment_stack() {
+              let dimensions = provider_dimensions("literary");
+              assert!(!dimensions.contains(&ReviewDimension::OmissionAddition));
+              assert!(!dimensions.contains(&ReviewDimension::IntimacyFidelity));
+              assert!(dimensions.contains(&ReviewDimension::PersianNaturalness));
+              assert!(dimensions.contains(&ReviewDimension::DialogueSubtext));
+          }
+
+          #[test]
+          fn adult_intimacy_profile_requests_specific_fidelity_review() {
+              let dimensions = provider_dimensions("adult-intimacy");
+              assert!(dimensions.contains(&ReviewDimension::IntimacyFidelity));
+              assert!(!dimensions.contains(&ReviewDimension::OmissionAddition));
+          }
+          '''
+          if old not in s:
+              raise SystemExit('provider_dimensions test block not found')
+          p.write_text(s.replace(old, new, 1))
+          PY
       - name: Format
         working-directory: engine
         run: |
