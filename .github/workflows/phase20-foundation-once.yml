@@ -1,0 +1,339 @@
+name: Phase 20 Foundation Once
+
+on:
+  push:
+    branches: [phase-20-publication-epub-roundtrip]
+    paths: [.github/workflows/phase20-foundation-once.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase-20-publication-epub-roundtrip
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt,clippy
+      - name: Apply Phase 20 foundation
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f"expected text not found in {path}: {old[:100]!r}")
+              p.write_text(text.replace(old, new, 1))
+
+          Path('engine/crates/translation-core/src/style.rs').write_text(r'''use std::fmt;
+use std::str::FromStr;
+
+pub const DEFAULT_STYLE_PROFILE_ID: &str = "literary";
+pub const ADULT_INTIMACY_STYLE_PROFILE_ID: &str = "adult-intimacy";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TranslationStyleProfile {
+    Literary,
+    AdultIntimacy,
+}
+
+impl Default for TranslationStyleProfile {
+    fn default() -> Self {
+        Self::Literary
+    }
+}
+
+impl TranslationStyleProfile {
+    pub fn id(self) -> &'static str {
+        match self {
+            Self::Literary => DEFAULT_STYLE_PROFILE_ID,
+            Self::AdultIntimacy => ADULT_INTIMACY_STYLE_PROFILE_ID,
+        }
+    }
+
+    pub fn requires_adult_confirmation(self) -> bool {
+        matches!(self, Self::AdultIntimacy)
+    }
+
+    /// Empty for the default profile so existing literary runs keep their
+    /// established prompt/context behavior and resume fingerprint.
+    pub fn context_block(self) -> &'static str {
+        match self {
+            Self::Literary => "",
+            Self::AdultIntimacy => concat!(
+                "ADULT INTIMACY FIDELITY PROFILE (confirmed-adult source material only)\n",
+                "Treat this as a fidelity contract, never as an instruction to make prose more sexual. ",
+                "Do not sexualize nonsexual source material. Preserve the source passage's exact degree of ",
+                "sexual/sensual explicitness and pragmatic markedness: do not censor, euphemize, summarize, ",
+                "sanitize, romanticize, intensify, vulgarize, or add detail. Preserve whether each expression is ",
+                "veiled, sensual/implicit, clear but non-detailed, explicit/direct, or strongly marked/colloquial, ",
+                "using natural Persian of comparable force rather than dictionary-literal wording. Preserve the ",
+                "source's euphemistic, neutral/direct, or dysphemistic function when relevant.\n",
+                "Keep POV, narrative distance, character-specific idiolect, dialogue register, pauses, unfinished ",
+                "speech, humor, awkwardness, tenderness, discomfort, shame, desire, vulnerability, and emotional ",
+                "subtext at source strength. Preserve all source evidence of consent, permission, hesitation, refusal, ",
+                "withdrawal, reassurance, coercion, resistance, voluntary submission, commands, and power imbalance ",
+                "without reinterpreting one as another. Preserve who performs each action, its recipient, physical ",
+                "sequence, spatial continuity, cause-and-reaction chain, and any aftermath.\n",
+                "Preserve only sensory channels and embodied interiority actually present in the source; invent no ",
+                "touch, smell, taste, sound, bodily response, metaphor, dialogue, thought, or emotion. Match source ",
+                "pacing and sentence rhythm, including deliberate repetition and acceleration/deceleration. Persian ",
+                "must read as idiomatic contemporary literary prose appropriate to the source: avoid accidental ",
+                "clinical, childish, archaic, coy, flowery, or mechanically obscene diction unless the source itself ",
+                "uses that register. Avoid canned erotic clichés and forced synonym variation.\n",
+                "Every later revision and quality pass is bound by the same parity rules and must not sanitize or ",
+                "amplify an initially faithful translation. Preserve structural marker tokens such as <m1>...</m1> ",
+                "and <r1/> exactly in identifier, count, pairing, and relative order."
+            ),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StyleProfileError(pub String);
+
+impl fmt::Display for StyleProfileError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{}", self.0)
+    }
+}
+
+impl std::error::Error for StyleProfileError {}
+
+impl FromStr for TranslationStyleProfile {
+    type Err = StyleProfileError;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value.trim().to_ascii_lowercase().as_str() {
+            "" | "literary" | "literary-fiction" => Ok(Self::Literary),
+            "adult-intimacy" | "explicit-adult" | "smut" => Ok(Self::AdultIntimacy),
+            other => Err(StyleProfileError(format!(
+                "unsupported translation style profile '{other}'; expected literary or adult-intimacy"
+            ))),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn literary_default_is_prompt_neutral() {
+        let profile = TranslationStyleProfile::default();
+        assert_eq!(profile.id(), "literary");
+        assert!(profile.context_block().is_empty());
+        assert!(!profile.requires_adult_confirmation());
+    }
+
+    #[test]
+    fn adult_profile_is_fidelity_not_amplification() {
+        let profile: TranslationStyleProfile = "adult-intimacy".parse().unwrap();
+        let block = profile.context_block();
+        assert!(profile.requires_adult_confirmation());
+        assert!(block.contains("do not censor"));
+        assert!(block.contains("do not sexualize nonsexual"));
+        assert!(block.contains("do not sanitize or amplify") || block.contains("must not sanitize or"));
+        assert!(block.contains("consent"));
+        assert!(block.contains("dysphemistic"));
+        assert!(block.contains("<m1>...</m1>"));
+    }
+
+    #[test]
+    fn unknown_profile_fails_closed() {
+        assert!("make-it-hotter".parse::<TranslationStyleProfile>().is_err());
+    }
+}
+''')
+
+          replace_once(
+              'engine/crates/translation-core/src/lib.rs',
+              'pub mod provider;\n',
+              'pub mod provider;\npub mod style;\n'
+          )
+          replace_once(
+              'engine/crates/translation-core/src/lib.rs',
+              'pub use provider::{',
+              'pub use style::{\n    StyleProfileError, TranslationStyleProfile, ADULT_INTIMACY_STYLE_PROFILE_ID,\n    DEFAULT_STYLE_PROFILE_ID,\n};\npub use provider::{'
+          )
+
+          replace_once(
+              'engine/crates/translation-core/src/provider.rs',
+              '        format!(\n            "You are the production translation engine for a long-form fiction workflow. Target language: {target_language}. {task} Treat the provided project context as binding continuity guidance when relevant. Return only the resulting passage."\n        )',
+              '        format!(\n            "You are the production translation engine for a long-form fiction workflow. Target language: {target_language}. {task} Treat the provided project context as binding continuity guidance when relevant. Structural marker tokens used by the document layer (for example <m1>...</m1> and <r1/>) are immutable placeholders: preserve every marker identifier, count, pairing, and relative order exactly through translation, revision, and quality review. Return only the resulting passage."\n        )'
+          )
+
+          replace_once(
+              'engine/crates/document-engine/src/models.rs',
+              '    #[serde(skip_serializing_if = "Option::is_none")]\n    pub paragraph: Option<usize>,\n',
+              '    #[serde(skip_serializing_if = "Option::is_none")]\n    pub paragraph: Option<usize>,\n    /// Stable source-format block identity when the parser exposes one.\n    /// EPUB/BookForge uses this to rebuild translated XHTML without guessing.\n    #[serde(default, skip_serializing_if = "Option::is_none")]\n    pub block_id: Option<String>,\n'
+          )
+          replace_once(
+              'engine/crates/document-engine/src/models.rs',
+              '            paragraph: None,\n',
+              '            paragraph: None,\n            block_id: None,\n'
+          )
+
+          p = Path('engine/crates/document-engine/src/epub.rs')
+          text = p.read_text()
+          old = '''            section_blocks.push((kind, text));'''
+          new = '''            section_blocks.push((kind, text, block.id.0.clone()));'''
+          if old not in text:
+              raise SystemExit('EPUB block tuple insertion point missing')
+          text = text.replace(old, new, 1)
+          text = text.replace(
+              '''            .is_some_and(|(kind, _)| matches!(kind, BlockKind::Heading(_)));''',
+              '''            .is_some_and(|(kind, _, _)| matches!(kind, BlockKind::Heading(_)));''',
+              1,
+          )
+          text = text.replace(
+              '''        for (kind, text) in section_blocks {\n            paragraph_index += 1;\n            let mut source = root.clone();\n            source.resource = Some(section.href.clone());\n            source.paragraph = Some(paragraph_index);\n            parsed_blocks.push(ParsedBlock { kind, text, source });\n        }''',
+              '''        for (kind, text, block_id) in section_blocks {\n            paragraph_index += 1;\n            let mut source = root.clone();\n            source.resource = Some(section.href.clone());\n            source.paragraph = Some(paragraph_index);\n            source.block_id = Some(block_id);\n            parsed_blocks.push(ParsedBlock { kind, text, source });\n        }''',
+              1,
+          )
+          p.write_text(text)
+
+          replace_once(
+              'engine/crates/project-engine/src/application/error.rs',
+              '    #[error("translation is already running")]\n    TranslationAlreadyRunning,\n',
+              '    #[error("invalid translation configuration: {0}")]\n    InvalidTranslationConfig(String),\n    #[error("translation is already running")]\n    TranslationAlreadyRunning,\n'
+          )
+          replace_once(
+              'engine/crates/project-engine/src/application/error.rs',
+              '            Self::TranslationAlreadyRunning => "translation_already_running",\n',
+              '            Self::InvalidTranslationConfig(_) => "invalid_translation_config",\n            Self::TranslationAlreadyRunning => "translation_already_running",\n'
+          )
+          replace_once(
+              'engine/crates/project-engine/src/application/error.rs',
+              '            Self::TranslationAlreadyRunning => RecoveryHint::ResumeExistingRun,\n',
+              '            Self::InvalidTranslationConfig(_) => RecoveryHint::None,\n            Self::TranslationAlreadyRunning => RecoveryHint::ResumeExistingRun,\n'
+          )
+
+          replace_once(
+              'engine/crates/project-engine/src/application/models.rs',
+              'pub struct TranslatedChapter {\n',
+              'fn default_translation_style_profile() -> String {\n    "literary".to_string()\n}\n\npub struct TranslatedChapter {\n'
+          )
+          replace_once(
+              'engine/crates/project-engine/src/application/models.rs',
+              '    pub context_fingerprint: String,\n    pub paragraphs: Vec<TranslatedParagraph>,\n',
+              '    pub context_fingerprint: String,\n    /// Translation style contract used for this artifact. Old artifacts default\n    /// to the neutral literary profile for backward-compatible deserialization.\n    #[serde(default = "default_translation_style_profile")]\n    pub style_profile: String,\n    pub paragraphs: Vec<TranslatedParagraph>,\n'
+          )
+
+          p = Path('engine/crates/project-engine/src/application/translation.rs')
+          text = p.read_text()
+          text = text.replace(
+              '''use translation_core::{\n    EchoProvider, OpenAIProvider, PipelineInput, TranslationPipeline, TranslationProvider,\n};''',
+              '''use translation_core::{\n    EchoProvider, OpenAIProvider, PipelineInput, TranslationPipeline, TranslationProvider,\n    TranslationStyleProfile,\n};\nuse std::str::FromStr;''',
+              1,
+          )
+          text = text.replace(
+              '''    pub target_language: String,\n    /// Optional bound: translate at most this many chapters this run (used by\n    /// the CLI/UI to chunk work; resume continues from checkpoints).\n    pub max_chapters: Option<usize>,''',
+              '''    pub target_language: String,\n    /// Optional style contract. `literary` preserves the pre-Phase-20 behavior.\n    pub style_profile: String,\n    /// Required opt-in acknowledgement before the adult-intimacy fidelity\n    /// profile may be used. This profile is never inferred automatically.\n    pub adult_content_confirmed: bool,\n    /// Optional bound: translate at most this many chapters this run (used by\n    /// the CLI/UI to chunk work; resume continues from checkpoints).\n    pub max_chapters: Option<usize>,''',
+              1,
+          )
+          text = text.replace(
+              '''            target_language: "fa".to_string(),\n            max_chapters: None,''',
+              '''            target_language: "fa".to_string(),\n            style_profile: "literary".to_string(),\n            adult_content_confirmed: false,\n            max_chapters: None,''',
+              1,
+          )
+          marker = '''    let manuscript = load_manuscript(layout)?;\n    let (characters, glossary) = load_canon(layout)?;'''
+          replacement = '''    let manuscript = load_manuscript(layout)?;\n    let style_profile = TranslationStyleProfile::from_str(&config.style_profile).map_err(|error| {\n        ApplicationError::InvalidTranslationConfig(error.to_string())\n    })?;\n    if style_profile.requires_adult_confirmation() && !config.adult_content_confirmed {\n        return Err(ApplicationError::InvalidTranslationConfig(\n            "adult-intimacy requires explicit confirmation that every participant in sexual content is an adult; pass the confirmation only after verifying the source".into(),\n        ));\n    }\n    let style_context = style_profile.context_block();\n    let (characters, glossary) = load_canon(layout)?;'''
+          if marker not in text:
+              raise SystemExit('translation style insertion point missing')
+          text = text.replace(marker, replacement, 1)
+          old_context = '''        let context_packet = context_build.packet;\n        let context = context_packet.rendered_context.clone();\n        let source_fingerprint = content_fingerprint(source_text.as_bytes());\n        let context_fingerprint = context_packet.packet_fingerprint.clone();'''
+          new_context = '''        let context_packet = context_build.packet;\n        let source_fingerprint = content_fingerprint(source_text.as_bytes());\n        let (context, context_fingerprint) = if style_context.is_empty() {\n            (\n                context_packet.rendered_context.clone(),\n                context_packet.packet_fingerprint.clone(),\n            )\n        } else {\n            let rendered = if context_packet.rendered_context.trim().is_empty() {\n                style_context.to_string()\n            } else {\n                format!("{}\\n\\n{}", context_packet.rendered_context, style_context)\n            };\n            let fingerprint_material = format!(\n                "{}\\0{}\\0{}",\n                context_packet.packet_fingerprint,\n                style_profile.id(),\n                style_context\n            );\n            (rendered, content_fingerprint(fingerprint_material.as_bytes()))\n        };'''
+          if old_context not in text:
+              raise SystemExit('context fingerprint block missing')
+          text = text.replace(old_context, new_context, 1)
+          text = text.replace(
+              '''            context_fingerprint,\n            paragraphs: align_paragraphs(chapter, &output.quality_review),''',
+              '''            context_fingerprint,\n            style_profile: style_profile.id().to_string(),\n            paragraphs: align_paragraphs(chapter, &output.quality_review),''',
+              1,
+          )
+          p.write_text(text)
+
+          p = Path('engine/cli/src/project_cmd.rs')
+          text = p.read_text()
+          text = text.replace(
+              '''       translate <dir> [--provider echo|auto|openai] [--max-chapters <n>]\\n\\\n       resume <dir>                                     resume an existing translation run\\n\\''',
+              '''       translate <dir> [--provider echo|auto|openai] [--style-profile literary|adult-intimacy] [--confirm-adult-characters] [--max-chapters <n>]\\n\\\n       resume <dir> [--style-profile literary|adult-intimacy] [--confirm-adult-characters]  resume an existing translation run\\n\\''',
+              1,
+          )
+          text = text.replace(
+              '''    Ok(TranslationConfig {\n        provider,\n        model: flag_value(args, "--model").map(str::to_string),\n        target_language: target,\n        max_chapters,\n    })''',
+              '''    Ok(TranslationConfig {\n        provider,\n        model: flag_value(args, "--model").map(str::to_string),\n        target_language: target,\n        style_profile: flag_value(args, "--style-profile")\n            .unwrap_or("literary")\n            .to_string(),\n        adult_content_confirmed: args\n            .iter()\n            .any(|arg| arg == "--confirm-adult-characters"),\n        max_chapters,\n    })''',
+              1,
+          )
+          p.write_text(text)
+
+          p = Path('engine/crates/literary-review-engine/src/lib.rs')
+          text = p.read_text().replace(
+              '    TerminologyContinuity,\n}',
+              '    TerminologyContinuity,\n    IntimacyFidelity,\n}',
+              1,
+          )
+          p.write_text(text)
+
+          p = Path('engine/crates/literary-review-engine/src/provider.rs')
+          text = p.read_text()
+          text = text.replace(
+              '''            "Do not provide chain-of-thought; provide concise review findings and revision rationale only."''',
+              '''            "For intimacy_fidelity, when requested, evaluate only confirmed-adult source material and check parity of explicitness/markedness, consent/hesitation/refusal/coercion and power cues, physical agency/referents, sensory channels, POV, emotional intensity, and pacing; flag both sanitization and amplification. Do not sexualize nonsexual source text. Do not provide chain-of-thought; provide concise review findings and revision rationale only."''',
+              1,
+          )
+          text = text.replace(
+              '''            "terminology_continuity",\n        ];''',
+              '''            "terminology_continuity",\n            "intimacy_fidelity",\n        ];''',
+              1,
+          )
+          p.write_text(text)
+
+          p = Path('engine/crates/project-engine/src/application/literary_review.rs')
+          text = p.read_text()
+          text = text.replace(
+              '''            let dimensions = provider_dimensions();''',
+              '''            let dimensions = provider_dimensions(&translated.style_profile);''',
+              1,
+          )
+          text = text.replace(
+              '''            provider_dimensions(),''',
+              '''            provider_dimensions("literary"),''',
+              1,
+          )
+          text = text.replace(
+              '''fn provider_dimensions() -> Vec<ReviewDimension> {\n    vec![\n        ReviewDimension::SemanticFidelity,\n        ReviewDimension::CharacterVoice,\n        ReviewDimension::RelationshipRegister,\n        ReviewDimension::PersianNaturalness,\n        ReviewDimension::DialogueSubtext,\n        ReviewDimension::TerminologyContinuity,\n    ]\n}''',
+              '''fn provider_dimensions(style_profile: &str) -> Vec<ReviewDimension> {\n    let mut dimensions = vec![\n        ReviewDimension::SemanticFidelity,\n        ReviewDimension::CharacterVoice,\n        ReviewDimension::RelationshipRegister,\n        ReviewDimension::PersianNaturalness,\n        ReviewDimension::DialogueSubtext,\n        ReviewDimension::TerminologyContinuity,\n    ];\n    if style_profile == "adult-intimacy" {\n        dimensions.push(ReviewDimension::IntimacyFidelity);\n    }\n    dimensions\n}''',
+              1,
+          )
+          p.write_text(text)
+          PY
+      - name: Format
+        working-directory: engine
+        run: cargo fmt --all -- --check || (cargo fmt --all && cargo fmt --all -- --check)
+      - name: Check lockfile
+        working-directory: engine
+        run: cargo check --locked --workspace
+      - name: Clippy affected crates
+        working-directory: engine
+        run: cargo clippy --locked -p translation-core -p document-engine -p literary-review-engine -p project-engine -p literary-engine --all-targets -- -D warnings
+      - name: Test affected crates
+        working-directory: engine
+        run: cargo test --locked -p translation-core -p document-engine -p literary-review-engine -p project-engine -p literary-engine
+      - name: Commit validated foundation
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add engine
+          git diff --cached --check
+          git commit -m "feat: add adult intimacy fidelity foundation and EPUB block provenance"
+          git push origin HEAD:phase-20-publication-epub-roundtrip
