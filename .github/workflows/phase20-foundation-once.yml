@@ -24,6 +24,32 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt,clippy
+      - name: Repair migration anchor
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('.github/scripts/phase20_foundation.py')
+          s = p.read_text()
+          old = '    "pub struct TranslatedChapter {\\n",\n'
+          new = '    "#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]\\npub struct TranslatedChapter {\\n",\n'
+          if old not in s:
+              raise SystemExit('TranslatedChapter migration anchor not found')
+          s = s.replace(old, new, 1)
+          old = '''fn default_translation_style_profile() -> String {
+              "literary".to_string()
+          }
+
+          pub struct TranslatedChapter {'''
+          new = '''fn default_translation_style_profile() -> String {
+              "literary".to_string()
+          }
+
+          #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+          pub struct TranslatedChapter {'''
+          if old not in s:
+              raise SystemExit('TranslatedChapter replacement body not found')
+          p.write_text(s.replace(old, new, 1))
+          PY
       - name: Apply migration
         run: python3 .github/scripts/phase20_foundation.py
       - name: Format
