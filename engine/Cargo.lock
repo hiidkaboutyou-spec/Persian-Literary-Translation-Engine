@@ -445,6 +445,7 @@ dependencies = [
  "bookforge-epub",
  "lopdf",
  "pdf-extract",
+ "quick-xml",
  "serde",
  "serde_json",
  "tempfile",

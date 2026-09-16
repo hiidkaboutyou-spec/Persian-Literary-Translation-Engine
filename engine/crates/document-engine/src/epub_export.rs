@@ -24,9 +24,7 @@ use std::path::Path;
 #[cfg(feature = "bookforge-epub")]
 use std::time::{SystemTime, UNIX_EPOCH};
 #[cfg(feature = "bookforge-epub")]
-use zip::{
-    write::SimpleFileOptions, CompressionMethod, DateTime, ZipArchive, ZipWriter,
-};
+use zip::{write::SimpleFileOptions, CompressionMethod, DateTime, ZipArchive, ZipWriter};
 
 use crate::DocumentError;
 
@@ -88,7 +86,8 @@ pub fn export_translated_epub(
     )
     .map_err(bookforge_error)?;
 
-    let preflight_issues = bookforge_epub::validate_block_translations(&segments, &block_translations);
+    let preflight_issues =
+        bookforge_epub::validate_block_translations(&segments, &block_translations);
     let blocking_preflight = preflight_issues
         .iter()
         .filter(|issue| issue.severity == ValidationSeverity::Error)
@@ -107,7 +106,8 @@ pub fn export_translated_epub(
     let _ = fs::remove_file(&rtl_stage);
 
     let options = RebuildOptions::replace_with_target_language(Some(target_language));
-    if let Err(error) = rebuild_epub_with_options(&book, &block_translations, &rebuild_stage, &options)
+    if let Err(error) =
+        rebuild_epub_with_options(&book, &block_translations, &rebuild_stage, &options)
     {
         let _ = fs::remove_file(&rebuild_stage);
         return Err(bookforge_error(error));
@@ -152,7 +152,7 @@ pub fn export_translated_epub(
         fs::remove_file(output)?;
     }
     fs::rename(candidate, output)?;
-    if candidate != rebuild_stage {
+    if candidate != &rebuild_stage {
         let _ = fs::remove_file(&rebuild_stage);
     }
     let _ = fs::remove_file(&rtl_stage);
@@ -210,10 +210,7 @@ fn expected_translatable_blocks(book: &Book) -> Result<BTreeMap<String, String>,
                 continue;
             }
             let source_text = block_text(block);
-            if expected
-                .insert(block.id.0.clone(), source_text)
-                .is_some()
-            {
+            if expected.insert(block.id.0.clone(), source_text).is_some() {
                 return Err(DocumentError::InvalidStructure(format!(
                     "duplicate BookForge block '{}' in EPUB spine",
                     block.id.0
@@ -286,7 +283,12 @@ fn validate_translation_mapping(
         .cloned()
         .collect::<Vec<_>>();
     if !missing.is_empty() {
-        let preview = missing.iter().take(8).cloned().collect::<Vec<_>>().join(", ");
+        let preview = missing
+            .iter()
+            .take(8)
+            .cloned()
+            .collect::<Vec<_>>()
+            .join(", ");
         return Err(DocumentError::InvalidStructure(format!(
             "EPUB export is fail-closed: {} source block(s) have no explicit translation mapping{}: {}",
             missing.len(),
@@ -307,7 +309,10 @@ fn sibling_stage_path(output: &Path, label: &str) -> std::path::PathBuf {
         .file_name()
         .and_then(|value| value.to_str())
         .unwrap_or("output.epub");
-    output.with_file_name(format!(".{name}.{}-{nonce}.{label}.epub", std::process::id()))
+    output.with_file_name(format!(
+        ".{name}.{}-{nonce}.{label}.epub",
+        std::process::id()
+    ))
 }
 
 #[cfg(feature = "bookforge-epub")]
@@ -382,17 +387,10 @@ fn apply_rtl_directionality(
             bytes = patch_xml_attribute(&text, b"html", "dir", "rtl")?.into_bytes();
         } else if name == package_path {
             let text = String::from_utf8(bytes).map_err(|error| {
-                DocumentError::ParsingFailure(format!(
-                    "rebuilt OPF '{name}' is not UTF-8: {error}"
-                ))
+                DocumentError::ParsingFailure(format!("rebuilt OPF '{name}' is not UTF-8: {error}"))
             })?;
-            bytes = patch_xml_attribute(
-                &text,
-                b"spine",
-                "page-progression-direction",
-                "rtl",
-            )?
-            .into_bytes();
+            bytes = patch_xml_attribute(&text, b"spine", "page-progression-direction", "rtl")?
+                .into_bytes();
         }
         writer
             .start_file(
@@ -426,18 +424,24 @@ fn patch_xml_attribute(
                 if !patched && local_name(element.name().as_ref()) == target_local_name =>
             {
                 let replacement = replace_attribute(&element, attribute_name, attribute_value)?;
-                writer.write_event(Event::Start(replacement)).map_err(xml_error)?;
+                writer
+                    .write_event(Event::Start(replacement))
+                    .map_err(DocumentError::Io)?;
                 patched = true;
             }
             Event::Empty(element)
                 if !patched && local_name(element.name().as_ref()) == target_local_name =>
             {
                 let replacement = replace_attribute(&element, attribute_name, attribute_value)?;
-                writer.write_event(Event::Empty(replacement)).map_err(xml_error)?;
+                writer
+                    .write_event(Event::Empty(replacement))
+                    .map_err(DocumentError::Io)?;
                 patched = true;
             }
             Event::Eof => break,
-            other => writer.write_event(other.borrow()).map_err(xml_error)?,
+            other => writer
+                .write_event(other.borrow())
+                .map_err(DocumentError::Io)?,
         }
     }
     if !patched {
@@ -474,7 +478,7 @@ fn replace_attribute(
             .map_err(|error| {
                 DocumentError::ParsingFailure(format!("invalid EPUB XML attribute value: {error}"))
             })?;
-        attributes.push((key, String::from_utf8_lossy(&value).into_owned()));
+        attributes.push((key, value.into_owned()));
     }
     for (key, value) in &attributes {
         element.push_attribute((key.as_str(), value.as_str()));
@@ -527,7 +531,8 @@ mod tests {
     #[test]
     fn xml_spine_patch_adds_rtl_progression() {
         let opf = r#"<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf"><spine toc="ncx"></spine></package>"#;
-        let patched = patch_xml_attribute(opf, b"spine", "page-progression-direction", "rtl").unwrap();
+        let patched =
+            patch_xml_attribute(opf, b"spine", "page-progression-direction", "rtl").unwrap();
         assert!(patched.contains("page-progression-direction=\"rtl\""));
     }
 }
