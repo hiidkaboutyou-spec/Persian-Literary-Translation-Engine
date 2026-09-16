@@ -4,6 +4,7 @@
 pub mod chapter;
 pub mod docx;
 pub mod epub;
+pub mod epub_export;
 pub mod export;
 pub mod models;
 pub mod parser;
@@ -18,6 +19,7 @@ use std::path::{Path, PathBuf};
 pub use chapter::split_into_chapters;
 pub use docx::load_docx_file;
 pub use epub::load_epub_file;
+pub use epub_export::{export_translated_epub, EpubBlockTranslation, EpubExportReport};
 pub use export::export_persian_docx;
 pub use models::{
     Book, Chapter, DocumentFormat, ImportanceMetadata, Manuscript, Paragraph, Scene, SourceLocation,
