@@ -44,7 +44,7 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add phase20-foundation-check.log
+          git add -f phase20-foundation-check.log
           git commit -m 'chore: capture Phase 20 foundation compile diagnostic'
           git push origin HEAD:phase-20-publication-epub-roundtrip
           exit 1
@@ -64,7 +64,7 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add phase20-foundation-tests.log
+          git add -f phase20-foundation-tests.log
           git commit -m 'chore: capture Phase 20 foundation test diagnostic'
           git push origin HEAD:phase-20-publication-epub-roundtrip
           exit 1
