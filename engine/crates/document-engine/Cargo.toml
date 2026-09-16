@@ -8,7 +8,7 @@ path = "src/lib.rs"
 
 [features]
 default = ["bookforge-epub"]
-bookforge-epub = ["dep:bookforge-core", "dep:bookforge-epub"]
+bookforge-epub = ["dep:bookforge-core", "dep:bookforge-epub", "dep:quick-xml"]
 
 [dependencies]
 pdf-extract = "0.12"
@@ -16,6 +16,7 @@ lopdf = "0.42"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 zip = { version = "2", default-features = false, features = ["deflate"] }
+quick-xml = { version = "0.41", optional = true }
 bookforge-core = { git = "https://github.com/JunjoSick/bookforge", rev = "23f8c9d3c97a06f48e13424698441bfb4b037844", package = "bookforge-core", optional = true }
 bookforge-epub = { git = "https://github.com/JunjoSick/bookforge", rev = "23f8c9d3c97a06f48e13424698441bfb4b037844", package = "bookforge-epub", optional = true }
 
