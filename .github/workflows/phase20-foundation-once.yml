@@ -52,6 +52,35 @@ jobs:
           PY
       - name: Apply migration
         run: python3 .github/scripts/phase20_foundation.py
+      - name: Derive default style profile cleanly
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('engine/crates/translation-core/src/style.rs')
+          s = p.read_text()
+          old = '''#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+          pub enum TranslationStyleProfile {
+              Literary,
+              AdultIntimacy,
+          }
+
+          impl Default for TranslationStyleProfile {
+              fn default() -> Self {
+                  Self::Literary
+              }
+          }
+          '''
+          new = '''#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+          pub enum TranslationStyleProfile {
+              #[default]
+              Literary,
+              AdultIntimacy,
+          }
+          '''
+          if old not in s:
+              raise SystemExit('TranslationStyleProfile default block not found')
+          p.write_text(s.replace(old, new, 1))
+          PY
       - name: Format
         working-directory: engine
         run: |
