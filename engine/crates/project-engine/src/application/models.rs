@@ -301,6 +301,10 @@ pub struct TranslationProgress {
 // Translated chapter artifact (for editor + manual edits)
 // ---------------------------------------------------------------------------
 
+fn default_translation_style_profile() -> String {
+    "literary".to_string()
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TranslatedChapter {
     pub schema_version: u32,
@@ -309,6 +313,10 @@ pub struct TranslatedChapter {
     pub title: String,
     pub source_fingerprint: String,
     pub context_fingerprint: String,
+    /// Translation style contract used for this artifact. Old artifacts default
+    /// to the neutral literary profile for backward-compatible deserialization.
+    #[serde(default = "default_translation_style_profile")]
+    pub style_profile: String,
     pub paragraphs: Vec<TranslatedParagraph>,
     /// Set true after any manual edit so the editor/quality layer knows the
     /// stored quality evaluation is stale.

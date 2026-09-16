@@ -24,8 +24,10 @@ use memory_engine::{ContextPacketConfig, SemanticSidecar, TranslationMemory};
 use quality_engine::{evaluate_translation, TerminologyRule};
 use std::fs;
 use std::path::PathBuf;
+use std::str::FromStr;
 use translation_core::{
     EchoProvider, OpenAIProvider, PipelineInput, TranslationPipeline, TranslationProvider,
+    TranslationStyleProfile,
 };
 
 pub const TRANSLATION_PROGRESS_SCHEMA_VERSION: u32 = 1;
@@ -40,6 +42,11 @@ pub struct TranslationConfig {
     pub provider: String,
     pub model: Option<String>,
     pub target_language: String,
+    /// Optional style contract. `literary` preserves the pre-Phase-20 behavior.
+    pub style_profile: String,
+    /// Required opt-in acknowledgement before the adult-intimacy fidelity
+    /// profile may be used. This profile is never inferred automatically.
+    pub adult_content_confirmed: bool,
     /// Optional bound: translate at most this many chapters this run (used by
     /// the CLI/UI to chunk work; resume continues from checkpoints).
     pub max_chapters: Option<usize>,
@@ -51,6 +58,8 @@ impl Default for TranslationConfig {
             provider: "auto".to_string(),
             model: None,
             target_language: "fa".to_string(),
+            style_profile: "literary".to_string(),
+            adult_content_confirmed: false,
             max_chapters: None,
         }
     }
@@ -352,6 +361,14 @@ pub fn run_translation(
     })?;
 
     let manuscript = load_manuscript(layout)?;
+    let style_profile = TranslationStyleProfile::from_str(&config.style_profile)
+        .map_err(|error| ApplicationError::InvalidTranslationConfig(error.to_string()))?;
+    if style_profile.requires_adult_confirmation() && !config.adult_content_confirmed {
+        return Err(ApplicationError::InvalidTranslationConfig(
+            "adult-intimacy requires explicit confirmation that every participant in sexual content is an adult; pass the confirmation only after verifying the source".into(),
+        ));
+    }
+    let style_context = style_profile.context_block();
     let (characters, glossary) = load_canon(layout)?;
     let translation_memory = load_translation_memory()?;
     let semantic_sidecar = configured_semantic_sidecar();
@@ -475,9 +492,29 @@ pub fn run_translation(
             }
         }
         let context_packet = context_build.packet;
-        let context = context_packet.rendered_context.clone();
         let source_fingerprint = content_fingerprint(source_text.as_bytes());
-        let context_fingerprint = context_packet.packet_fingerprint.clone();
+        let (context, context_fingerprint) = if style_context.is_empty() {
+            (
+                context_packet.rendered_context.clone(),
+                context_packet.packet_fingerprint.clone(),
+            )
+        } else {
+            let rendered = if context_packet.rendered_context.trim().is_empty() {
+                style_context.to_string()
+            } else {
+                format!("{}\n\n{}", context_packet.rendered_context, style_context)
+            };
+            let fingerprint_material = format!(
+                "{}\0{}\0{}",
+                context_packet.packet_fingerprint,
+                style_profile.id(),
+                style_context
+            );
+            (
+                rendered,
+                content_fingerprint(fingerprint_material.as_bytes()),
+            )
+        };
 
         // Resume: reuse only chapters whose checkpoints match both the source
         // and the assembled context (canon changes invalidate reuse).
@@ -560,6 +597,7 @@ pub fn run_translation(
             title: chapter.title.clone(),
             source_fingerprint,
             context_fingerprint,
+            style_profile: style_profile.id().to_string(),
             paragraphs: align_paragraphs(chapter, &output.quality_review),
             quality_stale: false,
         };

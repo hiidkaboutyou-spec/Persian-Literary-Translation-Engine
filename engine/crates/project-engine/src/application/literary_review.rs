@@ -244,7 +244,7 @@ pub fn run_literary_review(
         let approved_context =
             approved_context(layout, &chapter.id, source, &characters, &glossary);
         let (provider_review, provider_failed) = if let Some(provider) = provider.as_deref() {
-            let dimensions = provider_dimensions();
+            let dimensions = provider_dimensions(&translated.style_profile);
             match ReviewProviderRequest::from_text(
                 chapter.id.clone(),
                 source,
@@ -366,7 +366,7 @@ fn configured_provider(
     match settings.provider.trim().to_ascii_lowercase().as_str() {
         "" | "none" | "off" => Ok(None),
         "mock" => Ok(Some(Box::new(MockReviewProvider::no_findings(
-            provider_dimensions(),
+            provider_dimensions("literary"),
         )))),
         "openai" => {
             let provider = if let Some(model) = settings.model.as_deref() {
@@ -409,15 +409,19 @@ fn configured_alignment_sidecar(settings: &LiteraryReviewSettings) -> Option<Ali
         .map(AlignmentSidecar::new)
 }
 
-fn provider_dimensions() -> Vec<ReviewDimension> {
-    vec![
+fn provider_dimensions(style_profile: &str) -> Vec<ReviewDimension> {
+    let mut dimensions = vec![
         ReviewDimension::SemanticFidelity,
         ReviewDimension::CharacterVoice,
         ReviewDimension::RelationshipRegister,
         ReviewDimension::PersianNaturalness,
         ReviewDimension::DialogueSubtext,
         ReviewDimension::TerminologyContinuity,
-    ]
+    ];
+    if style_profile == "adult-intimacy" {
+        dimensions.push(ReviewDimension::IntimacyFidelity);
+    }
+    dimensions
 }
 
 fn paragraph_segments(text: &str) -> Vec<String> {
@@ -553,7 +557,7 @@ mod tests {
 
     #[test]
     fn provider_dimensions_leave_structural_omission_to_native_alignment_stack() {
-        let dimensions = provider_dimensions();
+        let dimensions = provider_dimensions("literary");
         assert!(!dimensions.contains(&ReviewDimension::OmissionAddition));
         assert!(dimensions.contains(&ReviewDimension::PersianNaturalness));
         assert!(dimensions.contains(&ReviewDimension::DialogueSubtext));

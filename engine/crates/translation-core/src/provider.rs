@@ -156,7 +156,7 @@ impl OpenAIProvider {
         };
 
         format!(
-            "You are the production translation engine for a long-form fiction workflow. Target language: {target_language}. {task} Treat the provided project context as binding continuity guidance when relevant. Return only the resulting passage."
+            "You are the production translation engine for a long-form fiction workflow. Target language: {target_language}. {task} Treat the provided project context as binding continuity guidance when relevant. Structural marker tokens used by the document layer (for example <m1>...</m1> and <r1/>) are immutable placeholders: preserve every marker identifier, count, pairing, and relative order exactly through translation, revision, and quality review. Return only the resulting passage."
         )
     }
 

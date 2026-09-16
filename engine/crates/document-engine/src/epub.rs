@@ -153,7 +153,7 @@ fn parse_epub_bookforge(path: &Path) -> Result<ParsedDocument, DocumentError> {
             } else {
                 kind
             };
-            section_blocks.push((kind, text));
+            section_blocks.push((kind, text, block.id.0.clone()));
         }
 
         if section_blocks.is_empty() {
@@ -163,7 +163,7 @@ fn parse_epub_bookforge(path: &Path) -> Result<ParsedDocument, DocumentError> {
         let mut paragraph_index = 0usize;
         let has_explicit_heading = section_blocks
             .first()
-            .is_some_and(|(kind, _)| matches!(kind, BlockKind::Heading(_)));
+            .is_some_and(|(kind, _, _)| matches!(kind, BlockKind::Heading(_)));
         if !has_explicit_heading {
             let section_title = section
                 .title
@@ -187,11 +187,12 @@ fn parse_epub_bookforge(path: &Path) -> Result<ParsedDocument, DocumentError> {
             });
         }
 
-        for (kind, text) in section_blocks {
+        for (kind, text, block_id) in section_blocks {
             paragraph_index += 1;
             let mut source = root.clone();
             source.resource = Some(section.href.clone());
             source.paragraph = Some(paragraph_index);
+            source.block_id = Some(block_id);
             parsed_blocks.push(ParsedBlock { kind, text, source });
         }
     }

@@ -59,8 +59,8 @@ fn project_help() -> &'static str {
        analyze-advanced <dir> [--provider mock|openai]  provider-assisted Phase 15 literary findings\n\
        review <dir> <list|approve-all|promote>          review lifecycle through the application layer\n\
        review-translation <dir> [--provider none|mock|openai] [--no-alignment] [--max-chapters <n>]\n\
-       translate <dir> [--provider echo|auto|openai] [--max-chapters <n>]\n\
-       resume <dir>                                     resume an existing translation run\n\
+       translate <dir> [--provider echo|auto|openai] [--style-profile literary|adult-intimacy] [--confirm-adult-characters] [--max-chapters <n>]\n\
+       resume <dir> [--style-profile literary|adult-intimacy] [--confirm-adult-characters]  resume an existing translation run\n\
        progress <dir>                                   current translation progress\n\
        export <dir>                                     export translated DOCX\n\
        history <dir>                                    bounded project audit history\n\
@@ -579,6 +579,10 @@ fn translation_config(args: &[String]) -> Result<TranslationConfig> {
         provider,
         model: flag_value(args, "--model").map(str::to_string),
         target_language: target,
+        style_profile: flag_value(args, "--style-profile")
+            .unwrap_or("literary")
+            .to_string(),
+        adult_content_confirmed: args.iter().any(|arg| arg == "--confirm-adult-characters"),
         max_chapters,
     })
 }
