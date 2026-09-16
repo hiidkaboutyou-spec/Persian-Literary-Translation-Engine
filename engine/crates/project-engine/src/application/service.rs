@@ -472,6 +472,15 @@ impl ApplicationService {
         project: &Project,
         sink: &mut dyn ProjectEventSink,
     ) -> Result<super::models::ExportRecord, ApplicationError> {
+        self.export_project_as(project, "docx", sink)
+    }
+
+    pub fn export_project_as(
+        &self,
+        project: &Project,
+        format: &str,
+        sink: &mut dyn ProjectEventSink,
+    ) -> Result<super::models::ExportRecord, ApplicationError> {
         let _lock = ProjectLock::acquire(&project.layout, "export")?;
         let manifest = load_manifest(&project.layout)?;
         let project_id = manifest.project_id.clone();
@@ -479,7 +488,7 @@ impl ApplicationService {
             history: HistorySink::new(&project.layout, &project_id),
             inner: sink,
         };
-        translation_ops::export_translation(&project.layout, &mut sink)
+        translation_ops::export_translation_as(&project.layout, format, &mut sink)
     }
 
     // ------------------------------------------------------------------

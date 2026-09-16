@@ -317,6 +317,13 @@ pub struct TranslatedChapter {
     /// to the neutral literary profile for backward-compatible deserialization.
     #[serde(default = "default_translation_style_profile")]
     pub style_profile: String,
+    /// Real source heading block when the document format exposes one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title_source_block_id: Option<String>,
+    /// Provider-reviewed translation of a real source heading. Synthetic
+    /// chapter labels deliberately leave this empty.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub translated_title: Option<String>,
     pub paragraphs: Vec<TranslatedParagraph>,
     /// Set true after any manual edit so the editor/quality layer knows the
     /// stored quality evaluation is stale.
@@ -327,6 +334,10 @@ pub struct TranslatedChapter {
 pub struct TranslatedParagraph {
     pub paragraph_id: String,
     pub source: String,
+    /// Stable source-format block identity. Required for fail-closed EPUB
+    /// reconstruction; absent for legacy/non-structured artifacts.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_block_id: Option<String>,
     pub translated: String,
     /// `provider` or `manual`.
     pub origin: String,
@@ -371,7 +382,7 @@ impl ApplicationCapabilities {
                 "epub".to_string(),
                 "pdf".to_string(),
             ],
-            export_formats: vec!["docx".to_string()],
+            export_formats: vec!["docx".to_string(), "epub".to_string()],
             advanced_analysis_available: true,
             pause_supported: true,
             manual_edit_supported: true,
