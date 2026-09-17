@@ -1,0 +1,84 @@
+name: Phase 20 Parser Repair Once
+
+on:
+  push:
+    branches:
+      - phase-20-publication-epub-roundtrip
+    paths:
+      - '.github/workflows/phase20-parser-repair-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: phase-20-publication-epub-roundtrip
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Restore canonical parser and add EPUB block provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          git show origin/main:engine/crates/document-engine/src/epub.rs > engine/crates/document-engine/src/epub.rs
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('engine/crates/document-engine/src/epub.rs')
+          s = p.read_text()
+          replacements = [
+              (
+                  '            section_blocks.push((kind, text));',
+                  '            section_blocks.push((kind, text, block.id.0.clone()));',
+              ),
+              (
+                  '            .is_some_and(|(kind, _)| matches!(kind, BlockKind::Heading(_)));',
+                  '            .is_some_and(|(kind, _, _)| matches!(kind, BlockKind::Heading(_)));',
+              ),
+              (
+                  '''        for (kind, text) in section_blocks {\n            paragraph_index += 1;\n            let mut source = root.clone();\n            source.resource = Some(section.href.clone());\n            source.paragraph = Some(paragraph_index);\n            parsed_blocks.push(ParsedBlock { kind, text, source });\n        }''',
+                  '''        for (kind, text, block_id) in section_blocks {\n            paragraph_index += 1;\n            let mut source = root.clone();\n            source.resource = Some(section.href.clone());\n            source.paragraph = Some(paragraph_index);\n            source.block_id = Some(block_id);\n            parsed_blocks.push(ParsedBlock { kind, text, source });\n        }''',
+              ),
+          ]
+          for old, new in replacements:
+              if old not in s:
+                  raise SystemExit(f'missing parser repair anchor: {old[:80]!r}')
+              s = s.replace(old, new, 1)
+          p.write_text(s)
+          PY
+
+      - name: Format
+        working-directory: engine
+        run: |
+          cargo fmt --all
+          cargo fmt --all -- --check
+
+      - name: Clippy publication surfaces
+        working-directory: engine
+        run: cargo clippy --locked -p document-engine -p project-engine -p literary-engine -p translation-core -p literary-review-engine --all-targets -- -D warnings
+
+      - name: Test publication surfaces
+        working-directory: engine
+        run: cargo test --locked -p document-engine -p project-engine -p literary-engine -p translation-core -p literary-review-engine
+
+      - name: Verify legacy parser compatibility
+        working-directory: engine
+        run: cargo check --locked -p document-engine --no-default-features
+
+      - name: Remove one-shot workflow and commit validated repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/phase20-parser-repair-once.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --check
+          git commit -m 'fix: restore canonical EPUB parser with block provenance'
+          git push origin HEAD:phase-20-publication-epub-roundtrip
