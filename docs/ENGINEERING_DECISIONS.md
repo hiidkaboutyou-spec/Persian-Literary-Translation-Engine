@@ -42,6 +42,18 @@ Upload a story -> analyze -> review intelligence -> translate -> review translat
 - Hazm remains blocked until its mandatory NLTK dependency has a patched compatible version and a fresh security audit passes.
 - DadmaTools is conditional on a measured Persian NLP gap, not feature accumulation.
 
+## Phase 20 — Publication-Grade EPUB Round Trip
+
+- The production publication target is EPUB 3.3, the current stable W3C Recommendation. EPUB 3.4 remains a future migration target while it is a Candidate Recommendation.
+- EPUBCheck 5.3.0 is the authoritative Phase 20 conformance gate because it validates EPUB 3.3. EPUBCheck 5.4.x is a future-compatibility signal, not an implicit standards migration while it validates EPUB 3 files against EPUB 3.4 rules.
+- Reuse revision-pinned BookForge for source-aware EPUB reconstruction rather than adding another EPUB framework.
+- Preserve exact source block provenance from ingestion through translated artifacts. Publication reconstruction uses an explicit `BookForge block ID -> translated text` map and fails closed for unknown, duplicate, missing, empty, or mismatched mappings.
+- Never regenerate publication EPUB from flattened chapter text and never guess structure by paragraph order/count.
+- BookForge owns marker-aware XHTML reconstruction plus target `dc:language`, `lang`, and `xml:lang` rewriting. The native publishing layer adds only the RTL metadata BookForge does not own: XHTML root `dir="rtl"` and OPF spine `page-progression-direction="rtl"`.
+- Images, CSS, navigation, hyperlinks, notes, and other non-translated resources remain source-derived. Repeated exports from identical source/artifacts must be deterministic, and export must not mutate the imported source.
+- The permanent Phase 20 gate uses a generated rights-safe EPUB fixture, EPUBCheck 5.3.0 before/after export, source checksum verification, byte-identical repeated export, representative asset/link/inline-markup preservation checks, and Linux plus Apple Silicon validation.
+- `adult-intimacy` is an explicit literary-fidelity style profile, not automatic classification. It requires caller confirmation that all participants in sexual content are adults; confirmation must never be inferred. It preserves source explicitness/markedness, consent/refusal/coercion/power cues, agency, sensory information, POV, intensity, and pacing while detecting both sanitization and amplification. Its automated findings remain review evidence, never canon or human approval.
+
 ## External-Dependency Rule
 
 Before adopting a GitHub repository/package/model/tool:
@@ -69,3 +81,5 @@ Before adopting a GitHub repository/package/model/tool:
 - duplicate memory/canon owners
 - silent fallbacks that hide external-tool failure
 - importing large frameworks when a narrow capability is all the project needs
+- guessed EPUB block alignment or whole-book regeneration from flattened translated text
+- silently changing the publication standard merely because a newer validator exists

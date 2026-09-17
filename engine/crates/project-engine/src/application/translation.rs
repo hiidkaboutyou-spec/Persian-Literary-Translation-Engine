@@ -15,17 +15,20 @@ use super::models::{
 use super::project::{emit_and_history, ProjectLayout};
 use super::review::load_canon;
 use chrono::Utc;
-use document_engine::Chapter as ManuscriptChapter;
+use document_engine::{Chapter as ManuscriptChapter, DocumentFormat};
 use human_review_workflow::ReviewKind;
 use literary_intelligence_engine::{
     build_chapter_context_packet_with_semantic, ChapterContextPacketInput, NeighborContext,
 };
 use memory_engine::{ContextPacketConfig, SemanticSidecar, TranslationMemory};
 use quality_engine::{evaluate_translation, TerminologyRule};
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::PathBuf;
+use std::str::FromStr;
 use translation_core::{
     EchoProvider, OpenAIProvider, PipelineInput, TranslationPipeline, TranslationProvider,
+    TranslationStyleProfile,
 };
 
 pub const TRANSLATION_PROGRESS_SCHEMA_VERSION: u32 = 1;
@@ -40,6 +43,11 @@ pub struct TranslationConfig {
     pub provider: String,
     pub model: Option<String>,
     pub target_language: String,
+    /// Optional style contract. `literary` preserves the pre-Phase-20 behavior.
+    pub style_profile: String,
+    /// Required opt-in acknowledgement before the adult-intimacy fidelity
+    /// profile may be used. This profile is never inferred automatically.
+    pub adult_content_confirmed: bool,
     /// Optional bound: translate at most this many chapters this run (used by
     /// the CLI/UI to chunk work; resume continues from checkpoints).
     pub max_chapters: Option<usize>,
@@ -51,6 +59,8 @@ impl Default for TranslationConfig {
             provider: "auto".to_string(),
             model: None,
             target_language: "fa".to_string(),
+            style_profile: "literary".to_string(),
+            adult_content_confirmed: false,
             max_chapters: None,
         }
     }
@@ -283,12 +293,21 @@ fn align_paragraphs(chapter: &ManuscriptChapter, translated: &str) -> Vec<Transl
         .scenes
         .iter()
         .flat_map(|scene| scene.paragraphs.iter())
-        .map(|paragraph| (paragraph.id.clone(), paragraph.original_text.clone()))
+        .map(|paragraph| {
+            (
+                paragraph.id.clone(),
+                paragraph.original_text.clone(),
+                paragraph.source.block_id.clone(),
+            )
+        })
         .collect::<Vec<_>>();
     let translated_parts = translated
         .split("\n\n")
         .map(str::trim)
         .filter(|part| !part.is_empty())
+        // Scene-break sentinels are structural separators, not translation
+        // paragraphs. Ignoring them here preserves one-to-one block provenance.
+        .filter(|part| !matches!(*part, "***" | "---" | "* * *"))
         .map(ToString::to_string)
         .collect::<Vec<_>>();
 
@@ -296,9 +315,10 @@ fn align_paragraphs(chapter: &ManuscriptChapter, translated: &str) -> Vec<Transl
         source_paragraphs
             .iter()
             .zip(translated_parts.iter())
-            .map(|((id, source), translated)| TranslatedParagraph {
+            .map(|((id, source, block_id), translated)| TranslatedParagraph {
                 paragraph_id: id.clone(),
                 source: source.clone(),
+                source_block_id: block_id.clone(),
                 translated: translated.clone(),
                 origin: "provider".to_string(),
                 revisions: Vec::new(),
@@ -309,14 +329,48 @@ fn align_paragraphs(chapter: &ManuscriptChapter, translated: &str) -> Vec<Transl
             paragraph_id: format!("chapter-{}", chapter.index + 1),
             source: source_paragraphs
                 .iter()
-                .map(|(_, text)| text.as_str())
+                .map(|(_, text, _)| text.as_str())
                 .collect::<Vec<_>>()
                 .join("\n\n"),
+            source_block_id: None,
             translated: translated.to_string(),
             origin: "provider".to_string(),
             revisions: Vec::new(),
         }]
     }
+}
+
+fn epub_artifact_has_provenance(chapter: &ManuscriptChapter, artifact: &TranslatedChapter) -> bool {
+    if chapter.source.format != DocumentFormat::Epub {
+        return true;
+    }
+    if let Some(title_block_id) = chapter.source.block_id.as_deref() {
+        if artifact.title_source_block_id.as_deref() != Some(title_block_id)
+            || artifact
+                .translated_title
+                .as_deref()
+                .is_none_or(|title| title.trim().is_empty())
+        {
+            return false;
+        }
+    }
+    let source_paragraphs = chapter
+        .scenes
+        .iter()
+        .flat_map(|scene| scene.paragraphs.iter())
+        .collect::<Vec<_>>();
+    if source_paragraphs.len() != artifact.paragraphs.len() {
+        return false;
+    }
+    source_paragraphs.iter().all(|source| {
+        let Some(block_id) = source.source.block_id.as_deref() else {
+            return false;
+        };
+        artifact.paragraphs.iter().any(|translated| {
+            translated.paragraph_id == source.id
+                && translated.source_block_id.as_deref() == Some(block_id)
+        })
+    })
 }
 
 fn join_translated(paragraphs: &[TranslatedParagraph]) -> String {
@@ -352,6 +406,14 @@ pub fn run_translation(
     })?;
 
     let manuscript = load_manuscript(layout)?;
+    let style_profile = TranslationStyleProfile::from_str(&config.style_profile)
+        .map_err(|error| ApplicationError::InvalidTranslationConfig(error.to_string()))?;
+    if style_profile.requires_adult_confirmation() && !config.adult_content_confirmed {
+        return Err(ApplicationError::InvalidTranslationConfig(
+            "adult-intimacy requires explicit confirmation that every participant in sexual content is an adult; pass the confirmation only after verifying the source".into(),
+        ));
+    }
+    let style_context = style_profile.context_block();
     let (characters, glossary) = load_canon(layout)?;
     let translation_memory = load_translation_memory()?;
     let semantic_sidecar = configured_semantic_sidecar();
@@ -419,7 +481,7 @@ pub fn run_translation(
     let max_chapters = config.max_chapters.unwrap_or(usize::MAX);
     let mut completed_this_run = 0usize;
 
-    for chapter in &manuscript.chapters {
+    for (chapter_position, chapter) in manuscript.chapters.iter().enumerate() {
         if completed_this_run >= max_chapters {
             break;
         }
@@ -430,7 +492,7 @@ pub fn run_translation(
         let stem = chapter_stem(&chapter.title, chapter.index);
         let source_text = chapter.content.clone();
         let literary_lines = reviewed_literary_lines(layout, &chapter.id);
-        let previous = chapter.index.checked_sub(1).and_then(|index| {
+        let previous = chapter_position.checked_sub(1).and_then(|index| {
             manuscript
                 .chapters
                 .get(index)
@@ -442,7 +504,7 @@ pub fn run_translation(
         });
         let next = manuscript
             .chapters
-            .get(chapter.index.saturating_add(1))
+            .get(chapter_position + 1)
             .map(|neighbor| NeighborContext {
                 id: &neighbor.id,
                 title: &neighbor.title,
@@ -475,9 +537,29 @@ pub fn run_translation(
             }
         }
         let context_packet = context_build.packet;
-        let context = context_packet.rendered_context.clone();
         let source_fingerprint = content_fingerprint(source_text.as_bytes());
-        let context_fingerprint = context_packet.packet_fingerprint.clone();
+        let (context, context_fingerprint) = if style_context.is_empty() {
+            (
+                context_packet.rendered_context.clone(),
+                context_packet.packet_fingerprint.clone(),
+            )
+        } else {
+            let rendered = if context_packet.rendered_context.trim().is_empty() {
+                style_context.to_string()
+            } else {
+                format!("{}\n\n{}", context_packet.rendered_context, style_context)
+            };
+            let fingerprint_material = format!(
+                "{}\0{}\0{}",
+                context_packet.packet_fingerprint,
+                style_profile.id(),
+                style_context
+            );
+            (
+                rendered,
+                content_fingerprint(fingerprint_material.as_bytes()),
+            )
+        };
 
         // Resume: reuse only chapters whose checkpoints match both the source
         // and the assembled context (canon changes invalidate reuse).
@@ -485,19 +567,33 @@ pub fn run_translation(
             if let Some(existing) =
                 resumable_chapter(layout, &stem, &source_fingerprint, &context_fingerprint)?
             {
-                progress.completed_chapters = progress.completed_chapters.max(chapter.index + 1);
-                progress.completed_paragraphs += count_translated_paragraphs(layout, &stem);
-                progress.percent = if progress.total_chapters == 0 {
-                    1.0
-                } else {
-                    progress.completed_chapters as f32 / progress.total_chapters as f32
-                };
-                progress.last_checkpoint = Some(format!("{stem}.txt"));
-                progress.updated_at = Utc::now();
-                save_progress(layout, &progress)?;
-                completed_this_run += 1;
-                let _ = existing;
-                continue;
+                let artifact = load_chapter_artifact(layout, &stem)?;
+                let structured_reuse_ok = artifact
+                    .as_ref()
+                    .is_some_and(|artifact| epub_artifact_has_provenance(chapter, artifact));
+                if chapter.source.format != DocumentFormat::Epub || structured_reuse_ok {
+                    progress.completed_chapters =
+                        progress.completed_chapters.max(chapter.index + 1);
+                    progress.completed_paragraphs += count_translated_paragraphs(layout, &stem);
+                    progress.percent = if progress.total_chapters == 0 {
+                        1.0
+                    } else {
+                        progress.completed_chapters as f32 / progress.total_chapters as f32
+                    };
+                    progress.last_checkpoint = Some(format!("{stem}.txt"));
+                    progress.updated_at = Utc::now();
+                    save_progress(layout, &progress)?;
+                    completed_this_run += 1;
+                    let _ = existing;
+                    continue;
+                }
+                let warning = format!(
+                    "EPUB checkpoint for {} predates block provenance or is structurally ambiguous; translating again",
+                    chapter.title
+                );
+                if !progress.warnings.contains(&warning) {
+                    progress.warnings.push(warning);
+                }
             }
         }
 
@@ -514,6 +610,37 @@ pub fn run_translation(
         progress.current_chapter = Some(chapter.index);
         progress.updated_at = Utc::now();
         save_progress(layout, &progress)?;
+
+        let translated_title = if chapter.source.block_id.is_some() {
+            let title_output = pipeline
+                .execute(
+                    provider.as_ref(),
+                    PipelineInput {
+                        source_text: chapter.title.clone(),
+                        target_language: config.target_language.clone(),
+                        context: context.clone(),
+                    },
+                )
+                .map_err(|error| {
+                    ApplicationError::Internal(format!(
+                        "pipeline failed for heading {}: {error}",
+                        chapter.title
+                    ))
+                })?;
+            let title_rules = terminology_rules(&glossary, &chapter.title);
+            let title_quality =
+                evaluate_translation(&chapter.title, &title_output.quality_review, &title_rules);
+            if !title_quality.passes() {
+                return Err(ApplicationError::Internal(format!(
+                    "quality gate blocked heading {}: {}",
+                    chapter.title,
+                    title_quality.blocking_errors.join("; ")
+                )));
+            }
+            Some(title_output.quality_review)
+        } else {
+            None
+        };
 
         let output = pipeline
             .execute(
@@ -560,6 +687,9 @@ pub fn run_translation(
             title: chapter.title.clone(),
             source_fingerprint,
             context_fingerprint,
+            style_profile: style_profile.id().to_string(),
+            title_source_block_id: chapter.source.block_id.clone(),
+            translated_title,
             paragraphs: align_paragraphs(chapter, &output.quality_review),
             quality_stale: false,
         };
@@ -801,6 +931,14 @@ pub fn export_translation(
     layout: &ProjectLayout,
     sink: &mut dyn ProjectEventSink,
 ) -> Result<super::models::ExportRecord, ApplicationError> {
+    export_translation_as(layout, "docx", sink)
+}
+
+pub fn export_translation_as(
+    layout: &ProjectLayout,
+    format: &str,
+    sink: &mut dyn ProjectEventSink,
+) -> Result<super::models::ExportRecord, ApplicationError> {
     let manifest = super::project::load_manifest(layout)?;
     let project_id = manifest.project_id.clone();
     let manuscript = load_manuscript(layout)?;
@@ -820,33 +958,17 @@ pub fn export_translation(
         },
     );
 
-    let mut translated = Vec::new();
-    for chapter in &manuscript.chapters {
-        let stem = chapter_stem(&chapter.title, chapter.index);
-        let artifact = load_chapter_artifact(layout, &stem)?.ok_or_else(|| {
-            ApplicationError::ExportUnavailable(format!(
-                "chapter {} is not translated yet",
-                chapter.index + 1
-            ))
-        })?;
-        translated.push(document_engine::Chapter::translated(
-            chapter.index,
-            chapter.title.clone(),
-            join_translated(&artifact.paragraphs),
-        ));
-    }
-
-    let path = layout.export_dir.join("manuscript.docx");
-    document_engine::export_persian_docx(&path, &manifest.name, &translated).map_err(|error| {
-        ApplicationError::ExportUnavailable(format!("DOCX export failed: {error}"))
-    })?;
-
-    let record = super::models::ExportRecord {
-        format: "docx".to_string(),
-        relative_path: "manuscript.docx".to_string(),
-        chapters: translated.len(),
-        created_at: Utc::now(),
+    let normalized = format.trim().to_ascii_lowercase();
+    let record = match normalized.as_str() {
+        "docx" => export_docx(layout, &manifest, &manuscript)?,
+        "epub" => export_epub(layout, &manifest, &manuscript)?,
+        other => {
+            return Err(ApplicationError::ExportUnavailable(format!(
+                "unsupported export format '{other}'; expected docx or epub"
+            )))
+        }
     };
+
     let mut manifest = super::project::load_manifest(layout)?;
     manifest.export = Some(record.clone());
     manifest.updated_at = Utc::now();
@@ -859,10 +981,147 @@ pub fn export_translation(
         None,
         ProjectEvent::ExportCompleted {
             project_id: project_id.clone(),
-            format: "docx".to_string(),
+            format: record.format.clone(),
         },
     );
     Ok(record)
+}
+
+fn export_docx(
+    layout: &ProjectLayout,
+    manifest: &super::models::ProjectFile,
+    manuscript: &document_engine::Manuscript,
+) -> Result<super::models::ExportRecord, ApplicationError> {
+    let mut translated = Vec::new();
+    for chapter in &manuscript.chapters {
+        let stem = chapter_stem(&chapter.title, chapter.index);
+        let artifact = load_chapter_artifact(layout, &stem)?.ok_or_else(|| {
+            ApplicationError::ExportUnavailable(format!(
+                "chapter {} is not translated yet",
+                chapter.index + 1
+            ))
+        })?;
+        translated.push(document_engine::Chapter::translated(
+            chapter.index,
+            artifact
+                .translated_title
+                .clone()
+                .unwrap_or_else(|| chapter.title.clone()),
+            join_translated(&artifact.paragraphs),
+        ));
+    }
+    let path = layout.export_dir.join("manuscript.docx");
+    document_engine::export_persian_docx(&path, &manifest.name, &translated).map_err(|error| {
+        ApplicationError::ExportUnavailable(format!("DOCX export failed: {error}"))
+    })?;
+    Ok(super::models::ExportRecord {
+        format: "docx".to_string(),
+        relative_path: "manuscript.docx".to_string(),
+        chapters: translated.len(),
+        created_at: Utc::now(),
+    })
+}
+
+fn export_epub(
+    layout: &ProjectLayout,
+    manifest: &super::models::ProjectFile,
+    manuscript: &document_engine::Manuscript,
+) -> Result<super::models::ExportRecord, ApplicationError> {
+    let source = manifest.source.as_ref().ok_or_else(|| {
+        ApplicationError::ExportUnavailable("project has no imported source".to_string())
+    })?;
+    if !source.format.eq_ignore_ascii_case("epub") {
+        return Err(ApplicationError::ExportUnavailable(
+            "EPUB export requires an EPUB source so original XHTML, navigation, CSS, fonts, links, and assets can be preserved"
+                .to_string(),
+        ));
+    }
+
+    let mut grouped: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    for chapter in &manuscript.chapters {
+        let stem = chapter_stem(&chapter.title, chapter.index);
+        let artifact = load_chapter_artifact(layout, &stem)?.ok_or_else(|| {
+            ApplicationError::ExportUnavailable(format!(
+                "chapter {} is not translated yet",
+                chapter.index + 1
+            ))
+        })?;
+        if !epub_artifact_has_provenance(chapter, &artifact) {
+            return Err(ApplicationError::ExportUnavailable(format!(
+                "chapter {} lacks exact EPUB block provenance; resume/retranslate it before EPUB export",
+                chapter.index + 1
+            )));
+        }
+        if let Some(block_id) = chapter.source.block_id.as_ref() {
+            let translated_title = artifact.translated_title.as_ref().ok_or_else(|| {
+                ApplicationError::ExportUnavailable(format!(
+                    "chapter {} has a source heading block but no translated heading",
+                    chapter.index + 1
+                ))
+            })?;
+            grouped
+                .entry(block_id.clone())
+                .or_default()
+                .push(translated_title.clone());
+        }
+        for source_paragraph in chapter
+            .scenes
+            .iter()
+            .flat_map(|scene| scene.paragraphs.iter())
+        {
+            let block_id = source_paragraph.source.block_id.as_ref().ok_or_else(|| {
+                ApplicationError::ExportUnavailable(format!(
+                    "paragraph '{}' has no EPUB block provenance",
+                    source_paragraph.id
+                ))
+            })?;
+            let translated = artifact
+                .paragraphs
+                .iter()
+                .find(|paragraph| paragraph.paragraph_id == source_paragraph.id)
+                .ok_or_else(|| {
+                    ApplicationError::ExportUnavailable(format!(
+                        "translated paragraph '{}' is missing",
+                        source_paragraph.id
+                    ))
+                })?;
+            if translated.source_block_id.as_ref() != Some(block_id) {
+                return Err(ApplicationError::ExportUnavailable(format!(
+                    "paragraph '{}' EPUB block provenance does not match its source",
+                    source_paragraph.id
+                )));
+            }
+            grouped
+                .entry(block_id.clone())
+                .or_default()
+                .push(translated.translated.clone());
+        }
+    }
+
+    let translations = grouped
+        .into_iter()
+        .map(|(block_id, parts)| {
+            document_engine::EpubBlockTranslation::new(block_id, parts.join("\n\n"))
+        })
+        .collect::<Vec<_>>();
+    let source_path = layout.root.join(&source.stored_relative_path);
+    let output = layout.export_dir.join("manuscript.epub");
+    document_engine::export_translated_epub(
+        &source_path,
+        &output,
+        &manifest.target_language,
+        &translations,
+    )
+    .map_err(|error| {
+        ApplicationError::ExportUnavailable(format!("EPUB round-trip export failed: {error}"))
+    })?;
+
+    Ok(super::models::ExportRecord {
+        format: "epub".to_string(),
+        relative_path: "manuscript.epub".to_string(),
+        chapters: manuscript.chapters.len(),
+        created_at: Utc::now(),
+    })
 }
 
 // ---------------------------------------------------------------------------

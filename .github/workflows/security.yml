@@ -38,8 +38,8 @@ jobs:
       - name: Install cargo-audit
         uses: taiki-e/install-action@cargo-audit
 
-      - name: Generate lockfile
-        run: cargo generate-lockfile
+      - name: Verify committed lockfile satisfies manifests
+        run: cargo metadata --locked --format-version 1 --no-deps > /dev/null
 
-      - name: Audit dependencies
+      - name: Audit committed dependencies
         run: cargo audit

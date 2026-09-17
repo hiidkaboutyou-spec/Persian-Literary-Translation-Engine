@@ -115,7 +115,7 @@ impl ReviewProviderRequest {
             "or lost emotional subtext. Do not reward literalness merely for being literal. Do not rewrite the full ",
             "chapter. Return only evidence-backed findings in the required schema. Cite only supplied paragraph ",
             "indices. If a dimension has no defensible finding, still list it as evaluated and return no finding for it. ",
-            "Do not provide chain-of-thought; provide concise review findings and revision rationale only."
+            "For intimacy_fidelity, when requested, evaluate only confirmed-adult source material and check parity of explicitness/markedness, consent/hesitation/refusal/coercion and power cues, physical agency/referents, sensory channels, POV, emotional intensity, and pacing; flag both sanitization and amplification. Do not sexualize nonsexual source text. Do not provide chain-of-thought; provide concise review findings and revision rationale only."
         )
         .to_string();
 
@@ -362,6 +362,7 @@ impl OpenAIReviewProvider {
             "persian_naturalness",
             "dialogue_subtext",
             "terminology_continuity",
+            "intimacy_fidelity",
         ];
         let severities = ["advisory", "warning", "critical"];
         serde_json::json!({

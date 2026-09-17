@@ -32,6 +32,7 @@ pub enum ReviewDimension {
     PersianNaturalness,
     DialogueSubtext,
     TerminologyContinuity,
+    IntimacyFidelity,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

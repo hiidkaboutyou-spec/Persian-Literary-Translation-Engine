@@ -41,8 +41,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cargo generate-lockfile
-          git diff --exit-code -- Cargo.lock
+          cargo metadata --locked --format-version 1 --no-deps > /dev/null
 
       - name: Format check
         run: cargo fmt --all -- --check

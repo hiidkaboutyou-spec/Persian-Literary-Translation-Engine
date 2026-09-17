@@ -55,6 +55,8 @@ pub enum ApplicationError {
     ReviewConflict(String),
     #[error("promotion blocked: {0}")]
     PromotionBlocked(String),
+    #[error("invalid translation configuration: {0}")]
+    InvalidTranslationConfig(String),
     #[error("translation is already running")]
     TranslationAlreadyRunning,
     #[error("no checkpoint available to resume from")]
@@ -85,6 +87,7 @@ impl ApplicationError {
             Self::ProviderAuthenticationFailed(_) => "provider_authentication_failed",
             Self::ReviewConflict(_) => "review_conflict",
             Self::PromotionBlocked(_) => "promotion_blocked",
+            Self::InvalidTranslationConfig(_) => "invalid_translation_config",
             Self::TranslationAlreadyRunning => "translation_already_running",
             Self::NoCheckpoint => "no_checkpoint",
             Self::ResumeIncompatible(_) => "resume_incompatible",
@@ -112,6 +115,7 @@ impl ApplicationError {
             Self::ProjectLocked => RecoveryHint::UnlockProject,
             Self::ProjectNotFound(_) => RecoveryHint::None,
             Self::UnsupportedInputFormat(_) => RecoveryHint::ReimportSource,
+            Self::InvalidTranslationConfig(_) => RecoveryHint::None,
             Self::TranslationAlreadyRunning => RecoveryHint::ResumeExistingRun,
             Self::ExportUnavailable(_) => RecoveryHint::None,
             Self::PersistenceFailure(_) => RecoveryHint::None,

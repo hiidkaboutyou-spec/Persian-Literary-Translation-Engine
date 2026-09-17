@@ -39,6 +39,10 @@ pub struct SourceLocation {
     pub scene: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub paragraph: Option<usize>,
+    /// Stable source-format block identity when the parser exposes one.
+    /// EPUB/BookForge uses this to rebuild translated XHTML without guessing.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub block_id: Option<String>,
 }
 
 impl SourceLocation {
@@ -51,6 +55,7 @@ impl SourceLocation {
             chapter: None,
             scene: None,
             paragraph: None,
+            block_id: None,
         }
     }
 }

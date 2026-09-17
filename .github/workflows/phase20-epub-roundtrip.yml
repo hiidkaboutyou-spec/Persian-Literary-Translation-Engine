@@ -1,0 +1,204 @@
+name: Phase 20 EPUB Round Trip
+
+on:
+  push:
+    branches:
+      - phase-20-publication-epub-roundtrip
+    paths:
+      - 'engine/**'
+      - 'tools/epubcheck-validator/**'
+      - '.github/workflows/phase20-epub-roundtrip.yml'
+      - 'docs/PHASE_20_RESEARCH.md'
+      - 'docs/IMPLEMENTATION_ROADMAP.md'
+      - 'docs/IMPLEMENTATION_STATUS.md'
+      - 'docs/PMC_BOOTSTRAP.md'
+      - 'AGENTS.md'
+  pull_request:
+    paths:
+      - 'engine/**'
+      - 'tools/epubcheck-validator/**'
+      - '.github/workflows/phase20-epub-roundtrip.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase20-epub-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publication-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Verify no temporary Phase 20 mutation workflows remain
+        shell: bash
+        run: |
+          set -euo pipefail
+          if find .github/workflows -maxdepth 1 -type f -name '*phase20*once*.yml' -print -quit | grep -q .; then
+            echo 'temporary Phase 20 one-shot workflow remains in the branch' >&2
+            exit 1
+          fi
+
+      - name: Verify lockfile and formatting
+        working-directory: engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo metadata --locked --format-version 1 --no-deps > /dev/null
+          cargo fmt --all -- --check
+
+      - name: Clippy Phase 20 surfaces
+        working-directory: engine
+        run: cargo clippy --locked -p document-engine -p project-engine -p literary-engine -p translation-core -p literary-review-engine --all-targets -- -D warnings
+
+      - name: Test Phase 20 surfaces
+        working-directory: engine
+        run: cargo test --locked -p document-engine -p project-engine -p literary-engine -p translation-core -p literary-review-engine
+
+      - name: Verify legacy document compatibility build
+        working-directory: engine
+        run: cargo check --locked -p document-engine --no-default-features
+
+      - name: Verify EPUBCheck 5.3.0 tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n tools/epubcheck-validator/install.sh
+          bash -n tools/epubcheck-validator/validate.sh
+          java -version
+          bash tools/epubcheck-validator/install.sh
+
+      - name: Build rights-safe EPUB 3.3 fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64
+          import pathlib
+          import zipfile
+
+          out = pathlib.Path('/tmp/phase20-source.epub')
+          entries = {
+              'META-INF/container.xml': '''<?xml version="1.0" encoding="UTF-8"?>
+          <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+            <rootfiles><rootfile full-path="EPUB/package.opf" media-type="application/oebps-package+xml"/></rootfiles>
+          </container>''',
+              'EPUB/package.opf': '''<?xml version="1.0" encoding="UTF-8"?>
+          <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="book-id" xml:lang="en">
+            <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+              <dc:identifier id="book-id">urn:uuid:00000000-0000-4000-8000-000000000020</dc:identifier>
+              <dc:title>Phase 20 Fixture</dc:title>
+              <dc:language>en</dc:language>
+              <meta property="dcterms:modified">2026-09-17T00:00:00Z</meta>
+            </metadata>
+            <manifest>
+              <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
+              <item id="chapter" href="chapter.xhtml" media-type="application/xhtml+xml"/>
+              <item id="css" href="style.css" media-type="text/css"/>
+              <item id="cover" href="pixel.png" media-type="image/png"/>
+            </manifest>
+            <spine><itemref idref="chapter"/></spine>
+          </package>''',
+              'EPUB/nav.xhtml': '''<?xml version="1.0" encoding="UTF-8"?>
+          <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="en" xml:lang="en">
+            <head><title>Contents</title></head><body><nav epub:type="toc"><ol><li><a href="chapter.xhtml">Chapter One</a></li></ol></nav></body>
+          </html>''',
+              'EPUB/chapter.xhtml': '''<?xml version="1.0" encoding="UTF-8"?>
+          <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+            <head><title>Chapter One</title><link rel="stylesheet" type="text/css" href="style.css"/></head>
+            <body><section><h1>Chapter One</h1><p>She kept the <em>old promise</em>, then looked at <a href="#note">the note</a>.</p><p id="note">Nothing was omitted.</p><img src="pixel.png" alt="fixture pixel"/></section></body>
+          </html>''',
+              'EPUB/style.css': 'body { margin: 1em; } em { font-style: italic; }',
+          }
+          pixel = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=')
+          with zipfile.ZipFile(out, 'w') as zf:
+              zf.writestr('mimetype', 'application/epub+zip', compress_type=zipfile.ZIP_STORED)
+              for name, text in entries.items():
+                  zf.writestr(name, text, compress_type=zipfile.ZIP_DEFLATED)
+              zf.writestr('EPUB/pixel.png', pixel, compress_type=zipfile.ZIP_DEFLATED)
+          PY
+          sha256sum /tmp/phase20-source.epub > /tmp/phase20-source.sha256
+          bash tools/epubcheck-validator/validate.sh /tmp/phase20-source.epub
+
+      - name: Exercise application EPUB round trip
+        shell: bash
+        working-directory: engine
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/phase20-project
+          cargo run --locked --quiet -p literary-engine -- project create /tmp/phase20-project --name 'Phase 20 Fixture'
+          cargo run --locked --quiet -p literary-engine -- project import /tmp/phase20-project /tmp/phase20-source.epub
+          cargo run --locked --quiet -p literary-engine -- project analyze /tmp/phase20-project
+          cargo run --locked --quiet -p literary-engine -- project translate /tmp/phase20-project --provider echo
+          echo '--- Phase 20 translated artifact provenance ---'
+          find /tmp/phase20-project/translation/chapters -type f -name '*.chapter.json' -maxdepth 1 -print -exec cat {} \;
+          cargo run --locked --quiet -p literary-engine -- project export /tmp/phase20-project --export-format epub
+          test -f /tmp/phase20-project/exports/manuscript.epub
+          cp /tmp/phase20-project/exports/manuscript.epub /tmp/phase20-first.epub
+          cargo run --locked --quiet -p literary-engine -- project export /tmp/phase20-project --export-format epub
+          cmp /tmp/phase20-first.epub /tmp/phase20-project/exports/manuscript.epub
+          cd ..
+          sha256sum -c /tmp/phase20-source.sha256
+          bash tools/epubcheck-validator/validate.sh /tmp/phase20-project/exports/manuscript.epub
+
+      - name: Assert preserved assets, links, language, and RTL metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import zipfile
+          from pathlib import Path
+
+          source = Path('/tmp/phase20-source.epub')
+          output = Path('/tmp/phase20-project/exports/manuscript.epub')
+          with zipfile.ZipFile(source) as src, zipfile.ZipFile(output) as out:
+              src_names = set(src.namelist())
+              out_names = set(out.namelist())
+              for required in ['EPUB/style.css', 'EPUB/pixel.png', 'EPUB/nav.xhtml', 'EPUB/chapter.xhtml']:
+                  assert required in src_names and required in out_names, required
+              assert src.read('EPUB/style.css') == out.read('EPUB/style.css')
+              assert src.read('EPUB/pixel.png') == out.read('EPUB/pixel.png')
+              chapter = out.read('EPUB/chapter.xhtml').decode('utf-8')
+              nav = out.read('EPUB/nav.xhtml').decode('utf-8')
+              opf = out.read('EPUB/package.opf').decode('utf-8')
+              assert 'href="#note"' in chapter
+              assert 'src="pixel.png"' in chapter
+              assert '<em>' in chapter and '</em>' in chapter
+              assert 'lang="fa"' in chapter and 'xml:lang="fa"' in chapter
+              assert 'dir="rtl"' in chapter
+              assert 'lang="fa"' in nav and 'xml:lang="fa"' in nav
+              assert 'dir="rtl"' in nav
+              assert '<dc:language>fa</dc:language>' in opf
+              assert 'page-progression-direction="rtl"' in opf
+          PY
+
+  macos-arm64:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Verify Apple Silicon runner
+        shell: bash
+        run: test "$(uname -m)" = arm64
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Compile and test EPUB publication surfaces
+        working-directory: engine
+        run: |
+          cargo check --locked -p document-engine -p project-engine -p literary-engine
+          cargo test --locked -p document-engine -p project-engine

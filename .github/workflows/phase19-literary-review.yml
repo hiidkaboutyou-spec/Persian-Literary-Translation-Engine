@@ -48,12 +48,11 @@ jobs:
         with:
           components: rustfmt, clippy
 
-      - name: Engine lockfile is current
+      - name: Engine lockfile satisfies manifests
         shell: bash
         run: |
           set -euo pipefail
-          (cd engine && cargo generate-lockfile)
-          git diff --exit-code -- engine/Cargo.lock
+          (cd engine && cargo metadata --locked --format-version 1 --no-deps > /dev/null)
 
       - name: Format
         working-directory: engine
@@ -61,34 +60,34 @@ jobs:
 
       - name: Clippy affected review surfaces
         working-directory: engine
-        run: cargo clippy -p literary-review-engine -p project-engine -p literary-engine --all-targets -- -D warnings
+        run: cargo clippy --locked -p literary-review-engine -p project-engine -p literary-engine --all-targets -- -D warnings
 
       - name: Test literary review engine offline
         working-directory: engine
         env:
           OPENAI_API_KEY: ''
-        run: cargo test -p literary-review-engine
+        run: cargo test --locked -p literary-review-engine
 
       - name: Test application-level Phase 19 workflow
         working-directory: engine
         env:
           OPENAI_API_KEY: ''
           LITERARY_ENGINE_ALIGNMENT_TOOL: ''
-        run: cargo test -p project-engine --test phase19_literary_review
+        run: cargo test --locked -p project-engine --test phase19_literary_review
 
       - name: Test affected application and CLI surfaces
         working-directory: engine
         env:
           OPENAI_API_KEY: ''
           LITERARY_ENGINE_ALIGNMENT_TOOL: ''
-        run: cargo test -p project-engine -p literary-engine
+        run: cargo test --locked -p project-engine -p literary-engine
 
       - name: CLI exposes explicit literary review command
         working-directory: engine
         shell: bash
         run: |
           set -euo pipefail
-          cargo run --quiet -p literary-engine -- --help | grep -q 'review-translation'
+          cargo run --locked --quiet -p literary-engine -- --help | grep -q 'review-translation'
 
       - name: Audit engine dependency graph
         shell: bash
@@ -107,12 +106,11 @@ jobs:
       - name: Install stable Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Alignment lockfile is current
+      - name: Alignment lockfile satisfies manifests
         shell: bash
         run: |
           set -euo pipefail
-          cargo generate-lockfile --manifest-path tools/literary-alignment/Cargo.toml
-          git diff --exit-code -- tools/literary-alignment/Cargo.lock
+          cargo metadata --locked --format-version 1 --no-deps --manifest-path tools/literary-alignment/Cargo.toml > /dev/null
 
       - name: Test protocol and native aligner without model feature
         run: cargo test --locked --manifest-path tools/literary-alignment/Cargo.toml --no-default-features

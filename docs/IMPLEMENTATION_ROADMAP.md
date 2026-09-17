@@ -1,7 +1,6 @@
 # Implementation Roadmap
 
-This file is the current high-level delivery map for the Persian Literary Translation Engine.
-The older four-step bootstrap roadmap is superseded by the production architecture that now exists on `main`.
+This file is the current high-level delivery map for the Persian Literary Translation Engine. The older bootstrap roadmap is superseded by the production architecture that now exists on `main`.
 
 ## Product Goal
 
@@ -11,141 +10,118 @@ Build a production-grade English-to-Persian literary translation system that pre
 
 - Rust remains the core language and domain/runtime boundary.
 - Python is allowed only behind narrow sidecar/tool boundaries when a mature capability is impractical to reproduce in Rust.
-- Literary understanding, translation execution, memory, quality evaluation, review, and persistence remain separated by explicit contracts.
+- Literary understanding, translation execution, memory, quality evaluation, review, persistence, and publishing remain separated by explicit contracts.
 - Model inference never becomes canon automatically.
 - External quality scores never equal human approval.
-- Approved canon must outrank unresolved inference in translation context.
-- Long-running work must be resumable and fingerprint-safe.
+- Approved canon outranks unresolved inference in translation context.
+- Long-running work is resumable and fingerprint-safe.
 - External repositories are integrated selectively; do not vendor or replace native architecture wholesale.
-- Secrets, credentials, and manuscript content must not be committed to the repository.
+- Secrets, credentials, manuscripts, generated translations, and private reviewer material are not committed to Git/developer-memory systems.
+- A numbered phase is not canonical until its PR is merged and post-merge checks on `main` are verified.
 
 ## Delivered Foundation
 
-The current `main` branch contains the production foundation represented by:
+The canonical `main` branch now includes:
 
-- structured TXT/Markdown/DOCX/EPUB/text-PDF ingestion and source provenance
-- translation memory, glossary, character bible, relationship context, and Persian-aware normalization/retrieval
-- provider-neutral multi-pass translation runtime with bounded requests and resumable checkpoints
-- deterministic quality gates and cross-chapter consistency checks
-- manuscript intelligence and evidence-backed context seeding
-- human review ledger, conflict handling, preview/apply canon promotion, audit lineage, and atomic recovery
-- optional bounded model-assisted literary analysis whose findings remain review-controlled
-- project-oriented `ApplicationService` orchestration for Import -> Analyze -> Review -> Translate -> Edit -> Export
-- CLI/JSON interfaces, release/security CI, large-book regression coverage, and Persian RTL DOCX output
-- controlled external integrations with pinned provenance and explicit failure boundaries
+- structured TXT/Markdown/DOCX/EPUB/text-PDF ingestion and source provenance;
+- translation memory, glossary, character bible, relationship context, and Persian-aware normalization/retrieval;
+- provider-neutral multi-pass translation runtime with bounded requests and resumable checkpoints;
+- deterministic quality gates and cross-chapter consistency checks;
+- manuscript intelligence and evidence-backed context seeding;
+- human review ledger, conflict handling, preview/apply canon promotion, audit lineage, and atomic recovery;
+- optional bounded model-assisted literary analysis whose findings remain review-controlled;
+- Context Packet v2 and optional bounded BGE-M3 retrieval;
+- Phase 19 literary fidelity/Persian-naturalness review and native monotonic alignment;
+- project-oriented `ApplicationService` orchestration for Import -> Analyze -> Review -> Translate -> Review Translation -> Edit -> Export;
+- CLI/JSON interfaces, release/security CI, large-book regressions, and Persian RTL DOCX output;
+- controlled external integrations with pinned provenance and explicit failure boundaries.
 
 ## Verified Recent Phases
 
-### Phase 13 — Manuscript Intelligence & Literary Context Seeding — merged
+### Phase 17 — Controlled External Integrations — canonical
 
-Deterministic pre-translation analysis produces evidence-backed character/relationship seeds, chapter maps, terminology candidates, literary metrics, stable IDs, and non-mutating initialization proposals.
+PR #90; merge `6a4b8807d8c54878f1f10db5cab1f1290fcc60fb`.
 
-### Phase 14 — Literary Intelligence Review & Canon Promotion — merged
+Delivered revision-pinned BookForge EPUB ingestion, explicit no-silent-fallback compatibility behavior, optional isolated COMET quality evidence, and documented licensing/privacy/failure boundaries.
 
-Human-controlled review lifecycle, deterministic proposal reconciliation, typed canon conflicts, preview/apply promotion, atomic multi-file mutation, rollback/recovery, and audit lineage.
+### Phase 18 — Context Packet v2 & Selective Long-Novel Retrieval — canonical
 
-### Phase 15 — Advanced Model-Assisted Literary Analysis — merged
+PR #94; merge `2af408a19b8f69db93aff8e6896eaf189c4d69ae`.
 
-Optional bounded provider analysis with structured validation, stable evidence, cache/resume, injection resistance, review-only literary findings, and chapter-scoped translation context.
+Delivered typed Context Packet v2 with authority/provenance/budgets/fingerprints, one shared context assembly policy, deterministic lexical fallback, optional bounded BGE-M3/FastEmbed semantic ranking, timeout/failure fallback, resume invalidation, and Linux/Apple Silicon validation without default model downloads.
 
-### Phase 16 — Application Orchestration Layer — merged
+### Phase 19 — Literary Fidelity & Persian Naturalness Review Stack — canonical
 
-One project-oriented application boundary above the domain engines. Provides project lifecycle, snapshots, analysis/review/promotion orchestration, translation progress/pause/resume, manual edit revisions, export, typed errors, events, locking, staleness detection, and UI-ready JSON models.
-
-### Phase 17 — Controlled External Integrations — merged
-
-PR: #90
-Merge commit: `6a4b8807d8c54878f1f10db5cab1f1290fcc60fb`
+PR #95; merge `d073dab10c0965197745a6cbc7b8e56c946835e8`.
 
 Delivered:
 
-- BookForge pinned to a known upstream revision for validated deterministic EPUB ingestion while mapping back into native `document-engine` models
-- explicit legacy-parser compatibility build path with no silent fallback after BookForge validation failure
-- optional isolated Rust <-> Python COMET/XCOMET/DocCOMET quality-evidence sidecar
-- advisory-only external metrics that cannot mark a translation human-approved
-- documented licensing, privacy, upgrade, and failure boundaries
-- reproducible lockfile/CI/security/audit/release/smoke validation
-- post-merge verification of PR #90 on `main`
+- independent omission/addition, semantic fidelity, character voice, relationship/register, Persian naturalness, dialogue/subtext, and terminology/continuity review dimensions;
+- explicit unevaluated state when evidence was not produced;
+- provider-neutral bounded critic with validated evidence and non-auto-applied revision proposals;
+- persisted, fingerprinted per-chapter post-translation review artifacts and staleness detection;
+- native bounded monotonic Rust alignment supporting 1:1, 1:N, N:1, N:M and source/target gaps;
+- optional BGE-M3 alignment adapter reusing the Phase 18 model boundary;
+- permanent Linux/Apple Silicon review/alignment validation;
+- post-merge verification on `main`.
 
-### Phase 18 — Context Packet v2 & Selective Long-Novel Retrieval — merged
-
-PR: #94
-Merge commit: `2af408a19b8f69db93aff8e6896eaf189c4d69ae`
-
-Delivered:
-
-- typed Context Packet v2 with provenance, authority, bounded budgets, stable IDs, and SHA-256 packet fingerprints
-- passage-relevant glossary, character/relationship canon, translation memory, literary findings, local neighbor continuity, and hierarchical manuscript-intelligence context
-- one shared context assembly policy for CLI and `ApplicationService`
-- deterministic lexical retrieval remains the safety floor
-- optional Rust-native FastEmbed boundary using BGE-M3 / multilingual reranking only when explicitly enabled
-- semantic sidecar timeout/failure handling with deterministic fallback; model output cannot create canon IDs or own project memory
-- Linux plus Apple Silicon arm64 compatibility checks without downloading model weights during normal compilation
-- context fingerprint integration with resumable checkpoints so canon/context changes invalidate stale reuse safely
+Phase 19 dependency decisions remain in force: Hazm is blocked pending a patched compatible NLTK path; Vecalign/SentWeave remain design references while native Rust meets the requirement; DadmaTools remains conditional on a measured gap.
 
 ## Safe Supporting Tooling
 
-Small supporting integrations may land between numbered phases when they do not change the phase architecture or runtime defaults. They must remain optional or advisory and pass the same CI/security gates.
+Small supporting integrations may land between numbered phases only when they do not change runtime defaults, remain isolated/advisory where appropriate, and pass the same security/CI rules.
 
-Current supporting tooling:
+Current supporting tooling includes:
 
-- optional `lingua-rs` English/Persian language diagnostics for detecting probable untranslated English output; disabled by default and never an automatic approval/rejection decision
-- checksum-pinned optional EPUBCheck installer/wrapper for future publication validation; no EPUBCheck binary is vendored into the repository
-- optional projectmem developer-side memory tooling; it never owns translation/runtime memory
+- optional `lingua-rs` English/Persian language diagnostics;
+- checksum-pinned EPUBCheck tooling;
+- optional projectmem developer-side coding memory;
+- optional COMET and BGE sidecars behind explicit process boundaries.
 
-Future supporting-tool candidates must not interrupt the numbered roadmap. OpenDataLoader PDF is a benchmark candidate for difficult PDF ingestion; ripwire is a developer-only code-intelligence candidate; Headroom is conditional developer/research context compression. None is a Phase 19 runtime dependency.
+OpenDataLoader PDF, ripwire, and Headroom remain future benchmark/developer candidates rather than runtime dependencies.
 
 ## Current Phase
 
-### Phase 19 — Literary Fidelity & Persian Naturalness Review Stack — branch validation in progress
+### Phase 20 — Publication-Grade EPUB Round Trip — branch implementation/validation
 
-Goal: catch errors that generic MT metrics miss without turning probabilistic evidence into approval.
+Branch: `phase-20-publication-epub-roundtrip`.
 
-Implemented on the Phase 19 branch and pending final PR/merge verification:
+Goal: produce a translated Persian EPUB while preserving the source book's structure/assets deterministically and refusing unsafe structural guesses.
 
-- independent review dimensions for omission/addition, semantic fidelity, character voice, relationship/register, Persian naturalness, dialogue/subtext, and terminology/continuity
-- native deterministic review evidence with explicit unevaluated dimensions
-- provider-neutral bounded literary critic with validated paragraph citations and revision proposals that are never auto-applied
-- post-translation `ApplicationService` review API plus persisted per-chapter review artifacts
-- source/translation/context fingerprints that mark old review artifacts stale after manual edits or changed translation context
-- native bounded monotonic Rust alignment supporting 1:1, 1:N, N:1, N:M, and source/target gaps
-- optional BGE-M3 alignment adapter reusing the existing Phase 18 model boundary; no second embedding stack
-- schema/coverage/monotonicity/index validation before alignment evidence enters a review report
-- deterministic operation when provider/alignment tooling is absent or fails
-- Linux and Apple Silicon arm64 compile validation without model downloads
+Implemented on the branch:
 
-Dependency decisions:
+- stable BookForge block identity propagated through native source provenance and translated artifacts;
+- explicit `BookForge block ID -> translated text` reconstruction mapping;
+- fail-closed rejection of missing/unknown/duplicate/empty/mismatched publication block mappings;
+- structural marker preservation requirements through translation/revision/review;
+- source-aware BookForge rebuild instead of reconstructing an EPUB from flattened chapter text;
+- preservation of source-derived XHTML structure, links, navigation, images, styles, and non-translated resources;
+- BookForge target-language rewrite plus native Persian/RTL `dir="rtl"` and OPF `page-progression-direction="rtl"` metadata;
+- deterministic publication ZIP behavior and source non-mutation contract;
+- application/CLI `--export-format docx|epub` while keeping DOCX publishing intact;
+- permanent read-only Phase 20 workflow with rights-safe generated EPUB fixture, EPUBCheck validation, repeated-export byte comparison, source checksum, preservation assertions, no-default-features compatibility, and Apple Silicon arm64 validation;
+- supporting explicit `adult-intimacy` fidelity profile for confirmed-adult source material, with `literary` remaining the default and automated intimacy findings remaining non-canonical.
 
-- Hazm 0.12.1 is blocked while its mandatory NLTK dependency is affected by an unpatched High-severity advisory; do not waive the advisory
-- Vecalign is an Apache-2.0 design reference but its Python/Cython runtime is unnecessary for the current native implementation; its bundled Bleualign test/dev data has separate GPL licensing
-- SentWeave 0.3.3 was hash/provenance/platform/audit checked as a reference but remains uninstalled because the native Rust aligner satisfies the measured requirement with less dependency surface
-- DadmaTools remains conditional on a measured Persian NLP gap after Phase 19
+Standards decision:
+
+- target **EPUB 3.3**, the current W3C Recommendation;
+- use **EPUBCheck 5.3.0** as Phase 20's authoritative conformance gate because it checks EPUB 3.3;
+- defer EPUB 3.4 / EPUBCheck 5.4.x as the authoritative target while EPUB 3.4 remains a Candidate Recommendation; treat 5.4.x as future-compatibility evidence, not an automatic migration.
 
 Exit criteria:
 
-- permanent read-only Phase 19 CI
-- native review and application artifact/staleness tests
-- provider-schema and alignment-protocol tests
-- optional BGE compile checks on Linux and Apple Silicon
-- RustSec audits
-- normal Rust CI/security/release smoke on the final PR head
-- no temporary write-enabled validation workflows/scripts in the final diff
-- PR merge and post-merge verification before Phase 19 is called canonical
+- final permanent Phase 20 workflow green on the branch/PR head;
+- generated rights-safe EPUB 3.3 input/output both accepted by EPUBCheck 5.3.0;
+- representative CSS/image/link/inline markup survive; language and RTL metadata are correct;
+- repeated export is byte-identical and source checksum is unchanged;
+- full Rust/Clippy/workspace/security/release/CLI checks green on the PR head;
+- no temporary write-enabled Phase 20 workflows/scripts in the final diff;
+- PR merge to `main` and post-merge verification;
+- only then mark Phase 20 canonical.
+
+Detailed research: `docs/PHASE_20_RESEARCH.md`.
 
 ## Forward Roadmap
-
-### Phase 20 — Publication-Grade EPUB Round Trip
-
-Goal: produce a translated EPUB while preserving the source book's structure and assets deterministically.
-
-Planned work:
-
-- block/segment identity through translation and rebuild
-- preserve XHTML structure, links, footnotes/endnotes, navigation, images, styles, and non-translatable resources
-- RTL/Persian metadata and language handling
-- EPUBCheck structural conformance validation before publication
-- deterministic output checks and hostile/corrupt EPUB fixtures
-- keep DOCX publishing path intact
 
 ### Phase 21 — Literary Evaluation Corpus & Benchmarking
 
@@ -153,19 +129,23 @@ Goal: measure whether changes improve actual Persian literary translation qualit
 
 Planned work:
 
-- curated EN -> FA literary test corpus with rights-safe/project-owned fixtures
-- expected terminology, voice, relationship, omission, and continuity assertions
-- deterministic regression suite plus optional COMET/XCOMET evidence
-- add SacreBLEU/chrF++ only when a suitable reference corpus exists; it is benchmark evidence, never the literary judge
-- human-review scorecards for naturalness, voice, fidelity, subtext, and readability
-- compare model/provider/prompt/runtime changes without making one metric the final judge
+- curated rights-safe/project-owned EN -> FA literary evaluation fixtures;
+- expected terminology, voice, relationship, omission, subtext, and continuity assertions;
+- deterministic regression suite plus optional COMET/XCOMET evidence;
+- evaluate SacreBLEU/chrF++ only when a suitable reference corpus exists; reference metrics remain evidence, not the literary judge;
+- human-review scorecards for naturalness, voice, fidelity, subtext, readability, and profile-specific fidelity where appropriate;
+- compare model/provider/prompt/runtime changes without turning one metric into approval.
+
+Do not start Phase 21 until Phase 20 is merged and post-merge verified.
 
 ### Phase 22 — Product Surface & Distribution Hardening
 
 Goal: expose the stable application layer through a usable product without moving domain logic into the UI.
 
-Possible surfaces can call `ApplicationService` directly and should support project home/status, analysis review, canon editing, translation progress, literary-review evidence, manual revision history, export, recovery hints, and provider configuration checks.
+Possible surfaces call `ApplicationService` directly and should support project home/status, intelligence review, canon editing, translation progress, literary-review evidence, manual revision history, publication export, recovery hints, and provider configuration checks.
+
+Distribution hardening may later add a broader cross-reader EPUB rendering matrix and deliberate EPUB 3.4 migration after the standard is stable and separately approved.
 
 ## Next Action Rule
 
-Always finish and verify the current numbered phase before starting the next numbered phase. Supporting tooling may be added only when it does not change runtime defaults or claim completion of a later phase. Do not treat branch-only work as merged. When a phase changes architecture or persistence contracts, update `IMPLEMENTATION_STATUS.md`, this roadmap, engineering decisions, external-integration notes, and project-memory notes together.
+Always finish and verify the current numbered phase before starting the next numbered phase. Supporting tooling may be added only when it leaves runtime defaults intact and has an explicit owner/failure boundary. Do not treat branch-only work as merged. When a phase changes architecture, persistence, quality, or publishing contracts, update `IMPLEMENTATION_STATUS.md`, this roadmap, engineering decisions, external-integration notes, and project-memory notes together.

@@ -1,10 +1,15 @@
 pub mod pipeline;
 pub mod provider;
+pub mod style;
 
 pub use pipeline::{PipelineInput, PipelineOutput, PipelineStage, TranslationPipeline};
 pub use provider::{
     EchoProvider, OpenAIProvider, PassKind, ProviderError, ProviderRequest, ProviderResponse,
     TranslationProvider,
+};
+pub use style::{
+    StyleProfileError, TranslationStyleProfile, ADULT_INTIMACY_STYLE_PROFILE_ID,
+    DEFAULT_STYLE_PROFILE_ID,
 };
 
 #[derive(Debug, Clone)]
