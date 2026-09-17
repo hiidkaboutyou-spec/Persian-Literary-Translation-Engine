@@ -95,7 +95,7 @@ jobs:
               'EPUB/package.opf': '''<?xml version="1.0" encoding="UTF-8"?>
           <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="book-id" xml:lang="en">
             <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
-              <dc:identifier id="book-id">urn:uuid:phase20-rights-safe-fixture</dc:identifier>
+              <dc:identifier id="book-id">urn:uuid:00000000-0000-4000-8000-000000000020</dc:identifier>
               <dc:title>Phase 20 Fixture</dc:title>
               <dc:language>en</dc:language>
               <meta property="dcterms:modified">2026-09-17T00:00:00Z</meta>
@@ -139,14 +139,16 @@ jobs:
           cargo run --locked --quiet -p literary-engine -- project import /tmp/phase20-project /tmp/phase20-source.epub
           cargo run --locked --quiet -p literary-engine -- project analyze /tmp/phase20-project
           cargo run --locked --quiet -p literary-engine -- project translate /tmp/phase20-project --provider echo
+          echo '--- Phase 20 translated artifact provenance ---'
+          find /tmp/phase20-project/translation/chapters -type f -name '*.chapter.json' -maxdepth 1 -print -exec cat {} \;
           cargo run --locked --quiet -p literary-engine -- project export /tmp/phase20-project --export-format epub
-          test -f /tmp/phase20-project/export/manuscript.epub
-          cp /tmp/phase20-project/export/manuscript.epub /tmp/phase20-first.epub
+          test -f /tmp/phase20-project/exports/manuscript.epub
+          cp /tmp/phase20-project/exports/manuscript.epub /tmp/phase20-first.epub
           cargo run --locked --quiet -p literary-engine -- project export /tmp/phase20-project --export-format epub
-          cmp /tmp/phase20-first.epub /tmp/phase20-project/export/manuscript.epub
+          cmp /tmp/phase20-first.epub /tmp/phase20-project/exports/manuscript.epub
           cd ..
           sha256sum -c /tmp/phase20-source.sha256
-          bash tools/epubcheck-validator/validate.sh /tmp/phase20-project/export/manuscript.epub
+          bash tools/epubcheck-validator/validate.sh /tmp/phase20-project/exports/manuscript.epub
 
       - name: Assert preserved assets, links, language, and RTL metadata
         shell: bash
@@ -157,7 +159,7 @@ jobs:
           from pathlib import Path
 
           source = Path('/tmp/phase20-source.epub')
-          output = Path('/tmp/phase20-project/export/manuscript.epub')
+          output = Path('/tmp/phase20-project/exports/manuscript.epub')
           with zipfile.ZipFile(source) as src, zipfile.ZipFile(output) as out:
               src_names = set(src.namelist())
               out_names = set(out.namelist())
