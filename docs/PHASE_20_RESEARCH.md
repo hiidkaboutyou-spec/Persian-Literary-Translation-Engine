@@ -110,6 +110,8 @@ Phase 20 requires all of the following before merge:
 9. Normal repository Rust/security/release gates on the final PR head.
 10. No temporary write-enabled one-shot Phase 20 workflows/scripts in the final diff.
 
+Lockfile validation is deliberately non-mutating: CI uses Cargo `--locked`/`cargo metadata --locked` to prove that committed lockfiles satisfy their manifests. It must not use `cargo generate-lockfile` as a freshness check, because that command refreshes otherwise compatible transitive dependencies and can create false CI failures unrelated to the branch. The same correction is applied to the inherited Phase 18/19 dedicated gates.
+
 The generated fixture contains only synthetic project-owned text/assets and is not a proprietary manuscript.
 
 ## Adult-intimacy literary fidelity profile
