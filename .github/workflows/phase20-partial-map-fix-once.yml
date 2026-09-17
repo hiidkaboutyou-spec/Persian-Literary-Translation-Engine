@@ -1,0 +1,188 @@
+name: Phase 20 Partial Map Fix Once
+
+on:
+  push:
+    branches:
+      - phase-20-publication-epub-roundtrip
+    paths:
+      - .github/workflows/phase20-partial-map-fix-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: phase-20-publication-epub-roundtrip
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt,clippy
+      - name: Apply partial-map ownership fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('engine/crates/document-engine/src/epub_export.rs')
+          s = p.read_text()
+          old = '''    segment::{build_segments, BlockTranslation, Segment},'''
+          new = '''    segment::{build_segments, BlockTranslation},'''
+          if old not in s:
+              raise SystemExit('segment import anchor missing')
+          s = s.replace(old, new, 1)
+
+          old = '''    // BookForge's segment builder is the canonical definition of translation
+    // work. Do not independently reinterpret raw EPUB blocks here: package,
+    // navigation, or other structural text may be represented as blocks while
+    // intentionally remaining outside translation segments. Requiring those
+    // blocks would make the application exporter diverge from BookForge's own
+    // translation contract. We still fail closed for every block that actually
+    // belongs to a segment and reject any application mapping outside that set.
+    let expected = expected_segment_blocks(&segments)?;
+    let provided = validate_translation_mapping(&expected, translations)?;'''
+          new = '''    // The application layer owns completeness against the native manuscript
+    // translation units (chapter heading + every paragraph provenance block).
+    // BookForge intentionally also models package/nav/page-furniture text, so
+    // requiring every BookForge block here would force non-literary metadata
+    // through the literary translator. The writer and validator explicitly
+    // support partial maps: missing BookForge-only blocks fall back to source.
+    // This boundary therefore rejects invented/duplicate/empty mappings while
+    // validating markers for every explicitly translated block.
+    let known_blocks = book
+        .blocks
+        .iter()
+        .map(|block| block.id.0.clone())
+        .collect::<BTreeSet<_>>();
+    let provided = validate_translation_mapping(&known_blocks, translations)?;'''
+          if old not in s:
+              raise SystemExit('mapping policy anchor missing')
+          s = s.replace(old, new, 1)
+
+          start = s.index('#[cfg(feature = "bookforge-epub")]\nfn expected_segment_blocks')
+          end = s.index('#[cfg(feature = "bookforge-epub")]\nfn sibling_stage_path', start)
+          replacement = '''#[cfg(feature = "bookforge-epub")]
+fn validate_translation_mapping(
+    known_blocks: &BTreeSet<String>,
+    translations: &[EpubBlockTranslation],
+) -> Result<BTreeMap<String, String>, DocumentError> {
+    if translations.is_empty() {
+        return Err(DocumentError::InvalidStructure(
+            "EPUB export has no explicit translated block mappings".to_string(),
+        ));
+    }
+
+    let mut provided = BTreeMap::new();
+    for translation in translations {
+        if !known_blocks.contains(&translation.block_id) {
+            return Err(DocumentError::InvalidStructure(format!(
+                "EPUB translation contains unknown block id '{}'",
+                translation.block_id
+            )));
+        }
+        if translation.text.trim().is_empty() {
+            return Err(DocumentError::InvalidStructure(format!(
+                "EPUB translation for block '{}' is empty",
+                translation.block_id
+            )));
+        }
+        if provided
+            .insert(translation.block_id.clone(), translation.text.clone())
+            .is_some()
+        {
+            return Err(DocumentError::InvalidStructure(format!(
+                "EPUB translation contains duplicate block id '{}'",
+                translation.block_id
+            )));
+        }
+    }
+    Ok(provided)
+}
+
+'''
+          s = s[:start] + replacement + s[end:]
+
+          test_anchor = '''    #[cfg(feature = "bookforge-epub")]
+    #[test]
+    fn rtl_language_detection_is_conservative() {'''
+          tests = '''    #[cfg(feature = "bookforge-epub")]
+    #[test]
+    fn explicit_partial_mapping_does_not_require_untranslated_bookforge_metadata() {
+        let known = ["b_000001".to_string(), "b_000002".to_string()]
+            .into_iter()
+            .collect::<BTreeSet<_>>();
+        let provided = validate_translation_mapping(
+            &known,
+            &[EpubBlockTranslation::new("b_000002", "ترجمه")],
+        )
+        .unwrap();
+        assert_eq!(provided.len(), 1);
+        assert_eq!(provided.get("b_000002").map(String::as_str), Some("ترجمه"));
+    }
+
+    #[cfg(feature = "bookforge-epub")]
+    #[test]
+    fn explicit_mapping_rejects_unknown_duplicate_and_empty_blocks() {
+        let known = ["b_000002".to_string()]
+            .into_iter()
+            .collect::<BTreeSet<_>>();
+        assert!(validate_translation_mapping(
+            &known,
+            &[EpubBlockTranslation::new("b_unknown", "x")]
+        )
+        .is_err());
+        assert!(validate_translation_mapping(
+            &known,
+            &[
+                EpubBlockTranslation::new("b_000002", "x"),
+                EpubBlockTranslation::new("b_000002", "y"),
+            ]
+        )
+        .is_err());
+        assert!(validate_translation_mapping(
+            &known,
+            &[EpubBlockTranslation::new("b_000002", "   ")]
+        )
+        .is_err());
+    }
+
+'''
+          if test_anchor not in s:
+              raise SystemExit('test anchor missing')
+          s = s.replace(test_anchor, tests + test_anchor, 1)
+          p.write_text(s)
+
+          p = Path('engine/crates/document-engine/src/epub.rs')
+          s = p.read_text()
+          old = 'const BOOKFORGE_REVISION: &str = "23f8c9d3c97a06f48e13424698441bfb4b037844";'
+          new = '#[cfg(feature = "bookforge-epub")]\nconst BOOKFORGE_REVISION: &str = "23f8c9d3c97a06f48e13424698441bfb4b037844";'
+          if old not in s:
+              raise SystemExit('BookForge revision anchor missing')
+          p.write_text(s.replace(old, new, 1))
+          PY
+      - name: Validate repair
+        working-directory: engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo fmt --all
+          cargo fmt --all -- --check
+          cargo clippy --locked -p document-engine -p project-engine -p literary-engine --all-targets -- -D warnings
+          cargo test --locked -p document-engine -p project-engine -p literary-engine
+          cargo check --locked -p document-engine --no-default-features
+      - name: Remove one-shot workflow and commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/phase20-partial-map-fix-once.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --check
+          git commit -m 'fix: keep EPUB completeness at native provenance boundary'
+          git push origin HEAD:phase-20-publication-epub-roundtrip
