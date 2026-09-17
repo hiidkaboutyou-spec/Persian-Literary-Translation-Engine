@@ -163,8 +163,21 @@ fn extract_html_text(html: &str) -> String {
 
 fn is_block_boundary(tag: &str) -> bool {
     [
-        "<p", "</p", "<div", "</div", "<h1", "</h1", "<h2", "</h2", "<h3", "</h3", "<li",
-        "</li", "<br", "<blockquote", "</blockquote",
+        "<p",
+        "</p",
+        "<div",
+        "</div",
+        "<h1",
+        "</h1",
+        "<h2",
+        "</h2",
+        "<h3",
+        "</h3",
+        "<li",
+        "</li",
+        "<br",
+        "<blockquote",
+        "</blockquote",
     ]
     .iter()
     .any(|prefix| tag.starts_with(prefix))
@@ -271,7 +284,11 @@ pub(crate) fn load_epub_structured(
     let spine_index = book
         .resource_files
         .iter()
-        .filter_map(|resource| resource.spine_index.map(|index| (resource.id.clone(), index)))
+        .filter_map(|resource| {
+            resource
+                .spine_index
+                .map(|index| (resource.id.clone(), index))
+        })
         .collect::<HashMap<_, _>>();
 
     for block in &book.blocks {
