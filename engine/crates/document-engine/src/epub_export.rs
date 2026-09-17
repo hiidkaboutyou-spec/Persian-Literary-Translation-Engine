@@ -448,11 +448,9 @@ mod tests {
         let known = ["b_000001".to_string(), "b_000002".to_string()]
             .into_iter()
             .collect::<BTreeSet<_>>();
-        let provided = validate_translation_mapping(
-            &known,
-            &[EpubBlockTranslation::new("b_000002", "ترجمه")],
-        )
-        .unwrap();
+        let provided =
+            validate_translation_mapping(&known, &[EpubBlockTranslation::new("b_000002", "ترجمه")])
+                .unwrap();
         assert_eq!(provided.len(), 1);
         assert_eq!(provided.get("b_000002").map(String::as_str), Some("ترجمه"));
     }
@@ -463,24 +461,24 @@ mod tests {
         let known = ["b_000002".to_string()]
             .into_iter()
             .collect::<BTreeSet<_>>();
-        assert!(
-            validate_translation_mapping(&known, &[EpubBlockTranslation::new("b_unknown", "x")])
-                .is_err()
-        );
-        assert!(
-            validate_translation_mapping(
-                &known,
-                &[
-                    EpubBlockTranslation::new("b_000002", "x"),
-                    EpubBlockTranslation::new("b_000002", "y"),
-                ]
-            )
-            .is_err()
-        );
-        assert!(
-            validate_translation_mapping(&known, &[EpubBlockTranslation::new("b_000002", "   ")])
-                .is_err()
-        );
+        assert!(validate_translation_mapping(
+            &known,
+            &[EpubBlockTranslation::new("b_unknown", "x")]
+        )
+        .is_err());
+        assert!(validate_translation_mapping(
+            &known,
+            &[
+                EpubBlockTranslation::new("b_000002", "x"),
+                EpubBlockTranslation::new("b_000002", "y"),
+            ]
+        )
+        .is_err());
+        assert!(validate_translation_mapping(
+            &known,
+            &[EpubBlockTranslation::new("b_000002", "   ")]
+        )
+        .is_err());
     }
 
     #[cfg(feature = "bookforge-epub")]
