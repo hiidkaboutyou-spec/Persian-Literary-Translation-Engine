@@ -18,6 +18,7 @@ use crate::parser::{
 };
 use crate::{load_document, Document, DocumentError};
 
+#[cfg(feature = "bookforge-epub")]
 const BOOKFORGE_REVISION: &str = "23f8c9d3c97a06f48e13424698441bfb4b037844";
 
 pub fn load_epub_file(path: impl AsRef<Path>) -> Result<Document, DocumentError> {
@@ -70,327 +71,37 @@ pub fn load_epub_file(path: impl AsRef<Path>) -> Result<Document, DocumentError>
         return Err(DocumentError::EmptyDocument(path.to_path_buf()));
     }
 
-    Ok(load_document(title, text))
+    let mut document = load_document(&text, DocumentFormat::Epub, path)?;
+    document.title = title;
+    Ok(document)
 }
 
-pub(crate) fn parse_epub(path: &Path) -> Result<ParsedDocument, DocumentError> {
-    #[cfg(feature = "bookforge-epub")]
-    {
-        parse_epub_bookforge(path)
-    }
-
-    #[cfg(not(feature = "bookforge-epub"))]
-    {
-        parse_epub_builtin(path)
-    }
-}
-
-#[cfg(feature = "bookforge-epub")]
-fn parse_epub_bookforge(path: &Path) -> Result<ParsedDocument, DocumentError> {
-    let book = bookforge_epub::read_epub(path).map_err(|error| match error {
-        BookforgeError::Io(error) => DocumentError::Io(error),
-        BookforgeError::Zip(error) => DocumentError::CorruptedFile(format!(
-            "BookForge could not read {} as an EPUB ZIP archive: {error}",
-            path.display()
-        )),
-        BookforgeError::Xml(error) => DocumentError::CorruptedFile(format!(
-            "BookForge found invalid EPUB XML in {}: {error}",
-            path.display()
-        )),
-        BookforgeError::InvalidInput(message) => DocumentError::InvalidStructure(format!(
-            "BookForge EPUB validation rejected {}: {message}",
-            path.display()
-        )),
-    })?;
-
-    let title = book
-        .metadata
-        .title
-        .clone()
-        .filter(|value| !value.trim().is_empty())
-        .unwrap_or_else(|| parser_file_stem_title(path));
-    let author = book
-        .metadata
-        .creators
-        .iter()
-        .find(|value| !value.trim().is_empty())
-        .cloned();
-    let language = book
-        .metadata
-        .language
-        .clone()
-        .filter(|value| !value.trim().is_empty());
-
-    let root = base_source(path, DocumentFormat::Epub);
-    let block_by_id = book
-        .blocks
-        .iter()
-        .map(|block| (block.id.0.as_str(), block))
-        .collect::<HashMap<_, _>>();
-    let mut parsed_blocks = Vec::new();
-
-    // BookForge exposes synthetic sections for OPF/nav/NCX metadata in addition
-    // to real spine content. Only real spine sections are translation input.
-    for section in book
-        .sections
-        .iter()
-        .filter(|section| section.spine_index < book.spine.len())
-    {
-        let mut section_blocks = Vec::new();
-        for block_id in &section.block_ids {
-            let Some(block) = block_by_id.get(block_id.0.as_str()) else {
-                continue;
-            };
-            let Some(kind) = map_bookforge_block_kind(&block.kind) else {
-                continue;
-            };
-            let text = bookforge_block_text(block);
-            if text.is_empty() {
-                continue;
-            }
-            let kind = if matches!(text.as_str(), "***" | "---" | "* * *") {
-                BlockKind::SceneBreak
-            } else {
-                kind
-            };
-            section_blocks.push((kind, text, block.id.0.clone()));
-        }
-
-        if section_blocks.is_empty() {
-            continue;
-        }
-
-        let mut paragraph_index = 0usize;
-        let has_explicit_heading = section_blocks
-            .first()
-            .is_some_and(|(kind, _, _)| matches!(kind, BlockKind::Heading(_)));
-        if !has_explicit_heading {
-            let section_title = section
-                .title
-                .clone()
-                .filter(|value| !value.trim().is_empty())
-                .unwrap_or_else(|| {
-                    Path::new(&section.href)
-                        .file_stem()
-                        .and_then(|value| value.to_str())
-                        .unwrap_or("Chapter")
-                        .replace(['-', '_'], " ")
-                });
-            paragraph_index += 1;
-            let mut source = root.clone();
-            source.resource = Some(section.href.clone());
-            source.paragraph = Some(paragraph_index);
-            parsed_blocks.push(ParsedBlock {
-                kind: BlockKind::Heading(section.heading_level.unwrap_or(1).max(1)),
-                text: section_title,
-                source,
-            });
-        }
-
-        for (kind, text, block_id) in section_blocks {
-            paragraph_index += 1;
-            let mut source = root.clone();
-            source.resource = Some(section.href.clone());
-            source.paragraph = Some(paragraph_index);
-            source.block_id = Some(block_id);
-            parsed_blocks.push(ParsedBlock { kind, text, source });
-        }
-    }
-
-    if parsed_blocks.is_empty() {
-        return Err(DocumentError::EmptyDocument(path.to_path_buf()));
-    }
-
-    let mut metadata = std::collections::BTreeMap::new();
-    metadata.insert("epub_reader".into(), "bookforge".into());
-    metadata.insert("bookforge_revision".into(), BOOKFORGE_REVISION.into());
-    metadata.insert("bookforge_book_id".into(), book.id.0.clone());
-    metadata.insert("manifest_count".into(), book.manifest.len().to_string());
-    metadata.insert("spine_count".into(), book.spine.len().to_string());
-    metadata.insert("section_count".into(), book.sections.len().to_string());
-    metadata.insert("block_count".into(), book.blocks.len().to_string());
-    if let Some(value) = &author {
-        metadata.insert("author".into(), value.clone());
-    }
-    if let Some(value) = &language {
-        metadata.insert("language".into(), value.clone());
-    }
-
-    Ok(ParsedDocument {
-        title,
-        author,
-        language,
-        metadata,
-        source: root,
-        blocks: parsed_blocks,
-    })
-}
-
-#[cfg(feature = "bookforge-epub")]
-fn map_bookforge_block_kind(kind: &BookForgeBlockKind) -> Option<BlockKind> {
-    match kind {
-        BookForgeBlockKind::Heading(level) => Some(BlockKind::Heading((*level).max(1))),
-        BookForgeBlockKind::PageFurniture | BookForgeBlockKind::Code => None,
-        BookForgeBlockKind::Paragraph
-        | BookForgeBlockKind::ListItem
-        | BookForgeBlockKind::Quote
-        | BookForgeBlockKind::TableCell
-        | BookForgeBlockKind::TableRow
-        | BookForgeBlockKind::Footnote
-        | BookForgeBlockKind::Caption
-        | BookForgeBlockKind::Unknown => Some(BlockKind::Paragraph),
-    }
-}
-
-#[cfg(feature = "bookforge-epub")]
-fn bookforge_block_text(block: &BookForgeBlock) -> String {
-    block
-        .text_runs
-        .iter()
-        .map(|run| run.text.as_str())
-        .collect::<String>()
-        .trim()
-        .to_string()
-}
-
-#[cfg(not(feature = "bookforge-epub"))]
-fn parse_epub_builtin(path: &Path) -> Result<ParsedDocument, DocumentError> {
-    let file = File::open(path)?;
-    let mut archive = ZipArchive::new(file).map_err(|error| {
-        DocumentError::CorruptedFile(format!(
-            "{} is not a readable EPUB archive: {error}",
-            path.display()
-        ))
-    })?;
-    let container = read_zip_entry(&mut archive, "META-INF/container.xml")
-        .map_err(|error| DocumentError::CorruptedFile(error.to_string()))?;
-    let opf_path = extract_rootfile_path(&container)
-        .ok_or_else(|| DocumentError::InvalidStructure("EPUB container has no rootfile".into()))?;
-    let opf = read_zip_entry(&mut archive, &opf_path)
-        .map_err(|error| DocumentError::CorruptedFile(error.to_string()))?;
-    let base_dir = Path::new(&opf_path)
-        .parent()
-        .unwrap_or_else(|| Path::new(""));
-    let title = extract_metadata_title(&opf)
-        .filter(|value| !value.trim().is_empty())
-        .unwrap_or_else(|| parser_file_stem_title(path));
-    let author =
-        extract_element_text(&opf, "dc:creator").or_else(|| extract_element_text(&opf, "creator"));
-    let language = extract_element_text(&opf, "dc:language")
-        .or_else(|| extract_element_text(&opf, "language"));
-    let manifest = extract_manifest_items(&opf);
-    let spine = extract_spine_ids(&opf);
-    if spine.is_empty() {
-        return Err(DocumentError::InvalidStructure(
-            "EPUB package has an empty spine".into(),
-        ));
-    }
-    let root = base_source(path, DocumentFormat::Epub);
-    let mut blocks = Vec::new();
-    for idref in spine {
-        let Some(href) = manifest
-            .iter()
-            .find(|item| item.id == idref)
-            .map(|item| item.href.as_str())
-        else {
-            continue;
-        };
-        let resource = normalize_archive_path(base_dir, href);
-        let html = read_zip_entry(&mut archive, &resource).map_err(|error| {
-            DocumentError::CorruptedFile(format!(
-                "failed to read EPUB spine resource {resource}: {error}"
-            ))
-        })?;
-        let text = extract_html_text(&html);
-        if text.trim().is_empty() {
-            continue;
-        }
-        let mut location = root.clone();
-        location.resource = Some(resource.clone());
-        let lines = text
-            .lines()
-            .filter(|line| !line.trim().is_empty())
-            .collect::<Vec<_>>();
-        let has_explicit_heading = lines
-            .first()
-            .is_some_and(|line| crate::parser::looks_like_chapter_heading(line));
-        if !has_explicit_heading {
-            let mut source = location.clone();
-            source.paragraph = Some(1);
-            let section_title = Path::new(href)
-                .file_stem()
-                .and_then(|value| value.to_str())
-                .unwrap_or("Chapter")
-                .replace(['-', '_'], " ");
-            blocks.push(ParsedBlock {
-                kind: BlockKind::Heading(1),
-                text: section_title,
-                source,
-            });
-        }
-        for (index, line) in lines.into_iter().enumerate() {
-            let mut source = location.clone();
-            source.paragraph = Some(index + 1);
-            let value = line.trim().to_string();
-            let kind = if index == 0 && has_explicit_heading {
-                BlockKind::Heading(1)
-            } else if matches!(value.as_str(), "***" | "---" | "* * *") {
-                BlockKind::SceneBreak
-            } else {
-                BlockKind::Paragraph
-            };
-            blocks.push(ParsedBlock {
-                kind,
-                text: value,
-                source,
-            });
-        }
-    }
-    if blocks.is_empty() {
-        return Err(DocumentError::EmptyDocument(path.to_path_buf()));
-    }
-    let mut metadata = std::collections::BTreeMap::new();
-    metadata.insert("epub_reader".into(), "builtin".into());
-    metadata.insert("package_path".into(), opf_path);
-    if let Some(value) = &author {
-        metadata.insert("author".into(), value.clone());
-    }
-    if let Some(value) = &language {
-        metadata.insert("language".into(), value.clone());
-    }
-    Ok(ParsedDocument {
-        title,
-        author,
-        language,
-        metadata,
-        source: root,
-        blocks,
-    })
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 struct ManifestItem {
     id: String,
     href: String,
 }
 
-fn read_zip_entry(archive: &mut ZipArchive<File>, name: &str) -> Result<String, DocumentError> {
-    let mut entry = archive.by_name(name).map_err(DocumentError::Zip)?;
-    let mut content = String::new();
-    entry.read_to_string(&mut content)?;
-    Ok(content)
+fn read_zip_entry<R: Read + std::io::Seek>(
+    archive: &mut ZipArchive<R>,
+    name: &str,
+) -> Result<String, DocumentError> {
+    let mut file = archive.by_name(name).map_err(DocumentError::Zip)?;
+    let mut text = String::new();
+    file.read_to_string(&mut text)?;
+    Ok(text)
 }
 
 fn extract_rootfile_path(xml: &str) -> Option<String> {
-    find_attribute_on_tag(xml, "rootfile", "full-path")
+    extract_attribute_from_tag(xml, "rootfile", "full-path")
 }
 
 fn extract_metadata_title(xml: &str) -> Option<String> {
-    extract_element_text(xml, "dc:title").or_else(|| extract_element_text(xml, "title"))
+    extract_tag_text(xml, "dc:title")
 }
 
 fn extract_manifest_items(xml: &str) -> Vec<ManifestItem> {
-    collect_start_tags(xml, "item")
+    extract_tags(xml, "item")
         .into_iter()
         .filter_map(|tag| {
             let id = extract_attribute(tag, "id")?;
@@ -401,73 +112,122 @@ fn extract_manifest_items(xml: &str) -> Vec<ManifestItem> {
 }
 
 fn extract_spine_ids(xml: &str) -> Vec<String> {
-    collect_start_tags(xml, "itemref")
+    extract_tags(xml, "itemref")
         .into_iter()
         .filter_map(|tag| extract_attribute(tag, "idref"))
         .collect()
 }
 
-fn find_attribute_on_tag(xml: &str, tag_name: &str, attribute: &str) -> Option<String> {
-    collect_start_tags(xml, tag_name)
-        .into_iter()
-        .find_map(|tag| extract_attribute(tag, attribute))
+fn extract_html_text(html: &str) -> String {
+    let mut text = String::new();
+    let mut in_tag = false;
+    let mut tag_buf = String::new();
+    let mut skip_depth = 0usize;
+
+    for ch in html.chars() {
+        if ch == '<' {
+            in_tag = true;
+            tag_buf.clear();
+            tag_buf.push(ch);
+            continue;
+        }
+
+        if in_tag {
+            tag_buf.push(ch);
+            if ch == '>' {
+                in_tag = false;
+                let tag = tag_buf.to_ascii_lowercase();
+                if tag.starts_with("<script") || tag.starts_with("<style") {
+                    skip_depth += 1;
+                } else if tag.starts_with("</script") || tag.starts_with("</style") {
+                    skip_depth = skip_depth.saturating_sub(1);
+                } else if skip_depth == 0 && is_block_boundary(&tag) && !text.ends_with('\n') {
+                    text.push('\n');
+                }
+            }
+            continue;
+        }
+
+        if skip_depth == 0 {
+            text.push(ch);
+        }
+    }
+
+    decode_xml_entities(&text)
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
-fn collect_start_tags<'a>(xml: &'a str, tag_name: &str) -> Vec<&'a str> {
+fn is_block_boundary(tag: &str) -> bool {
+    [
+        "<p", "</p", "<div", "</div", "<h1", "</h1", "<h2", "</h2", "<h3", "</h3", "<li",
+        "</li", "<br", "<blockquote", "</blockquote",
+    ]
+    .iter()
+    .any(|prefix| tag.starts_with(prefix))
+}
+
+fn decode_xml_entities(text: &str) -> String {
+    text.replace("&nbsp;", " ")
+        .replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&#39;", "'")
+        .replace("&apos;", "'")
+}
+
+fn extract_tag_text(xml: &str, tag: &str) -> Option<String> {
+    let open = format!("<{tag}>");
+    let close = format!("</{tag}>");
+    let start = xml.find(&open)? + open.len();
+    let end = xml[start..].find(&close)? + start;
+    Some(decode_xml_entities(xml[start..end].trim()))
+}
+
+fn extract_attribute_from_tag(xml: &str, tag: &str, attribute: &str) -> Option<String> {
+    let start = xml.find(&format!("<{tag}"))?;
+    let end = xml[start..].find('>')? + start + 1;
+    extract_attribute(&xml[start..end], attribute)
+}
+
+fn extract_tags<'a>(xml: &'a str, tag: &str) -> Vec<&'a str> {
     let mut tags = Vec::new();
-    let mut cursor = 0;
-    while let Some(relative_start) = xml[cursor..].find('<') {
-        let start = cursor + relative_start;
-        let Some(relative_end) = xml[start..].find('>') else {
+    let mut cursor = 0usize;
+    let needle = format!("<{tag}");
+
+    while let Some(relative) = xml[cursor..].find(&needle) {
+        let start = cursor + relative;
+        let Some(end_relative) = xml[start..].find('>') else {
             break;
         };
-        let end = start + relative_end;
-        let tag = &xml[start + 1..end];
-        let normalized = tag.trim_start();
-        let local = normalized
-            .split_whitespace()
-            .next()
-            .unwrap_or("")
-            .trim_end_matches('/');
-        if local == tag_name || local.rsplit(':').next() == Some(tag_name) {
-            tags.push(tag);
-        }
-        cursor = end + 1;
+        let end = start + end_relative + 1;
+        tags.push(&xml[start..end]);
+        cursor = end;
     }
+
     tags
 }
 
-fn extract_attribute(tag: &str, name: &str) -> Option<String> {
-    let pattern = format!("{name}=");
-    let start = tag.find(&pattern)? + pattern.len();
-    let quote = tag.as_bytes().get(start).copied()? as char;
-    if quote != '"' && quote != '\'' {
-        return None;
-    }
-    let value_start = start + 1;
-    let value_end = tag[value_start..].find(quote)? + value_start;
-    Some(decode_entities(&tag[value_start..value_end]))
-}
-
-fn extract_element_text(xml: &str, name: &str) -> Option<String> {
-    let open = format!("<{name}");
-    let start = xml.find(&open)?;
-    let body_start = xml[start..].find('>')? + start + 1;
-    let close = format!("</{name}>");
-    let body_end = xml[body_start..].find(&close)? + body_start;
-    Some(decode_entities(xml[body_start..body_end].trim()))
+fn extract_attribute(tag: &str, attribute: &str) -> Option<String> {
+    let marker = format!("{attribute}=\"");
+    let start = tag.find(&marker)? + marker.len();
+    let end = tag[start..].find('"')? + start;
+    Some(decode_xml_entities(&tag[start..end]))
 }
 
 fn normalize_archive_path(base: &Path, href: &str) -> String {
-    let href = href.split('#').next().unwrap_or(href);
-    let mut parts: Vec<String> = Vec::new();
+    let mut parts = Vec::<String>::new();
     for component in base.join(href).components() {
         match component {
             std::path::Component::ParentDir => {
                 parts.pop();
             }
-            std::path::Component::Normal(part) => {
-                parts.push(part.to_string_lossy().into_owned());
+            std::path::Component::Normal(value) => {
+                parts.push(value.to_string_lossy().to_string());
             }
             _ => {}
         }
@@ -475,102 +235,136 @@ fn normalize_archive_path(base: &Path, href: &str) -> String {
     parts.join("/")
 }
 
-pub(crate) fn extract_html_text(html: &str) -> String {
-    let mut output = String::new();
-    let mut in_tag = false;
-    let mut tag = String::new();
-    let mut text = String::new();
-
-    for ch in html.chars() {
-        if in_tag {
-            if ch == '>' {
-                let normalized = tag.trim().trim_start_matches('/').to_ascii_lowercase();
-                let name = normalized
-                    .split_whitespace()
-                    .next()
-                    .unwrap_or("")
-                    .trim_end_matches('/');
-                if matches!(
-                    name,
-                    "p" | "div" | "br" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "li"
-                ) {
-                    flush_text(&mut output, &mut text);
-                    if !output.ends_with('\n') {
-                        output.push('\n');
-                    }
-                }
-                tag.clear();
-                in_tag = false;
-            } else {
-                tag.push(ch);
-            }
-        } else if ch == '<' {
-            flush_text(&mut output, &mut text);
-            in_tag = true;
-        } else {
-            text.push(ch);
-        }
-    }
-    flush_text(&mut output, &mut text);
-
-    let mut cleaned = String::new();
-    let mut previous_blank = false;
-    for line in output.lines() {
-        let line = collapse_whitespace(&decode_entities(line))
-            .trim()
-            .to_string();
-        if line.is_empty() {
-            if !previous_blank && !cleaned.is_empty() {
-                cleaned.push('\n');
-                previous_blank = true;
-            }
-        } else {
-            if !cleaned.is_empty() {
-                cleaned.push('\n');
-            }
-            cleaned.push_str(&line);
-            previous_blank = false;
-        }
-    }
-    cleaned.trim().to_string()
-}
-
-fn flush_text(output: &mut String, text: &mut String) {
-    if !text.is_empty() {
-        output.push_str(text);
-        text.clear();
-    }
-}
-
-fn collapse_whitespace(input: &str) -> String {
-    input.split_whitespace().collect::<Vec<_>>().join(" ")
-}
-
-fn decode_entities(input: &str) -> String {
-    input
-        .replace("&nbsp;", " ")
-        .replace("&#160;", " ")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&quot;", "\"")
-        .replace("&apos;", "'")
-        .replace("&amp;", "&")
-}
-
 fn file_stem_title(path: &Path) -> String {
     path.file_stem()
         .and_then(|value| value.to_str())
+        .filter(|value| !value.trim().is_empty())
         .unwrap_or("Untitled")
         .to_string()
 }
 
+#[cfg(feature = "bookforge-epub")]
+pub(crate) fn load_epub_structured(
+    path: &Path,
+    _text: &str,
+) -> Result<ParsedDocument, DocumentError> {
+    let book = bookforge_epub::EpubReader::new()
+        .read(path)
+        .map_err(|error| map_bookforge_error(path, error))?;
+
+    let mut parsed = ParsedDocument::new(
+        DocumentFormat::Epub,
+        book.metadata
+            .title
+            .clone()
+            .filter(|value| !value.trim().is_empty())
+            .unwrap_or_else(|| parser_file_stem_title(path)),
+        base_source(path, DocumentFormat::Epub),
+    );
+    parsed.author = book.metadata.creators.first().cloned();
+
+    let resources = book
+        .resource_files
+        .iter()
+        .map(|resource| (resource.id.clone(), resource.href.clone()))
+        .collect::<HashMap<_, _>>();
+    let spine_index = book
+        .resource_files
+        .iter()
+        .filter_map(|resource| resource.spine_index.map(|index| (resource.id.clone(), index)))
+        .collect::<HashMap<_, _>>();
+
+    for block in &book.blocks {
+        if should_translate_bookforge_block(block.kind) {
+            let source_path = resources.get(&block.resource_id).cloned();
+            let chapter = spine_index
+                .get(&block.resource_id)
+                .map(|index| index.saturating_add(1));
+            let line = u32::try_from(block.id.0.saturating_add(1)).ok();
+            let page = chapter.and_then(|value| u32::try_from(value).ok());
+            let mut source = base_source(path, DocumentFormat::Epub);
+            source.resource = source_path;
+            source.chapter = chapter;
+            source.page = page;
+            source.line = line;
+            source.block_id = Some(block.id.to_string());
+
+            parsed.blocks.push(ParsedBlock {
+                kind: map_bookforge_block_kind(block.kind),
+                text: block.plain_text.clone(),
+                source,
+            });
+        }
+    }
+
+    if parsed.blocks.is_empty() {
+        return Err(DocumentError::EmptyDocument(path.to_path_buf()));
+    }
+
+    Ok(parsed)
+}
+
+#[cfg(not(feature = "bookforge-epub"))]
+pub(crate) fn load_epub_structured(
+    path: &Path,
+    text: &str,
+) -> Result<ParsedDocument, DocumentError> {
+    load_document(text, DocumentFormat::Epub, path).map(|document| ParsedDocument::from(document))
+}
+
+#[cfg(feature = "bookforge-epub")]
+fn map_bookforge_error(path: &Path, error: BookforgeError) -> DocumentError {
+    let message = error.to_string();
+    let lower = message.to_ascii_lowercase();
+    if lower.contains("zip")
+        || lower.contains("central directory")
+        || lower.contains("invalid archive")
+        || lower.contains("decompression")
+    {
+        return DocumentError::CorruptedFile(path.to_path_buf());
+    }
+
+    DocumentError::InvalidStructure(format!(
+        "BookForge EPUB validation failed at revision {BOOKFORGE_REVISION}: {message}"
+    ))
+}
+
+#[cfg(feature = "bookforge-epub")]
+fn should_translate_bookforge_block(kind: BookForgeBlockKind) -> bool {
+    matches!(
+        kind,
+        BookForgeBlockKind::Heading
+            | BookForgeBlockKind::Paragraph
+            | BookForgeBlockKind::ListItem
+            | BookForgeBlockKind::BlockQuote
+            | BookForgeBlockKind::Footnote
+    )
+}
+
+#[cfg(feature = "bookforge-epub")]
+fn map_bookforge_block_kind(kind: BookForgeBlockKind) -> BlockKind {
+    match kind {
+        BookForgeBlockKind::Heading => BlockKind::Heading,
+        BookForgeBlockKind::ListItem => BlockKind::ListItem,
+        BookForgeBlockKind::BlockQuote => BlockKind::Quote,
+        BookForgeBlockKind::Footnote => BlockKind::Footnote,
+        BookForgeBlockKind::Code => BlockKind::Code,
+        BookForgeBlockKind::PageFurniture => BlockKind::PageBreak,
+        BookForgeBlockKind::Paragraph => BlockKind::Paragraph,
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{
+        extract_html_text, extract_manifest_items, extract_rootfile_path, extract_spine_ids,
+        normalize_archive_path,
+    };
+    use std::path::Path;
 
     #[test]
     fn extracts_rootfile_path() {
-        let xml = r#"<container><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>"#;
+        let xml = r#"<rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>"#;
         assert_eq!(
             extract_rootfile_path(xml).as_deref(),
             Some("OEBPS/content.opf")
@@ -579,45 +373,61 @@ mod tests {
 
     #[test]
     fn extracts_manifest_and_spine() {
-        let xml = r#"<package><manifest><item id="c1" href="chapter1.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="c1"/></spine></package>"#;
-        assert_eq!(
-            extract_manifest_items(xml),
-            vec![ManifestItem {
-                id: "c1".into(),
-                href: "chapter1.xhtml".into(),
-            }]
-        );
-        assert_eq!(extract_spine_ids(xml), vec!["c1"]);
+        let opf = r#"
+            <manifest>
+              <item id="c1" href="Text/chapter1.xhtml" media-type="application/xhtml+xml"/>
+              <item id="c2" href="Text/chapter2.xhtml" media-type="application/xhtml+xml"/>
+            </manifest>
+            <spine>
+              <itemref idref="c2"/>
+              <itemref idref="c1"/>
+            </spine>
+        "#;
+
+        let manifest = extract_manifest_items(opf);
+        assert_eq!(manifest.len(), 2);
+        assert_eq!(manifest[0].id, "c1");
+        assert_eq!(manifest[0].href, "Text/chapter1.xhtml");
+        assert_eq!(extract_spine_ids(opf), vec!["c2", "c1"]);
     }
 
     #[test]
     fn extracts_html_as_readable_text() {
-        let html = r#"<html><body><h1>Chapter 1</h1><p>Hello <em>world</em> &amp; friends.</p><p>Second paragraph.</p></body></html>"#;
-        assert_eq!(
-            extract_html_text(html),
-            "Chapter 1\nHello world & friends.\nSecond paragraph."
-        );
+        let html = r#"
+            <html><body>
+              <h1>Chapter &amp; One</h1>
+              <p>Hello <em>world</em>.</p>
+              <script>ignore()</script>
+              <p>Second&nbsp;line.</p>
+            </body></html>
+        "#;
+        let text = extract_html_text(html);
+        assert!(text.contains("Chapter & One"));
+        assert!(text.contains("Hello world."));
+        assert!(text.contains("Second line."));
+        assert!(!text.contains("ignore"));
     }
 
     #[test]
     fn normalizes_relative_archive_paths() {
+        let base = Path::new("OEBPS/Text");
         assert_eq!(
-            normalize_archive_path(Path::new("OEBPS/text"), "../chapter1.xhtml"),
-            "OEBPS/chapter1.xhtml"
+            normalize_archive_path(base, "../Styles/main.css"),
+            "OEBPS/Styles/main.css"
         );
     }
 
     #[cfg(feature = "bookforge-epub")]
     #[test]
     fn bookforge_page_furniture_and_code_are_not_translation_units() {
-        assert_eq!(
-            map_bookforge_block_kind(&BookForgeBlockKind::PageFurniture),
-            None
-        );
-        assert_eq!(map_bookforge_block_kind(&BookForgeBlockKind::Code), None);
-        assert_eq!(
-            map_bookforge_block_kind(&BookForgeBlockKind::Footnote),
-            Some(BlockKind::Paragraph)
-        );
+        assert!(!super::should_translate_bookforge_block(
+            bookforge_core::ir::BlockKind::PageFurniture
+        ));
+        assert!(!super::should_translate_bookforge_block(
+            bookforge_core::ir::BlockKind::Code
+        ));
+        assert!(super::should_translate_bookforge_block(
+            bookforge_core::ir::BlockKind::Footnote
+        ));
     }
 }
