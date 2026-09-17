@@ -90,4 +90,6 @@ Before adopting any candidate during Literary Evaluation Corpus & Benchmarking:
 
 ## Current roadmap placement
 
-Phase 20 remains Publication-Grade EPUB Round Trip and must be completed/merged before Phase 21 starts. This Persian ecosystem review changes **future dependency choices**, not the numbered-phase order. The next justified integration opportunity is Phase 21 benchmarking, after the Phase 20 publication gate is green and canonical.
+Phase 20 is canonical on `main` (PR #98; merge `1611cd731160c122baa68c9e80c1d4faeb7dfcfc`). This Persian ecosystem review therefore hands off to **Phase 21 — Literary Evaluation Corpus & Benchmarking**.
+
+Mizan, iPerUDT, Degarbayan-SC, FarSSiM and related datasets are **benchmark/corpus candidates, not automatic runtime dependencies**. Before any download, CI installation, bundling, or use as reference truth, Phase 21 must verify dataset-level license, provenance, redistribution/commercial-use terms, source/reference quality, and whether the corpus actually measures the literary failure class in question. Generic Persian NLP packages remain subject to the gap-first/security rules above.
