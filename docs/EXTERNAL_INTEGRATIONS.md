@@ -5,13 +5,13 @@ This document records approved external integrations for the Persian Literary Tr
 ## Principles
 
 - Rust remains the product core and owns project state, literary intelligence, translation orchestration, deterministic quality gates, review state, and publishing.
-- External projects are integrated only where they provide a concrete capability that is stronger than the native implementation.
+- External projects are integrated only where they provide a concrete capability stronger or safer than duplicating the capability natively.
 - External model scores and probabilistic diagnostics are evidence, never human approval and never permission to silently rewrite a manuscript.
 - Exact upstream revisions or package versions are pinned where practical. Upgrades require tests and provenance/security review.
-- Heavy models and optional tooling are never downloaded by default CI unless a dedicated reproducible test explicitly requires them.
-- Manuscript text, translations, reviewer notes, credentials, and project memory must not be logged or sent anywhere except to a provider explicitly selected for that operation.
+- Heavy models and optional tooling are not downloaded by normal CI unless a dedicated reproducible validation explicitly requires them.
+- Manuscript text, translations, reviewer notes, credentials, and project memory are not logged or sent anywhere except to a provider explicitly selected for that operation.
 
-## BookForge — active EPUB ingestion dependency
+## BookForge — active EPUB ingestion and Phase 20 reconstruction dependency
 
 Upstream: `JunjoSick/bookforge`
 
@@ -26,6 +26,10 @@ License: MIT.
 `document-engine` enables the `bookforge-epub` feature by default and maps BookForge IR back into native document types. BookForge types must not leak into project persistence, translation memory, literary intelligence, review ledgers, or public application contracts.
 
 The previous built-in EPUB reader remains an explicit compatibility build path, not a silent fallback. When BookForge is enabled and rejects an EPUB, ingestion returns an actionable error.
+
+Phase 20 also uses BookForge for source-aware reconstruction. The product persists only native stable source provenance (`block_id`) and supplies an explicit block-ID-to-translation map at export. BookForge owns inline-marker-aware XHTML reconstruction, target primary `dc:language`, and XHTML `lang`/`xml:lang` rewriting. The native document layer adds only the RTL publication metadata not supplied by that boundary (`dir="rtl"` and OPF spine `page-progression-direction="rtl"`).
+
+Publication export must fail closed when expected source block provenance is missing, unknown, duplicated, empty, or mismatched. Do not regenerate EPUB from flattened translated chapter text and do not guess block alignment by paragraph order.
 
 ## COMET / XCOMET / DocCOMET — optional quality evidence sidecar
 
@@ -49,9 +53,11 @@ License: Apache-2.0.
 
 Only English/Persian model features are enabled and the feature is off by default. Lingua cannot rewrite, approve, or independently reject multilingual literary output.
 
-## EPUBCheck — optional publication conformance validator
+## EPUBCheck — Phase 20 publication conformance validator
 
 Upstream: `w3c/epubcheck`
+
+Authoritative Phase 20 package:
 
 ```text
 EPUBCheck 5.3.0
@@ -60,7 +66,9 @@ SHA-256 6c07e68584b2e2ce2f89fe06e1246dfead3eb36b46b340e7d93524f29dcff6c5
 
 License: BSD-3-Clause.
 
-EPUBCheck is not vendored and absence of Java/EPUBCheck cannot break translation/DOCX/runtime. Phase 20 may promote it to a generated-EPUB publication-conformance gate.
+Phase 20 targets the W3C EPUB 3.3 Recommendation. EPUBCheck 5.3.0 explicitly validates EPUB 3.3 and is therefore the publication-conformance gate for this phase. The distribution is not vendored; the checksum-pinned installer places it only under ignored local tool storage. Java/EPUBCheck must not become a requirement for ingestion, translation, literary review, or DOCX export.
+
+EPUBCheck 5.4.0 is newer, but its EPUB 3 validation tracks EPUB 3.4. EPUB 3.4 is still a Candidate Recommendation at the Phase 20 research date (2026-09-17). Treat 5.4.x as future-compatibility evidence; do not silently migrate the product standard until EPUB 3.4 is stable or a deliberate migration is approved and tested.
 
 ## FastEmbed + BGE-M3 — optional semantic evidence boundary
 
@@ -83,15 +91,15 @@ Rules:
 - model-backed process boundaries must be timeout/failure-safe;
 - Linux and Apple Silicon arm64 compatibility are tested.
 
-## Phase 19 Native Literary Alignment — active branch implementation
+## Phase 19 Native Literary Alignment — canonical
 
-The Phase 19 branch implements monotonic alignment natively in Rust and exposes optional embedding-backed execution through `tools/literary-alignment`.
+Phase 19 implements monotonic alignment natively in Rust and exposes optional embedding-backed execution through `tools/literary-alignment`.
 
 Supported alignment shapes include 1:1, 1:N, N:1, N:M and source/target gaps. The Rust core validates returned unit identity, index bounds, complete ordered coverage, finite values, and schema before evidence is accepted.
 
 A missing/failing/malformed aligner does not block translation and does not become a clean review result. Review artifacts record whether evidence was requested, unavailable, completed, or failed.
 
-This integration becomes canonical only after the Phase 19 PR is merged and post-merge validation succeeds.
+Phase 19 is canonical via PR #95, merge `d073dab10c0965197745a6cbc7b8e56c946835e8`.
 
 ## Hazm — blocked by unpatched dependency advisory
 
@@ -103,23 +111,14 @@ Mandatory dependency includes `nltk ^3.9.0`.
 
 Potential value: Persian normalization/tokenization/POS/syntax diagnostics.
 
-Decision: **blocked**, not merely deferred. A real isolated evaluation showed the mandatory compatible NLTK dependency is affected by GitHub-reviewed High-severity `GHSA-8mgp-746c-j5xp` / `CVE-2026-81726` through NLTK 3.10.3, with no patched version listed at the Phase 19 research date.
-
-Do not add an audit waiver merely to enable Hazm. Re-evaluate only after a patched compatible NLTK release exists and a fresh dependency/security audit passes.
+Decision: **blocked**, not merely deferred. The mandatory compatible NLTK dependency was affected by the recorded High-severity `GHSA-8mgp-746c-j5xp` / `CVE-2026-81726` at the Phase 19 audit point. Do not add an audit waiver merely to enable Hazm. Re-evaluate only after a patched compatible NLTK release exists and a fresh dependency/security audit passes.
 
 ## Vecalign — algorithm/design reference only
 
 Upstream: `thompsonb/vecalign`
 Core license: Apache-2.0.
 
-Vecalign is a strong reference for multilingual monotonic sentence alignment, including one-to-many/many-to-one behavior and document-scale alignment.
-
-Reasons not to install it now:
-
-- Cython/C extension and compiler/Python surface would be added to the project;
-- embeddings still need to be supplied separately;
-- the native Rust aligner now covers the measured Phase 19 need while reusing the existing BGE boundary;
-- bundled Bleualign dev/test datasets have separate GPL licensing and must never be copied blindly.
+Vecalign is a strong reference for multilingual monotonic sentence alignment, including one-to-many/many-to-one behavior and document-scale alignment. It is not installed because its Python/Cython/compiler surface is unnecessary while the native Rust aligner satisfies the measured requirement; bundled Bleualign dev/test datasets also have separate GPL licensing and must not be copied blindly.
 
 ## SentWeave 0.3.3 — audited research reference only
 
@@ -132,21 +131,17 @@ PyPI sdist SHA-256:
 ef6414bdd1d7fa4064f31fdf1b446c7f2601955777fcdf64988fc09bca9d2940
 ```
 
-SentWeave exposes in-memory VecAlign-style monotonic alignment and leaves the encoder to the caller. A one-off research workflow validated hash-pinned installation, dependency audit, algorithm smoke, Linux, and Apple Silicon.
-
-Decision: reference only. It is a new/small Python package and adding another runtime surface is unnecessary while the native Rust aligner satisfies the same requirement with less operational risk.
+A one-off research workflow validated hash-pinned installation, dependency audit, algorithm smoke, Linux, and Apple Silicon. Decision: reference only; native Rust covers the need with less operational surface.
 
 ## DadmaTools — conditional research candidate
 
 License: Apache-2.0.
-
 Potential value: Persian NER/POS/dependency/ezafe diagnostics.
-
-Decision: defer unless a Phase 19 benchmark demonstrates a specific capability gap after native review. Do not add it just to accumulate NLP features.
+Decision: defer unless a benchmark demonstrates a specific capability gap after the native Phase 19 stack.
 
 ## ContextWeaver — architecture reference, no dependency
 
-ContextWeaver concepts were reviewed for long-form context packets, stable segment identity, revision history, and resumability. Native Context Packet v2 now owns those responsibilities.
+ContextWeaver concepts were reviewed for long-form context packets, stable segment identity, revision history, and resumability. Native Context Packet v2 owns those responsibilities.
 
 ## TranslateBooksWithLLMs — design reference only
 
@@ -154,49 +149,34 @@ No source code is copied or linked. Selective glossary/context ideas overlap nat
 
 ## TransAgents — research/agent-role reference only
 
-TransAgents can inform separation of translator/editor/fidelity/voice/naturalness roles, but its orchestration and memory architecture are not runtime dependencies. This repository keeps provider judgments separate from deterministic quality checks and human review.
+TransAgents can inform translator/editor/fidelity/voice/naturalness role separation, but its orchestration and memory architecture are not runtime dependencies. Provider judgments remain separate from deterministic quality checks and human review.
 
 ## SacreBLEU / chrF++ — Phase 21 candidate
 
 License: Apache-2.0.
-
 Potential value: reproducible reference-based BLEU/chrF/TER benchmarking.
-
-Decision: defer until a rights-safe EN→FA literary reference corpus exists. Reference metrics remain benchmark evidence, never the literary judge.
+Decision: defer until a rights-safe EN->FA literary reference corpus exists. Reference metrics remain benchmark evidence, never the literary judge.
 
 ## Supporting-tool candidates outside translation runtime
 
 ### OpenDataLoader PDF — ingestion benchmark candidate
 
-Upstream: `opendataloader-project/opendataloader-pdf`.
-
-Potential value: structured Markdown/JSON/HTML extraction, reading-order/layout recovery, bounding boxes, tables, and OCR/hybrid handling for difficult PDFs.
-
-Decision: do not replace `document-engine`. After Phase 19, benchmark deterministic local mode against the current PDF ingestion path using project-owned fixtures. If adopted, keep Java/Python/hybrid AI tooling optional behind a narrow ingestion sidecar and map results back to native document types.
+Potential value: structured Markdown/JSON/HTML extraction, reading-order/layout recovery, bounding boxes, tables, and OCR/hybrid handling for difficult PDFs. Do not replace `document-engine`; benchmark project-owned fixtures first and keep any Java/Python/hybrid AI tooling optional behind a narrow ingestion boundary.
 
 ### ripwire — developer-only code-intelligence candidate
 
-Upstream: `redhat-et/ripwire`.
-
-Potential value: deterministic tree-sitter symbol/call graph, ranked bounded code maps, and MCP for coding agents.
-
-Decision: may be evaluated as isolated developer tooling after the numbered phase is complete. It must not be imported into production Rust, own project memory, or become required for build/translation/review/export.
+Potential value: deterministic tree-sitter symbol/call graph, ranked bounded code maps, and MCP for coding agents. If evaluated, it remains developer tooling and never owns runtime/project memory or becomes required for build/translation/review/export.
 
 ### Headroom — conditional developer/research candidate
 
-Upstream: `headroomlabs-ai/headroom`.
-License: Apache-2.0.
-
-Potential value: compressing coding/research-agent tool outputs and context.
-
-Decision: do not place Headroom between literary context/evidence and translation/review providers without a dedicated fidelity benchmark. It may be evaluated only for developer/research workflows first.
+License: Apache-2.0. Potential value is coding/research context compression. Do not place lossy compression between literary evidence/context and translation/review providers without a dedicated fidelity benchmark.
 
 ## Other architecture references
 
 - `sukamenev/booktrans` — whole-book scouting/selective context/editor-verifier patterns.
-- Tolmach / `KazKozDev/book-translator` — useful refinement/verifier concepts; reference-only under licensing boundary.
-- `madpin/epublate` — useful EPUB round-trip/glossary lifecycle ideas; do not copy code without independent licensing/provenance review.
-- ArmenianLitTranslator — useful critic-role/evaluation dimensions; research reference only.
+- Tolmach / `KazKozDev/book-translator` — refinement/verifier concepts; reference-only under licensing boundary.
+- `madpin/epublate` — EPUB round-trip/glossary lifecycle ideas; no code copied without independent licensing/provenance review.
+- ArmenianLitTranslator — critic-role/evaluation-dimension reference only.
 
 ## Upgrade / adoption policy
 
@@ -205,10 +185,10 @@ Before adding/upgrading any external repository/package/model/tool:
 1. prove a concrete capability gap;
 2. read current license, release/security notes, provenance, maintenance state, and model/data licenses;
 3. compare public API, runtime cost, privacy, persistence, and failure implications;
-4. prefer a reasonably small native Rust implementation when it is safer and easier to own;
+4. prefer a reasonably small native Rust implementation when safer and easier to own;
 5. keep heavyweight models/downloads optional unless a numbered phase explicitly promotes them;
 6. benchmark on rights-safe/project-owned fixtures;
 7. run rustfmt, Clippy, affected/full tests, release/CLI smoke where relevant, and vulnerability audits;
-8. validate optional tools on Linux/macOS when they are expected to be developer/product compatible there;
+8. validate optional tools on Linux/macOS when expected there;
 9. never convert external evidence into canon or human approval;
-10. record the selected/deferred decision in roadmap/status/PMC/this document before merge.
+10. record selected/deferred decisions in roadmap/status/PMC/this document before merge.
