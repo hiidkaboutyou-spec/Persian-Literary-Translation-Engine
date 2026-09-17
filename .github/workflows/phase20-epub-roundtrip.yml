@@ -53,8 +53,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cargo generate-lockfile
-          git diff --exit-code -- Cargo.lock
+          # `cargo generate-lockfile` intentionally refreshes every compatible
+          # transitive dependency and therefore is not a reproducibility check.
+          # `--locked` instead proves the committed lockfile satisfies the
+          # current manifests without mutating dependency resolution.
+          cargo metadata --locked --format-version 1 --no-deps > /dev/null
           cargo fmt --all -- --check
 
       - name: Clippy Phase 20 surfaces
