@@ -1,7 +1,7 @@
 #[cfg(feature = "bookforge-epub")]
 use bookforge_core::{
     config::SegmentationConfig,
-    segment::{build_segments, BlockTranslation, Segment},
+    segment::{build_segments, BlockTranslation},
 };
 #[cfg(feature = "bookforge-epub")]
 use bookforge_epub::{
@@ -75,15 +75,20 @@ pub fn export_translated_epub(
     )
     .map_err(bookforge_error)?;
 
-    // BookForge's segment builder is the canonical definition of translation
-    // work. Do not independently reinterpret raw EPUB blocks here: package,
-    // navigation, or other structural text may be represented as blocks while
-    // intentionally remaining outside translation segments. Requiring those
-    // blocks would make the application exporter diverge from BookForge's own
-    // translation contract. We still fail closed for every block that actually
-    // belongs to a segment and reject any application mapping outside that set.
-    let expected = expected_segment_blocks(&segments)?;
-    let provided = validate_translation_mapping(&expected, translations)?;
+    // The application layer owns completeness against the native manuscript
+    // translation units (chapter heading + every paragraph provenance block).
+    // BookForge intentionally also models package/nav/page-furniture text, so
+    // requiring every BookForge block here would force non-literary metadata
+    // through the literary translator. The writer and validator explicitly
+    // support partial maps: missing BookForge-only blocks fall back to source.
+    // This boundary therefore rejects invented/duplicate/empty mappings while
+    // validating markers for every explicitly translated block.
+    let known_blocks = book
+        .blocks
+        .iter()
+        .map(|block| block.id.0.clone())
+        .collect::<BTreeSet<_>>();
+    let provided = validate_translation_mapping(&known_blocks, translations)?;
     let block_translations = provided
         .into_iter()
         .map(|(block_id, text)| BlockTranslation {
@@ -193,34 +198,19 @@ pub fn export_translated_epub(
 }
 
 #[cfg(feature = "bookforge-epub")]
-fn expected_segment_blocks(segments: &[Segment]) -> Result<BTreeSet<String>, DocumentError> {
-    let mut expected = BTreeSet::new();
-    for segment in segments {
-        for block_id in &segment.block_ids {
-            if !expected.insert(block_id.0.clone()) {
-                return Err(DocumentError::InvalidStructure(format!(
-                    "duplicate BookForge translation block '{}' across EPUB segments",
-                    block_id.0
-                )));
-            }
-        }
-    }
-    if expected.is_empty() {
-        return Err(DocumentError::InvalidStructure(
-            "EPUB contains no BookForge translation segments".to_string(),
-        ));
-    }
-    Ok(expected)
-}
-
-#[cfg(feature = "bookforge-epub")]
 fn validate_translation_mapping(
-    expected: &BTreeSet<String>,
+    known_blocks: &BTreeSet<String>,
     translations: &[EpubBlockTranslation],
 ) -> Result<BTreeMap<String, String>, DocumentError> {
+    if translations.is_empty() {
+        return Err(DocumentError::InvalidStructure(
+            "EPUB export has no explicit translated block mappings".to_string(),
+        ));
+    }
+
     let mut provided = BTreeMap::new();
     for translation in translations {
-        if !expected.contains(&translation.block_id) {
+        if !known_blocks.contains(&translation.block_id) {
             return Err(DocumentError::InvalidStructure(format!(
                 "EPUB translation contains unknown block id '{}'",
                 translation.block_id
@@ -241,26 +231,6 @@ fn validate_translation_mapping(
                 translation.block_id
             )));
         }
-    }
-
-    let missing = expected
-        .iter()
-        .filter(|block_id| !provided.contains_key(*block_id))
-        .cloned()
-        .collect::<Vec<_>>();
-    if !missing.is_empty() {
-        let preview = missing
-            .iter()
-            .take(8)
-            .cloned()
-            .collect::<Vec<_>>()
-            .join(", ");
-        return Err(DocumentError::InvalidStructure(format!(
-            "EPUB export is fail-closed: {} source block(s) have no explicit translation mapping{}: {}",
-            missing.len(),
-            if missing.len() > 8 { " (first 8 shown)" } else { "" },
-            preview
-        )));
     }
     Ok(provided)
 }
@@ -471,6 +441,47 @@ fn bookforge_error(error: bookforge_core::BookforgeError) -> DocumentError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(feature = "bookforge-epub")]
+    #[test]
+    fn explicit_partial_mapping_does_not_require_untranslated_bookforge_metadata() {
+        let known = ["b_000001".to_string(), "b_000002".to_string()]
+            .into_iter()
+            .collect::<BTreeSet<_>>();
+        let provided = validate_translation_mapping(
+            &known,
+            &[EpubBlockTranslation::new("b_000002", "ترجمه")],
+        )
+        .unwrap();
+        assert_eq!(provided.len(), 1);
+        assert_eq!(provided.get("b_000002").map(String::as_str), Some("ترجمه"));
+    }
+
+    #[cfg(feature = "bookforge-epub")]
+    #[test]
+    fn explicit_mapping_rejects_unknown_duplicate_and_empty_blocks() {
+        let known = ["b_000002".to_string()]
+            .into_iter()
+            .collect::<BTreeSet<_>>();
+        assert!(
+            validate_translation_mapping(&known, &[EpubBlockTranslation::new("b_unknown", "x")])
+                .is_err()
+        );
+        assert!(
+            validate_translation_mapping(
+                &known,
+                &[
+                    EpubBlockTranslation::new("b_000002", "x"),
+                    EpubBlockTranslation::new("b_000002", "y"),
+                ]
+            )
+            .is_err()
+        );
+        assert!(
+            validate_translation_mapping(&known, &[EpubBlockTranslation::new("b_000002", "   ")])
+                .is_err()
+        );
+    }
 
     #[cfg(feature = "bookforge-epub")]
     #[test]
