@@ -24,9 +24,9 @@ For Persian/RTL output:
 
 ### EPUBCheck gate: 5.3.0 for Phase 20
 
-EPUBCheck 5.3.0 explicitly validates EPUB 3.3 and remains the authoritative Phase 20 conformance gate. The installer is checksum-pinned and the distribution is not vendored.
+EPUBCheck 5.3.0 explicitly validates EPUB 3.3 and remains the authoritative Phase 20 conformance gate. The installer is checksum-pinned and the distribution is not vendored. The committed SHA-256 (`6c07e68584b2e2ce2f89fe06e1246dfead3eb36b46b340e7d93524f29dcff6c5`) matches the digest published on the upstream GitHub release asset.
 
-EPUBCheck 5.4.0 became the latest production-ready EPUBCheck release on 15 September 2026, but EPUB 3 publications are checked against EPUB 3.4 rules. Because EPUB 3.4 is still a Candidate Recommendation, 5.4.0 is treated as a future-compatibility signal rather than a reason to redefine the Phase 20 publication target. Revisit after EPUB 3.4 becomes a W3C Recommendation or a deliberate project migration is approved.
+EPUBCheck 5.4.0 became the latest production-ready EPUBCheck release on 15 September 2026, but EPUB 3 publications are checked against EPUB 3.4 rules. Because EPUB 3.4 is still a Candidate Recommendation, 5.4.0 is treated as a future-compatibility signal rather than a reason to redefine the Phase 20 publication target. Upstream also has a critical false-positive reported against 5.4.0 on 15 September and a 5.4.1 bug-fix milestone due 1 October 2026. That does not make 5.4.0 generally unsafe, but it strengthens the case for avoiding a two-day-old validator/spec-target migration with no demonstrated Phase 20 gap. Revisit after EPUB 3.4 becomes a W3C Recommendation or a deliberate project migration is approved; re-check the then-current 5.4.x maintenance release and open critical issues as part of that migration.
 
 Durable policy: validator versions are pinned to the publication standard the product claims to support. A newer validator must not silently upgrade the product's normative target; validator and standard move together only after an explicit standards-migration decision and regression pass.
 
@@ -35,6 +35,7 @@ References:
 - W3C EPUB 3.3 Recommendation: https://www.w3.org/TR/epub-33/
 - W3C EPUB 3.4 Candidate Recommendation Draft: https://www.w3.org/TR/epub-34/
 - EPUBCheck releases/change log: https://github.com/w3c/epubcheck/releases and https://github.com/w3c/epubcheck/blob/main/CHANGELOG.md
+- EPUBCheck 5.4.1 milestone / current issue tracker: https://github.com/w3c/epubcheck/milestones and https://github.com/w3c/epubcheck/issues
 
 ## BookForge boundary
 
