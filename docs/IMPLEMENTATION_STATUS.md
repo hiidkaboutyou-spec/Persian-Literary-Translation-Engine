@@ -6,7 +6,7 @@ A production-grade English-to-Persian literary translation engine with a Rust co
 
 ## Canonical Main State
 
-``main` is verified through Phase 20.
+`main` is verified through Phase 20.
 
 Current Phase 20 merge head on `main`:
 
