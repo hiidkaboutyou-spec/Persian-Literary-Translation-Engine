@@ -53,10 +53,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # `cargo generate-lockfile` intentionally refreshes every compatible
-          # transitive dependency and therefore is not a reproducibility check.
-          # `--locked` instead proves the committed lockfile satisfies the
-          # current manifests without mutating dependency resolution.
           cargo metadata --locked --format-version 1 --no-deps > /dev/null
           cargo fmt --all -- --check
 
@@ -79,7 +75,7 @@ jobs:
           bash -n tools/epubcheck-validator/install.sh
           bash -n tools/epubcheck-validator/validate.sh
           java -version
-          tools/epubcheck-validator/install.sh
+          bash tools/epubcheck-validator/install.sh
 
       - name: Build rights-safe EPUB 3.3 fixture
         shell: bash
@@ -131,7 +127,7 @@ jobs:
               zf.writestr('EPUB/pixel.png', pixel, compress_type=zipfile.ZIP_DEFLATED)
           PY
           sha256sum /tmp/phase20-source.epub > /tmp/phase20-source.sha256
-          tools/epubcheck-validator/validate.sh /tmp/phase20-source.epub
+          bash tools/epubcheck-validator/validate.sh /tmp/phase20-source.epub
 
       - name: Exercise application EPUB round trip
         shell: bash
@@ -139,18 +135,18 @@ jobs:
         run: |
           set -euo pipefail
           rm -rf /tmp/phase20-project
-          cargo run --quiet -p literary-engine -- project create /tmp/phase20-project --name 'Phase 20 Fixture'
-          cargo run --quiet -p literary-engine -- project import /tmp/phase20-project /tmp/phase20-source.epub
-          cargo run --quiet -p literary-engine -- project analyze /tmp/phase20-project
-          cargo run --quiet -p literary-engine -- project translate /tmp/phase20-project --provider echo
-          cargo run --quiet -p literary-engine -- project export /tmp/phase20-project --export-format epub
+          cargo run --locked --quiet -p literary-engine -- project create /tmp/phase20-project --name 'Phase 20 Fixture'
+          cargo run --locked --quiet -p literary-engine -- project import /tmp/phase20-project /tmp/phase20-source.epub
+          cargo run --locked --quiet -p literary-engine -- project analyze /tmp/phase20-project
+          cargo run --locked --quiet -p literary-engine -- project translate /tmp/phase20-project --provider echo
+          cargo run --locked --quiet -p literary-engine -- project export /tmp/phase20-project --export-format epub
           test -f /tmp/phase20-project/export/manuscript.epub
           cp /tmp/phase20-project/export/manuscript.epub /tmp/phase20-first.epub
-          cargo run --quiet -p literary-engine -- project export /tmp/phase20-project --export-format epub
+          cargo run --locked --quiet -p literary-engine -- project export /tmp/phase20-project --export-format epub
           cmp /tmp/phase20-first.epub /tmp/phase20-project/export/manuscript.epub
           cd ..
           sha256sum -c /tmp/phase20-source.sha256
-          tools/epubcheck-validator/validate.sh /tmp/phase20-project/export/manuscript.epub
+          bash tools/epubcheck-validator/validate.sh /tmp/phase20-project/export/manuscript.epub
 
       - name: Assert preserved assets, links, language, and RTL metadata
         shell: bash
