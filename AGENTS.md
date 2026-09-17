@@ -55,7 +55,9 @@ This project is independent from every other repository. Do not import assumptio
 
 - The publication target is EPUB 3.3 until a deliberate standards migration says otherwise.
 - Preserve source structure by reconstructing through the revision-pinned BookForge model; do not regenerate EPUB from flattened chapter text.
-- Persist and use explicit source block provenance. Publication mapping is `BookForge block ID -> translated text`; unknown, duplicate, missing, empty, or mismatched block mappings must fail closed. Never guess by paragraph position or count.
+- Persist and use explicit source block provenance. Publication mapping is `BookForge block ID -> translated text`.
+- Native project/application code owns completeness for literary translation units: every translated EPUB heading/paragraph must match its source block provenance exactly, and missing/mismatched native provenance must fail closed. Never guess by paragraph position or count.
+- The lower `document-engine`/BookForge boundary validates only explicit mappings it receives: unknown IDs, duplicate IDs, empty translated blocks, damaged marker tokens, or invalid rebuilt structure fail closed. BookForge-only package/navigation/page-furniture blocks that are not native literary translation units may remain source-derived.
 - Structural marker tokens such as `<m...>` / `</m...>` and `<r.../>` are immutable translation placeholders. Translation/revision/review must preserve marker identity, count, pairing, and relative order.
 - BookForge owns source-aware XHTML reconstruction and target `dc:language` / XHTML `lang` / `xml:lang` rewriting. The native Phase 20 layer owns only the missing RTL publication metadata (`dir="rtl"` on XHTML roots and `page-progression-direction="rtl"` on the OPF spine).
 - Images, CSS, navigation, links, footnotes/endnotes, and non-translatable resources remain source-derived and must survive round trip unless a documented publication transformation explicitly owns them.
@@ -85,6 +87,8 @@ cargo run --quiet -p literary-engine -- --help
 cargo run --quiet -p literary-engine -- --version
 ```
 
+Use non-mutating lockfile verification in CI (`cargo metadata --locked` or an equivalent `--locked` command). Do not use `cargo generate-lockfile` as a freshness check because it may refresh otherwise compatible transitive dependencies and create unrelated diffs/failures.
+
 For pipeline changes, also run a credential-free `EchoProvider` smoke test through ingestion, translation, quality gate, artifact generation, and `manuscript.docx` export. Run `cargo audit` when dependencies change. Test each affected document format and verify Persian RTL output when parsing or publishing code changes. Real provider tests require explicit credentials and must never expose manuscript content or secrets.
 
 For BookForge changes, exercise EPUB ingestion with the default feature and verify an explicit `--no-default-features` document-engine build where practical. For COMET changes, test the JSON protocol without downloading a model in default CI; a real model smoke test requires explicit local setup and any model-specific license/authentication approval.
@@ -112,7 +116,7 @@ For Phase 20 publishing changes, run the dedicated `Phase 20 EPUB Round Trip` wo
 - Do not turn optional ML models, external validators, or developer-memory tools into hidden runtime requirements.
 - Do not commit manuscripts, generated translations, credentials, private review material, downloaded model checkpoints, or downloaded EPUBCheck binaries.
 - Do not put manuscript/translation content into PMC or projectmem as a substitute for native runtime memory.
-- Do not guess EPUB structure/provenance when the explicit block mapping is incomplete; fail publication export instead.
+- Do not guess EPUB structure/provenance when native literary block provenance is incomplete; fail publication export instead.
 - Do not break CLI, persistence, manifest, or publishing contracts without migration and documentation.
 - Do not force-push shared branches, bypass failing CI/security checks, or mix this repository with another product.
 
