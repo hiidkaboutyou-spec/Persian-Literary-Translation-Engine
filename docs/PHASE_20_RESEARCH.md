@@ -6,7 +6,7 @@ Research snapshot: 2026-09-17.
 
 ## Goal
 
-Produce a translated Persian EPUB from an imported EPUB while preserving source publication structure and assets deterministically. Publication export must fail closed when translation provenance is incomplete or structural markers are damaged. DOCX export remains a first-class independent path.
+Produce a translated Persian EPUB from an imported EPUB while preserving source publication structure and assets deterministically. Publication export must fail closed when native literary translation provenance is incomplete or structural markers are damaged. DOCX export remains a first-class independent path.
 
 ## Standards decision
 
@@ -60,29 +60,31 @@ Native `document-engine` remains the product boundary. BookForge IR is not persi
 
 ### Ingestion provenance
 
-`SourceLocation` carries an optional `block_id`. BookForge EPUB ingestion records each translatable source block ID on the native paragraph/heading provenance.
+`SourceLocation` carries an optional `block_id`. BookForge EPUB ingestion records each native literary source block ID on the corresponding heading/paragraph provenance.
 
 ### Translation artifacts
 
 `TranslatedParagraph` carries `source_block_id`. `TranslatedChapter` may carry a real source heading block ID and translated heading. Legacy/non-EPUB artifacts remain backward compatible through optional/defaulted fields.
 
-### Export mapping
+### Export mapping and completeness ownership
 
 EPUB reconstruction uses an explicit mapping:
 
 `BookForge block ID -> reviewed translated text`
 
-The exporter rejects:
+Completeness is intentionally owned at the native project/application boundary, not by blindly translating every block BookForge can model.
+
+The project layer must fail closed when any native literary translation unit lacks exact source block provenance, when translated paragraph identity does not match source provenance, or when an EPUB heading with a source block has no translated heading. It never guesses by paragraph position or count.
+
+The lower `document-engine`/BookForge boundary validates the explicit mappings it is given and rejects:
 
 - unknown block IDs;
 - duplicate provided block IDs;
-- missing expected source block IDs;
 - empty translated blocks;
-- missing/mismatched paragraph provenance;
 - damaged structural marker tokens;
 - invalid rebuilt XML/package structure.
 
-There is no positional or paragraph-count guessing fallback for publication EPUB.
+BookForge may additionally expose package, navigation, or page-furniture text that is not a native literary translation unit. Unprovided BookForge-only blocks remain source-derived rather than being forced through the literary translator. This is deliberate: publication completeness means every native literary unit is accounted for, not that metadata/navigation must be rewritten as prose.
 
 ### Structural preservation
 
@@ -112,7 +114,7 @@ Phase 20 requires all of the following before merge:
 9. Normal repository Rust/security/release gates on the final PR head.
 10. No temporary write-enabled one-shot Phase 20 workflows/scripts in the final diff.
 
-Lockfile validation is deliberately non-mutating: CI uses Cargo `--locked`/`cargo metadata --locked` to prove that committed lockfiles satisfy their manifests. It must not use `cargo generate-lockfile` as a freshness check, because that command refreshes otherwise compatible transitive dependencies and can create false CI failures unrelated to the branch. The same correction is applied to the inherited Phase 18/19 dedicated gates.
+Lockfile validation is deliberately non-mutating: CI uses Cargo `--locked`/`cargo metadata --locked` to prove that committed lockfiles satisfy their manifests. It must not use `cargo generate-lockfile` as a freshness check, because that command refreshes otherwise compatible transitive dependencies and can create false CI failures unrelated to the branch. The standard Rust CI follows the same rule.
 
 The generated fixture contains only synthetic project-owned text/assets and is not a proprietary manuscript.
 
@@ -146,7 +148,8 @@ This profile exists because literary translation fidelity can be materially dama
 
 - Missing BookForge feature: EPUB export returns an actionable error; DOCX and non-EPUB runtime remain usable.
 - BookForge parse/rebuild/validation failure: fail closed; no legacy-parser fallback in the default feature path.
-- Missing explicit EPUB block provenance: fail closed; do not guess.
+- Missing or mismatched native EPUB block provenance: fail closed; do not guess.
+- BookForge-only metadata/navigation blocks not represented as native literary units: preserve source content rather than forcing a literary translation.
 - EPUBCheck missing in a user environment: internal export can still exist, but publication certification is incomplete. CI installs the checksum-pinned validator for the Phase 20 gate.
 - Java/EPUBCheck must not become an ingestion/translation/DOCX runtime requirement.
 
