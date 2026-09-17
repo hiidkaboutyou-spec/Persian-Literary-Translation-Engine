@@ -3,6 +3,7 @@ name: Phase 20 EPUB Round Trip
 on:
   push:
     branches:
+      - main
       - phase-20-publication-epub-roundtrip
     paths:
       - 'engine/**'
