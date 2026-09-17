@@ -6,15 +6,15 @@ A production-grade English-to-Persian literary translation engine with a Rust co
 
 ## Canonical Main State
 
-`main` is verified through Phase 19.
+``main` is verified through Phase 20.
 
-Current verified `main` merge head after Phase 19:
+Current Phase 20 merge head on `main`:
 
 ```text
-d073dab10c0965197745a6cbc7b8e56c946835e8
+1611cd731160c122baa68c9e80c1d4faeb7dfcfc
 ```
 
-PR #95 merged Phase 19 and post-merge Rust/Phase 19/Phase 18 workflows were verified green.
+PR #98 merged Phase 20 after the final PR head passed the dedicated Phase 20 publication gate, Rust CI, Security/cargo-audit, Phase 18 context/retrieval, Phase 19 literary review, Project Memory Tooling, and Apple Silicon arm64 publication checks. The permanent Phase 20 workflow now also runs on pushes to `main` so publication regressions remain gated after canonicalization.
 
 ### Core crates and application boundaries
 
@@ -61,13 +61,11 @@ Delivered:
 
 Dependency decisions remain: Hazm blocked while its mandatory NLTK dependency is affected by the recorded unpatched advisory; Vecalign/SentWeave remain references while native Rust satisfies the measured need; DadmaTools remains conditional on a demonstrated Persian NLP gap.
 
-## Current Branch — Phase 20 Publication-Grade EPUB Round Trip
+### Phase 20 — Publication-Grade EPUB Round Trip — canonical
 
-Branch: `phase-20-publication-epub-roundtrip`.
+PR #98; merge commit `1611cd731160c122baa68c9e80c1d4faeb7dfcfc`.
 
-This branch is **not canonical until its PR is merged and post-merge CI is verified**.
-
-Implemented on the branch:
+Delivered:
 
 - native `SourceLocation.block_id` provenance for structured source-format block identity;
 - EPUB paragraph/heading provenance carried into translated chapter artifacts;
@@ -96,7 +94,7 @@ Detailed research and completion gates are in `docs/PHASE_20_RESEARCH.md`.
 
 Canonical commands include `inspect`, `analyze`, `analyze-advanced`, review lifecycle commands, `prepare`, `run`, `resume`, and project-oriented create/import/status/analyze/analyze-advanced/review/review-translation/translate/resume/progress/export/history flows.
 
-The Phase 20 branch extends project export selection to `--export-format docx|epub` and translation configuration to `--style-profile literary|adult-intimacy` plus explicit adult-character confirmation for the latter.
+Canonical Phase 20 extends project export selection to `--export-format docx|epub` and translation configuration to `--style-profile literary|adult-intimacy` plus explicit adult-character confirmation for the latter.
 
 ## CI/CD
 
@@ -120,16 +118,10 @@ Phase 20 adds a permanent publication workflow that may install the checksum-pin
 
 Coverage includes document ingestion, runtime translation, glossary/character/relationship memory, Context Packet v2 retrieval/fingerprints, deterministic quality gates, literary review/alignment, review lifecycle/promotion/conflicts, provider contracts, cache/resume, source/canon/context staleness, manual edits, atomic persistence, CLI JSON, Unicode/Persian cases, EPUB boundaries, optional quality evidence, and large-book regressions.
 
-Phase 20 branch coverage additionally validates block-provenance reconstruction, fail-closed publication mapping, RTL metadata patching, EPUBCheck 3.3 conformance on synthetic fixtures, asset/link/inline-markup survival, deterministic repeated export, source non-mutation, and Apple Silicon publication compatibility.
+Phase 20 coverage additionally validates block-provenance reconstruction, fail-closed publication mapping, RTL metadata patching, EPUBCheck 3.3 conformance on synthetic fixtures, asset/link/inline-markup survival, deterministic repeated export, source non-mutation, and Apple Silicon publication compatibility.
 
-## Immediate Exit Gate
+## Current Handoff
 
-Before Phase 20 can be called complete/canonical:
+Phase 20 is complete and canonical on `main`. The next numbered phase is **Phase 21 — Literary Evaluation Corpus & Benchmarking**.
 
-1. final branch dedicated Phase 20 workflow must be green;
-2. no temporary write-enabled Phase 20 one-shot workflows/scripts may remain;
-3. open the Phase 20 PR to `main`;
-4. normal Rust/security/release checks on the PR head must be green;
-5. merge only after those checks pass;
-6. verify post-merge Phase 20 and normal main checks;
-7. only then advance the roadmap to Phase 21.
+Phase 21 must remain evidence-first: use rights-safe/project-owned fixtures, treat automatic metrics as evidence rather than approval, and evaluate Persian-NLP repositories only when they close a measured benchmark gap. Mizan, iPerUDT, Degarbayan-SC, FarSSiM and related corpora remain research candidates subject to dataset/license/provenance review before any local or CI installation.
