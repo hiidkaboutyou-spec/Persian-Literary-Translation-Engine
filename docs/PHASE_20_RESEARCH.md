@@ -28,6 +28,8 @@ EPUBCheck 5.3.0 explicitly validates EPUB 3.3 and remains the authoritative Phas
 
 EPUBCheck 5.4.0 became the latest production-ready EPUBCheck release on 15 September 2026, but EPUB 3 publications are checked against EPUB 3.4 rules. Because EPUB 3.4 is still a Candidate Recommendation, 5.4.0 is treated as a future-compatibility signal rather than a reason to redefine the Phase 20 publication target. Revisit after EPUB 3.4 becomes a W3C Recommendation or a deliberate project migration is approved.
 
+Durable policy: validator versions are pinned to the publication standard the product claims to support. A newer validator must not silently upgrade the product's normative target; validator and standard move together only after an explicit standards-migration decision and regression pass.
+
 References:
 
 - W3C EPUB 3.3 Recommendation: https://www.w3.org/TR/epub-33/
