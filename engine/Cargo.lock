@@ -1098,6 +1098,7 @@ dependencies = [
  "chrono",
  "document-engine",
  "human-review-workflow",
+ "literary-evaluation-engine",
  "literary-intelligence-engine",
  "memory-engine",
  "project-engine",
@@ -1106,6 +1107,15 @@ dependencies = [
  "serde_json",
  "tempfile",
  "translation-core",
+]
+
+[[package]]
+name = "literary-evaluation-engine"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "text-normalization",
 ]
 
 [[package]]
