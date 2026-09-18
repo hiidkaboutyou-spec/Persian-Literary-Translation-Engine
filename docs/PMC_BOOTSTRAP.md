@@ -284,7 +284,7 @@ Updating this repository seed does **not** mean the user's local PMC/Obsidian va
 2. **Precision before coverage** — resolve only explicit high-precision name/alias + speech-verb patterns first. Pronoun-only, implicit turn-taking and unsupported dialogue remain unresolved.
 3. **No gender inference** — never infer speaker identity from pronoun gender or character-name assumptions.
 4. **Vocatives are not speakers** — character names inside a quotation are content unless independent outside-quote evidence identifies a speaker.
-5. **Ask-object guard** — before a quote, `verb + name` is not accepted as speaker evidence because `Mina asked Reza, "..."` makes Reza an object/addressee candidate.
+5. **Ask-object guard** — before a quote, `verb + name` is not accepted as speaker evidence because `Mina asked Reza, "..."` makes Reza an object/addressee candidate. After a quote, when `name + speech-verb` and `speech-verb + name` candidates share the exact same speech-verb token (for example `"..." Mina asked Reza`), the inverted candidate is treated as that verb’s object/addressee; unrelated local cues still fail closed.
 6. **Quote-local evidence, conflict fail-closed** — attribution cues cannot cross another quotation or a hard pre-quote sentence boundary; if multiple explicit local character cues remain, do not pick the nearest one—leave the quote unresolved.
 7. **Context authority stays Deterministic** — the canonical character is known, but quote-to-speaker linkage is inferred evidence and is never promoted to Canonical/HumanApproved automatically.
 8. **Permanent CI corpus is project-owned synthetic** — LitBank CC BY 4.0 may be used later as an attributed external/reference benchmark, but CI has no network/corpus dependency.
