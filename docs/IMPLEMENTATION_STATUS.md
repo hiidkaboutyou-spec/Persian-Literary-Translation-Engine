@@ -134,34 +134,61 @@ Canonical CI includes the permanent Phase 21 Linux + Apple Silicon benchmark wor
 
 Coverage now also includes Phase 21 rights/provenance schema enforcement, deterministic anchor evaluation, contrastive degradation sanity, human-scorecard validation, CLI benchmark JSON/text output, optional chrF2++ protocol validation, and Apple Silicon benchmark compatibility.
 
-## Current Branch — Phase 22 Product Surface & Distribution Hardening
+## Phase 22 — Product Surface & Distribution Hardening — canonical
 
-Branch: `phase-22-product-surface-distribution`.
-PR: #102.
+PR #102; final reviewed head `8229e5ce2ce0126ca567b4074b84434f4a260a2d`; merge commit `dc2bf1eee2f5d2dedc7c97d0164c3c26b8ac979b`.
 
-Phase 22 is **not canonical until the final PR head passes the desktop/core gates, the independent desktop lockfile is committed, PR #102 merges to `main`, and canonical state is recorded**.
+Delivered:
 
-Implemented on the branch:
+- isolated Tauri 2 desktop product surface outside the core Rust workspace;
+- local static frontend with bounded Rust IPC through `ApplicationService`;
+- project/source workflow, intelligence review, canon editing, translation lifecycle, manual revision, literary-review evidence, history, provider configuration, and DOCX/EPUB export;
+- session-only provider credentials, restrictive CSP, Rust-owned native file dialogs, and no remote frontend content;
+- explicit application-layer fix so `TranslationConfig.model` is honored;
+- committed independent `desktop/src-tauri/Cargo.lock` and final `--locked` validation;
+- real macOS arm64 `.app` bundle build, desktop/core audit, static UI security checks, and regression validation.
 
-- isolated Tauri 2 desktop crate under `desktop/src-tauri`, intentionally outside the core `engine/` workspace;
-- reviewed/pinned Tauri 2.11.5, tauri-build 2.6.3 and official dialog plugin 2.7.2;
-- static local HTML/CSS/JS frontend with no Node/Vite/web-server runtime;
-- product surfaces for project snapshot/source import, analysis, intelligence review, character/glossary canon, translation/pause/resume/progress, paragraph revisions, literary review evidence, publication export, history and provider configuration;
-- thin IPC adapter: desktop commands call `ApplicationService` rather than domain crates for orchestration;
-- native source/folder picker from Rust; no general JavaScript filesystem permission;
-- session-only OpenAI key handling with no project/localStorage persistence;
-- strict local-content CSP and no remote frontend resources;
-- long-running calls dispatched through Tauri's blocking task pool;
-- application-layer fix so explicit `TranslationConfig.model` is actually honored before the `OPENAI_MODEL` fallback;
-- Apple Silicon macOS bundle validation workflow and explicit signing/notarization gate;
-- updater intentionally deferred until a signed release endpoint exists.
+Final-head successful runs:
 
-Detailed research and exit criteria: `docs/PHASE_22_RESEARCH.md`.
+- Phase 22 Desktop Product `35335168206`;
+- Rust CI `35335167950`;
+- Security `35335168513`;
+- Phase 18 `35335168705`;
+- Phase 19 `35335168191`;
+- Phase 20 `35335168289`;
+- Phase 21 `35335168962`;
+- Project Memory Tooling `35335168359`.
+
+Signing/notarization remains a real external-credential release concern; the canonical Phase 22 bundle proves buildability, not notarized public distribution. Tauri updater remains intentionally disabled.
+
+Detailed record: `docs/PHASE_22_RESEARCH.md`.
+
+## Current Branch — Phase 23 Trusted Release & Supply-Chain Hardening
+
+Branch: `phase-23-trusted-release-supply-chain`.
+
+Phase 23 hardens the release path without changing literary translation behavior.
+
+Implemented on the branch so far:
+
+- fixed the CLI release workflow so it verifies the committed `engine/Cargo.lock` instead of regenerating it during release;
+- pinned `cargo-cyclonedx 0.5.9` for per-target JSON SBOM generation;
+- added GitHub `actions/attest@v4` provenance and per-binary SBOM attestation configuration for tagged releases;
+- retained SHA-256 release checksums;
+- added permanent Phase-23 CLI release-contract/SBOM validation;
+- added permanent Apple Silicon desktop SBOM + locked app-build + integrity-manifest validation;
+- explicitly checks that Tauri updater remains disabled until a real signing trust root and trusted endpoint exist;
+- vendored the user-requested `ip-as-logo` Agent Skill from exact upstream commit `acb834c717bcd0a487c49732d08397ba280d690b`, preserving its MIT notice and verifying exact upstream Git blobs in CI;
+- the visual skill is developer/design-only and cannot affect translation/runtime/publishing.
+
+Public desktop release remains credential-blocked for Developer ID signing and Apple notarization; those credentials are not fabricated or stored in the repository.
+
+Detailed research and exit criteria: `docs/PHASE_23_RESEARCH.md`.
 
 ## CLI / Desktop
 
-The canonical CLI remains fully usable and independent from Tauri. The Phase 22 desktop surface consumes the same `ApplicationService`; its platform dependencies are isolated so GUI availability cannot become a requirement for core translation/review/export.
+The canonical CLI and desktop application remain operationally independent. Phase 23 adds release evidence around them; it does not move distribution tooling into runtime code.
 
 ## Current Handoff
 
-Finish PR #102 validation and lockfile bootstrap. Do not call Phase 22 canonical or start a new numbered phase until the exact desktop dependency graph is committed and the final head passes Apple Silicon bundle, audits, static-UI security, project-engine, and existing regression gates.
+Finish Phase-23 branch validation, review any CI failures, confirm release/SBOM workflow syntax across supported targets, then open/merge the Phase-23 PR only when the exact final head is green. Do not enable updater or claim a notarized desktop release without real external credentials.
