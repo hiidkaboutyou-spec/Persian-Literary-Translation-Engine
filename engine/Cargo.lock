@@ -597,6 +597,7 @@ dependencies = [
  "pin-project-lite",
  "slab",
 ]
+
 [[package]]
 name = "generic-array"
 version = "0.14.7"
@@ -1153,6 +1154,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
+ "text-normalization",
 ]
 
 [[package]]
