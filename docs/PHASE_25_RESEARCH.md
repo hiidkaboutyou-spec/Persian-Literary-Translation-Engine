@@ -127,7 +127,7 @@ The native Rust analyzer resolves a speaker only when:
 - a canonical character name or approved alias appears outside the quotation;
 - a known speech verb is directly adjacent in a subject-like literary attribution pattern;
 - the cue is locally near the target quotation;
-- the nearest high-precision explicit cue is unique.
+- the cue belongs to the target quote's local region and conflicting explicit character cues fail closed.
 
 Supported high-precision arrangements include:
 
@@ -141,8 +141,9 @@ Guardrails:
 - names inside the quotation are not treated as the speaker (vocatives remain content);
 - before a quote, `verb + name` is not accepted because it is frequently an object, e.g. `Mina asked Reza, "Ready?"`;
 - subject-like `name + speech-verb` cues outrank `verb + name` when both are nearby;
-- the nearest explicit cue wins so a later dialogue tag does not contaminate an earlier quote;
-- an actual tie/collision fails closed;
+- another quotation cannot sit between the explicit cue and the target quote;
+- a pre-quote speech tag is not reused across a hard sentence boundary;
+- conflicting local explicit character cues fail closed;
 - pronoun + speech-verb cues are detected but remain unresolved;
 - no gender inference is performed;
 - no conversational turn-taking guess is performed;
@@ -189,7 +190,7 @@ Challenge classes include:
 - no-speech-cue fail-closed behavior;
 - guillemets;
 - leading-dash detection without guessing;
-- multiple quotations with nearest-cue isolation.
+- multiple quotations with quote-local cue isolation.
 
 The regression requires zero wrong resolved speaker labels on the committed corpus and proves both useful explicit coverage and intentional unresolved behavior.
 
