@@ -285,7 +285,7 @@ Updating this repository seed does **not** mean the user's local PMC/Obsidian va
 3. **No gender inference** — never infer speaker identity from pronoun gender or character-name assumptions.
 4. **Vocatives are not speakers** — character names inside a quotation are content unless independent outside-quote evidence identifies a speaker.
 5. **Ask-object guard** — before a quote, `verb + name` is not accepted as speaker evidence because `Mina asked Reza, "..."` makes Reza an object/addressee candidate.
-6. **Nearest explicit cue wins** — within the high-precision pattern class, use the nearest unique cue so a later dialogue tag cannot contaminate an earlier quote; ties/collisions fail closed.
+6. **Quote-local evidence, conflict fail-closed** — attribution cues cannot cross another quotation or a hard pre-quote sentence boundary; if multiple explicit local character cues remain, do not pick the nearest one—leave the quote unresolved.
 7. **Context authority stays Deterministic** — the canonical character is known, but quote-to-speaker linkage is inferred evidence and is never promoted to Canonical/HumanApproved automatically.
 8. **Permanent CI corpus is project-owned synthetic** — LitBank CC BY 4.0 may be used later as an attributed external/reference benchmark, but CI has no network/corpus dependency.
 9. **Non-commercial corpora/models are research-only** — PDNC, BookCoref and Maverick terms do not become product dependencies.
