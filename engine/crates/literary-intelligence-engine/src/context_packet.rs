@@ -471,6 +471,52 @@ mod tests {
     }
 
     #[test]
+    fn explicit_speaker_map_reaches_context_without_resolving_pronouns() {
+        let document = test_manuscript("\"Stay,\" Mina said. \"No,\" she replied.");
+        let mut characters = CharacterBible::new();
+        characters.add(CharacterProfile {
+            name: "Mina".into(),
+            voice_notes: "quiet and precise".into(),
+            personality_notes: "guarded".into(),
+        });
+        let glossary = Glossary::default();
+        let translation_memory = TranslationMemory::new();
+        let intelligence = DeterministicManuscriptAnalyzer::default()
+            .analyze(
+                &document,
+                AnalysisCanon {
+                    characters: &characters,
+                    glossary: &glossary,
+                },
+            )
+            .unwrap();
+        let chapter_id = intelligence.chapter_maps[0].chapter_id.clone();
+        let packet = build_chapter_context_packet(
+            ChapterContextPacketInput {
+                document_title: "Test",
+                chapter_id: &chapter_id,
+                chapter_title: "Chapter 1",
+                source_text: "\"Stay,\" Mina said. \"No,\" she replied.",
+                previous: None,
+                next: None,
+                characters: &characters,
+                glossary: &glossary,
+                translation_memory: &translation_memory,
+                intelligence: &intelligence,
+                reviewed_literary_lines: &[],
+            },
+            &ContextPacketConfig::default(),
+        );
+
+        assert!(packet
+            .items
+            .iter()
+            .any(|item| item.text.contains("SPEAKER MAP")));
+        assert!(packet.rendered_context.contains("Mina"));
+        assert!(!packet.rendered_context.contains("she →"));
+    }
+
+    #[test]
     fn shared_packet_prioritizes_human_and_canonical_context_and_neighbors() {
         let document = test_manuscript("Mina met Reza near the Portal.");
         let mut characters = CharacterBible::new();
