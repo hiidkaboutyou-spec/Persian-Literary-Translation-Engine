@@ -1,0 +1,142 @@
+name: Phase 25 Visual Experience
+
+on:
+  push:
+    branches:
+      - main
+      - phase-25-visual-experience-theme-system
+    paths:
+      - 'desktop/ui/**'
+      - 'desktop/src-tauri/tauri.conf.json'
+      - '.github/workflows/phase25-visual-experience.yml'
+      - 'docs/PHASE_25_RESEARCH.md'
+      - 'docs/IMPLEMENTATION_STATUS.md'
+      - 'docs/IMPLEMENTATION_ROADMAP.md'
+      - 'docs/PMC_BOOTSTRAP.md'
+      - 'docs/EXTERNAL_INTEGRATIONS.md'
+      - 'AGENTS.md'
+  pull_request:
+    paths:
+      - 'desktop/ui/**'
+      - 'desktop/src-tauri/tauri.conf.json'
+      - '.github/workflows/phase25-visual-experience.yml'
+      - 'docs/PHASE_25_RESEARCH.md'
+      - 'docs/IMPLEMENTATION_STATUS.md'
+      - 'docs/IMPLEMENTATION_ROADMAP.md'
+      - 'docs/PMC_BOOTSTRAP.md'
+      - 'docs/EXTERNAL_INTEGRATIONS.md'
+      - 'AGENTS.md'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase25-visual-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ui-contract:
+    name: Static UI contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Validate JavaScript syntax
+        run: node --check desktop/ui/app.js
+
+      - name: Validate HTML IDs and JavaScript references
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import re
+          from collections import Counter
+          from html.parser import HTMLParser
+          from pathlib import Path
+
+          html = Path("desktop/ui/index.html").read_text(encoding="utf-8")
+          js = Path("desktop/ui/app.js").read_text(encoding="utf-8")
+
+          class IDs(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.ids = []
+              def handle_starttag(self, tag, attrs):
+                  attrs = dict(attrs)
+                  if "id" in attrs:
+                      self.ids.append(attrs["id"])
+
+          parser = IDs()
+          parser.feed(html)
+          counts = Counter(parser.ids)
+          duplicates = sorted(key for key, value in counts.items() if value > 1)
+          if duplicates:
+              raise SystemExit(f"duplicate HTML IDs: {duplicates}")
+
+          ids = set(parser.ids)
+          refs = set(re.findall(r'\$\("([^"]+)"\)', js))
+          missing = sorted(refs - ids)
+          if missing:
+              raise SystemExit(f"JavaScript references missing HTML IDs: {missing}")
+
+          required = {
+              "command-palette", "command-search", "command-results",
+              "command-trigger", "top-command-trigger", "editor-focus-toggle",
+              "theme-name",
+          }
+          absent = sorted(required - ids)
+          if absent:
+              raise SystemExit(f"Phase 25 required IDs missing: {absent}")
+
+          print(f"Validated {len(ids)} unique IDs and {len(refs)} static JS ID references.")
+          PY
+
+      - name: Enforce local-only frontend security
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -R -nE 'https?://|<script[^>]+src=["'\'' ]*https?:|@import[[:space:]]+url\(' desktop/ui
+          ! grep -R -n 'innerHTML' desktop/ui
+          ! grep -R -nE 'localStorage|sessionStorage' desktop/ui
+          grep -q "connect-src ipc: http://ipc.localhost" desktop/src-tauri/tauri.conf.json
+
+      - name: Validate theme motion and keyboard contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'data-theme-value="system"' desktop/ui/index.html
+          grep -q 'data-theme-value="midnight"' desktop/ui/index.html
+          grep -q 'data-theme-value="paper"' desktop/ui/index.html
+          grep -q 'data-theme-value="sage"' desktop/ui/index.html
+          grep -q 'prefers-reduced-motion: reduce' desktop/ui/styles.css
+          grep -q 'document.startViewTransition' desktop/ui/app.js
+          grep -q 'event.key.toLowerCase() === "k"' desktop/ui/app.js
+          grep -q 'aria-pressed' desktop/ui/index.html
+          grep -q 'Focus Persian' desktop/ui/index.html
+
+  macos-arm64-contract:
+    name: macOS arm64 WebView contract
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Verify Apple Silicon
+        shell: bash
+        run: test "$(uname -m)" = arm64
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable reviewed 2026-09-18
+
+      - name: Verify desktop dependency graph remains locked
+        run: cargo metadata --locked --manifest-path desktop/src-tauri/Cargo.toml --format-version 1 --no-deps > /dev/null
+
+      - name: Validate local frontend on macOS runner
+        shell: bash
+        run: |
+          node --check desktop/ui/app.js
+          python3 -m json.tool desktop/src-tauri/tauri.conf.json > /dev/null
+          grep -q -- '-apple-system' desktop/ui/styles.css
+          grep -q 'backdrop-filter' desktop/ui/styles.css
