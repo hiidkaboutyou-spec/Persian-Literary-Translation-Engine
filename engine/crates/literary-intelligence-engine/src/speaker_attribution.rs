@@ -107,6 +107,7 @@ struct ExplicitCandidate {
     mention: String,
     alias: bool,
     subject_pattern: bool,
+    distance: usize,
     evidence: String,
 }
 
@@ -226,12 +227,21 @@ fn attribute_one_quote(
             mention: cue.mention.clone(),
             alias: cue.alias,
             subject_pattern,
+            distance: side.distance,
             evidence,
         });
     }
 
-    // Subject-like explicit patterns outrank verb->name patterns when both
-    // occur around the same quote (e.g. "Mina asked Reza, \"Ready?\"").
+    // Prefer the closest explicit cue before applying grammatical tie-breaks.
+    // This avoids stealing an earlier quote for a farther character tag that
+    // happens to use the subject-like name+verb order.
+    if let Some(min_distance) = candidates.iter().map(|candidate| candidate.distance).min() {
+        candidates.retain(|candidate| candidate.distance == min_distance);
+    }
+
+    // At the same distance, subject-like explicit patterns outrank inverted
+    // verb->name patterns. This preserves the object guard for constructions
+    // such as "\"Ready?\" Mina asked Reza."
     if candidates.iter().any(|candidate| candidate.subject_pattern) {
         candidates.retain(|candidate| candidate.subject_pattern);
     }
@@ -828,6 +838,20 @@ mod tests {
         assert_eq!(
             result[0].method,
             AttributionMethod::AmbiguousExplicitCandidates
+        );
+    }
+
+    #[test]
+    fn nearest_post_quote_tag_wins_over_farther_subject_like_cue() {
+        let result = attribute_speakers(
+            "p1",
+            "\"Stay,\" said Mina, while Reza replied softly.",
+            &bible(),
+        );
+        assert_eq!(result[0].speaker.as_deref(), Some("Mina"));
+        assert_eq!(
+            result[0].method,
+            AttributionMethod::ExplicitNameSpeechVerb
         );
     }
 
