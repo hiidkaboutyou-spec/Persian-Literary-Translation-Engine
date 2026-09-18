@@ -443,7 +443,12 @@ fn collect_leading_dash_quotes(chars: &[char], spans: &mut Vec<QuoteSpan>) {
 
         let first_non_space = (line_start..line_end)
             .find(|index| !chars[*index].is_whitespace());
-        if let Some(dash_index) = first_non_space.filter(|index| chars[*index] == '—') {
+        let line_has_paired_quote = spans
+            .iter()
+            .any(|span| span.start_char >= line_start && span.end_char <= line_end);
+        if let Some(dash_index) = first_non_space
+            .filter(|index| chars[*index] == '—' && !line_has_paired_quote)
+        {
             let mut content_start = dash_index + 1;
             while content_start < line_end && chars[content_start].is_whitespace() {
                 content_start += 1;
