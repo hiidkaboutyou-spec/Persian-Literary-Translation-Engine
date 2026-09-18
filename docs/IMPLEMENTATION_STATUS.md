@@ -6,15 +6,15 @@ A production-grade English-to-Persian literary translation engine with a Rust co
 
 ## Canonical Main State
 
-`main` is verified through Phase 20.
+`main` is verified through Phase 21.
 
-Current Phase 20 merge head on `main`:
+Phase 21 implementation merged through PR #100 at:
 
 ```text
-1611cd731160c122baa68c9e80c1d4faeb7dfcfc
+0e4b8ebf1bdb4dd7c931e3ba44cc64f23358d4b1
 ```
 
-PR #98 merged Phase 20 after the final PR head passed the dedicated Phase 20 publication gate, Rust CI, Security/cargo-audit, Phase 18 context/retrieval, Phase 19 literary review, Project Memory Tooling, and Apple Silicon arm64 publication checks. The permanent Phase 20 workflow now also runs on pushes to `main` so publication regressions remain gated after canonicalization.
+The final reviewed Phase 21 head `d543b0448bdb8c886e58c69b719183daf07a66bc` passed the dedicated Phase 21 benchmark gate, Rust CI, Security/cargo-audit, Phase 18 context/retrieval, Phase 19 literary review, Phase 20 publication regression, Project Memory Tooling, and Apple Silicon arm64 benchmark checks before merge. The permanent Phase 21 workflow also runs on pushes to `main`.
 
 ### Core crates and application boundaries
 
@@ -91,14 +91,11 @@ Delivered:
 
 Detailed research and completion gates are in `docs/PHASE_20_RESEARCH.md`.
 
-## Current Branch — Phase 21 Literary Evaluation Corpus & Benchmarking
+### Phase 21 — Literary Evaluation Corpus & Benchmarking — canonical
 
-Branch: `phase-21-literary-evaluation-benchmarking`.
-PR: #100.
+PR #100; implementation merge commit `0e4b8ebf1bdb4dd7c931e3ba44cc64f23358d4b1`.
 
-Phase 21 is **not canonical until the final PR head passes all dedicated/normal gates, merges to `main`, and canonical status is recorded**.
-
-Implemented on the branch:
+Delivered:
 
 - native `literary-evaluation-engine` with strict rights-safe corpus/submission schemas;
 - eight project-owned synthetic EN→FA literary challenge cases covering semantic fidelity, Persian naturalness, character voice, relationship/register, dialogue/subtext, terminology, concrete detail/agency, and bounded continuity;
@@ -113,11 +110,11 @@ Research and validation policy: `docs/PHASE_21_RESEARCH.md`.
 
 ## CLI
 
-Canonical commands remain unchanged on `main`. The Phase 21 branch adds `benchmark <corpus.json> <submission.json>`; it becomes canonical only after Phase 21 merges.
+Canonical commands now include `benchmark <corpus.json> <submission.json>` in addition to the existing translation/project/review commands.
 
 ## CI/CD
 
-Canonical CI remains the Phase 20-era baseline on `main`. The Phase 21 branch adds a dedicated Linux + Apple Silicon benchmark workflow covering Rust fmt/Clippy/tests, contrastive corpus sanity, CLI good-vs-degraded regression, SacreBLEU protocol/install/audit checks, and workspace/security regression gates.
+Canonical CI includes the permanent Phase 21 Linux + Apple Silicon benchmark workflow covering Rust fmt/Clippy/tests, contrastive corpus sanity, CLI good-vs-degraded regression, SacreBLEU protocol/install/audit checks, and workspace/security regression gates.
 
 ## Non-Negotiable Constraints
 
@@ -135,8 +132,10 @@ Canonical CI remains the Phase 20-era baseline on `main`. The Phase 21 branch ad
 
 ## Test Coverage
 
-Canonical coverage remains as documented through Phase 20. Phase 21 branch coverage adds rights/provenance schema enforcement, deterministic anchor evaluation, contrastive degradation sanity, human-scorecard validation, CLI benchmark JSON/text output, optional chrF2++ protocol validation, and Apple Silicon benchmark compatibility.
+Coverage now also includes Phase 21 rights/provenance schema enforcement, deterministic anchor evaluation, contrastive degradation sanity, human-scorecard validation, CLI benchmark JSON/text output, optional chrF2++ protocol validation, and Apple Silicon benchmark compatibility.
 
 ## Current Handoff
 
-Finish and verify PR #100. Do not advance to Phase 22 until Phase 21 is canonical on `main`.
+Phase 21 is complete/canonical. The next numbered phase is **Phase 22 — Product Surface & Distribution Hardening**.
+
+Do not add new benchmark/runtime dependencies merely because Phase 21 exists; use the benchmark to prove concrete quality gaps first. Phase 22 should consume the stable `ApplicationService`/benchmark/review/publication boundaries rather than move domain logic into UI code.
