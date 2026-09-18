@@ -219,6 +219,46 @@ Research/dependency decisions remain: Virastar/`rezkam/persian` are references o
 
 Detailed research: `docs/PHASE_24_RESEARCH.md`.
 
+### Phase 25 — Visual Experience & Theme System — active branch/validation
+
+Branch: `phase-25-visual-experience-theme-system`.
+
+Goal: turn the canonical Tauri desktop surface into a distinctive, themeable, keyboard-first literary workspace while preserving the Rust/ApplicationService authority boundary.
+
+This phase is an explicit user reprioritization after Phase 24. The previously recorded speaker/coreference benchmark remains a future research target rather than the Phase-25 owner.
+
+Implemented on the branch:
+
+- four independent local themes: System, Midnight Ink, Rose Paper, and Sage Manuscript;
+- literary book/folio visual identity using only local HTML/CSS and system fonts;
+- grouped macOS-style sidebar navigation with visible `⌘1`…`⌘8` shortcuts;
+- dependency-free local `⌘K` command palette for navigation, current-state actions, themes, and editor focus;
+- progressive View Transitions with direct-update fallback;
+- mandatory `prefers-reduced-motion` handling;
+- source/Persian side-by-side Translation Editor with explicit dirty/save state and Persian focus mode;
+- floating glass-style notices, richer empty/list/form states, stronger keyboard focus treatment and responsive layout;
+- no remote assets/fonts/scripts, no frontend storage, no framework/build-system migration and no domain orchestration moved into JavaScript;
+- permanent Phase-25 static UI/macOS-arm64 contract workflow.
+
+Research decisions:
+
+- MotionSites AI is visual inspiration only; no branding/code/assets are copied.
+- `ceorkm/macos-design-skill` and `julianmateu/light-cmd-palette` are MIT references only; no package is installed.
+- `tauri-apps/window-vibrancy 0.8.0` is deliberately not adopted because its Tauri path requires transparent windows plus `macOSPrivateApi: true`; CSS glass avoids changing the release/private-API boundary.
+- a draggable split-pane dependency is not justified for the current editor; CSS Grid plus Focus Persian owns the measured need.
+- theme choice remains in-memory for the app session because Phase-22 security forbids `localStorage`/`sessionStorage`.
+
+Exit criteria:
+
+- Phase-25 UI contract is green on Linux and Apple Silicon;
+- Phase-22 Desktop Product builds the exact final head into a real macOS arm64 app bundle;
+- existing CSP/static-security checks remain green;
+- no desktop/core lockfile changes are introduced without a separately reviewed dependency change;
+- all affected canonical regression gates remain green;
+- final PR head is reviewed/merged and exact completion evidence is recorded.
+
+Detailed research: `docs/PHASE_25_RESEARCH.md`.
+
 ## Next Action Rule
 
 Always finish and verify the current numbered phase before starting the next numbered phase. Supporting tooling may be added only when it leaves runtime defaults intact and has an explicit owner/failure boundary. Do not treat branch-only work as merged. When a phase changes architecture, persistence, quality, or publishing contracts, update `IMPLEMENTATION_STATUS.md`, this roadmap, engineering decisions, external-integration notes, and project-memory notes together.
