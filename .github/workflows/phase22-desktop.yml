@@ -27,7 +27,7 @@ on:
       - '.github/workflows/phase22-desktop.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: phase22-desktop-${{ github.workflow }}-${{ github.ref }}
@@ -40,6 +40,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'push' && github.ref_name || github.head_ref }}
 
       - name: Verify Apple Silicon
         shell: bash
@@ -58,6 +60,19 @@ jobs:
             cargo metadata --locked --manifest-path desktop/src-tauri/Cargo.toml --format-version 1 --no-deps > /dev/null
           else
             cargo generate-lockfile --manifest-path desktop/src-tauri/Cargo.toml
+          fi
+
+      - name: Commit validated desktop lockfile once
+        if: github.event_name == 'push' && github.ref == 'refs/heads/phase-22-product-surface-distribution'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! git ls-files --error-unmatch desktop/src-tauri/Cargo.lock >/dev/null 2>&1; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add desktop/src-tauri/Cargo.lock
+            git commit -m "phase22: lock validated desktop dependency graph"
+            git push origin HEAD:phase-22-product-surface-distribution
           fi
 
       - name: Format desktop and affected application code
