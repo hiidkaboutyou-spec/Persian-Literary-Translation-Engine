@@ -94,6 +94,8 @@ Phase-23 use is CI/release tooling only. It is not a runtime dependency and is i
 
 During validation, `--license-strict` was deliberately removed from SBOM generation. That option rejects the deprecated slash form used by historical transitive crate metadata (for example `MIT/Apache-2.0` and `Apache-2.0/MIT`). The generator otherwise preserves those values as named licenses and emits the inventory. Phase 23 does not rewrite or guess third-party license expressions merely to make CI green; license warnings remain visible evidence.
 
+Validation also caught an output-naming mistake before merge: in `cargo-cyclonedx 0.5.9`, `--override-filename` is used as a filename prefix and the selected format suffix (for example `.json`) is appended by the tool. Passing an override that already ended in `.json` therefore produced `.json.json`. Phase 23 now passes `.cdx` prefixes and verifies the resulting `.cdx.json` files explicitly. This behavior was verified against the pinned 0.5.9 generator source rather than inferred from CI output.
+
 ### 4. macOS public distribution still needs real Apple identity
 
 Apple documents Developer ID signing plus notarization as the direct-distribution path for Mac software downloaded outside the Mac App Store.
