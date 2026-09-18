@@ -26,6 +26,7 @@ PR #98 merged Phase 20 after the final PR head passed the dedicated Phase 20 pub
 - **literary-intelligence-engine** — deterministic manuscript analysis, chapter maps, continuity hooks, entity/terminology seeds, observed literary metrics, evidence-backed initialization proposals, and shared Context Packet v2 assembly.
 - **advanced-literary-analysis** — optional bounded provider-assisted literary findings with cache/resume, structured validation, stable evidence, and review-only output.
 - **literary-review-engine** — Phase 19 post-translation review evidence for omission/addition, semantic fidelity, character voice, relationship/register, Persian naturalness, dialogue/subtext, terminology/continuity, plus profile-specific dimensions such as intimacy fidelity; automated review never auto-applies or human-approves revisions.
+- **literary-evaluation-engine** — Phase 21 rights-safe literary benchmark schemas, deterministic challenge anchors, contrastive regression evidence, bounded human scorecards, and optional reference-metric sidecar contracts; benchmark evidence never becomes literary approval.
 - **human-review-workflow** — versioned review ledger, stable IDs, lifecycle validation, typed conflicts, promotion plans, audit lineage, and explicit human decisions.
 - **project-engine** — manifests, atomic persistence/recovery, application orchestration, translation lifecycle, literary-review/canon integration, checkpoint/fingerprint safety, manual revisions, export, history, and UI-ready snapshots.
 - **literary-reference-knowledge** — editorial/reference sources and validation rules.
@@ -90,17 +91,33 @@ Delivered:
 
 Detailed research and completion gates are in `docs/PHASE_20_RESEARCH.md`.
 
+## Current Branch — Phase 21 Literary Evaluation Corpus & Benchmarking
+
+Branch: `phase-21-literary-evaluation-benchmarking`.
+PR: #100.
+
+Phase 21 is **not canonical until the final PR head passes all dedicated/normal gates, merges to `main`, and canonical status is recorded**.
+
+Implemented on the branch:
+
+- native `literary-evaluation-engine` with strict rights-safe corpus/submission schemas;
+- eight project-owned synthetic EN→FA literary challenge cases covering semantic fidelity, Persian naturalness, character voice, relationship/register, dialogue/subtext, terminology, concrete detail/agency, and bounded continuity;
+- deterministic anchors plus declared contrastive degradations so CI verifies the benchmark catches the failure class it claims to measure;
+- bounded human scorecards with explicit reviewer expertise, 1–5 ratings, optional pairwise preference, and no more than four focused dimensions per evaluation pass;
+- CLI `literary-engine benchmark <corpus.json> <submission.json>`;
+- optional isolated SacreBLEU 2.6.0 chrF2++ evidence with no external test-set download;
+- reuse of the existing optional COMET/XCOMET evidence boundary rather than a second neural-metric stack;
+- external Persian corpora remain research candidates only; none are vendored into the committed benchmark.
+
+Research and validation policy: `docs/PHASE_21_RESEARCH.md`.
+
 ## CLI
 
-Canonical commands include `inspect`, `analyze`, `analyze-advanced`, review lifecycle commands, `prepare`, `run`, `resume`, and project-oriented create/import/status/analyze/analyze-advanced/review/review-translation/translate/resume/progress/export/history flows.
-
-Canonical Phase 20 extends project export selection to `--export-format docx|epub` and translation configuration to `--style-profile literary|adult-intimacy` plus explicit adult-character confirmation for the latter.
+Canonical commands remain unchanged on `main`. The Phase 21 branch adds `benchmark <corpus.json> <submission.json>`; it becomes canonical only after Phase 21 merges.
 
 ## CI/CD
 
-Canonical CI includes reproducible lockfile checks, rustfmt, Clippy `-D warnings`, workspace tests, optional-feature compatibility tests, strict EPUB compatibility paths, wrapper/sidecar checks, large-book regression, CLI smoke, Cargo audit, Security workflow, Dependabot, developer-memory validation, and Phase 18/19 Linux plus Apple Silicon gates.
-
-Phase 20 adds a permanent publication workflow that may install the checksum-pinned EPUBCheck 5.3.0 distribution specifically for rights-safe publication validation. Normal ingestion/translation/DOCX runtime does not depend on Java/EPUBCheck.
+Canonical CI remains the Phase 20-era baseline on `main`. The Phase 21 branch adds a dedicated Linux + Apple Silicon benchmark workflow covering Rust fmt/Clippy/tests, contrastive corpus sanity, CLI good-vs-degraded regression, SacreBLEU protocol/install/audit checks, and workspace/security regression gates.
 
 ## Non-Negotiable Constraints
 
@@ -109,6 +126,8 @@ Phase 20 adds a permanent publication workflow that may install the checksum-pin
 - Preserve author intent and narrative structure.
 - Human review remains the approval/canon boundary.
 - External/model metrics remain evidence, not authority.
+- Benchmark anchors are narrow regression evidence, not an overall literary-quality score.
+- Committed benchmark text must be project-owned/rights-safe or have explicit reviewed redistribution rights.
 - Optional tools/models must not become hidden runtime requirements.
 - Review/provider/alignment failures remain explicit; absence is never interpreted as a clean review.
 - EPUB publication provenance must be explicit; incomplete/mismatched block identity fails closed rather than guessing.
@@ -116,12 +135,8 @@ Phase 20 adds a permanent publication workflow that may install the checksum-pin
 
 ## Test Coverage
 
-Coverage includes document ingestion, runtime translation, glossary/character/relationship memory, Context Packet v2 retrieval/fingerprints, deterministic quality gates, literary review/alignment, review lifecycle/promotion/conflicts, provider contracts, cache/resume, source/canon/context staleness, manual edits, atomic persistence, CLI JSON, Unicode/Persian cases, EPUB boundaries, optional quality evidence, and large-book regressions.
-
-Phase 20 coverage additionally validates block-provenance reconstruction, fail-closed publication mapping, RTL metadata patching, EPUBCheck 3.3 conformance on synthetic fixtures, asset/link/inline-markup survival, deterministic repeated export, source non-mutation, and Apple Silicon publication compatibility.
+Canonical coverage remains as documented through Phase 20. Phase 21 branch coverage adds rights/provenance schema enforcement, deterministic anchor evaluation, contrastive degradation sanity, human-scorecard validation, CLI benchmark JSON/text output, optional chrF2++ protocol validation, and Apple Silicon benchmark compatibility.
 
 ## Current Handoff
 
-Phase 20 is complete and canonical on `main`. The next numbered phase is **Phase 21 — Literary Evaluation Corpus & Benchmarking**.
-
-Phase 21 must remain evidence-first: use rights-safe/project-owned fixtures, treat automatic metrics as evidence rather than approval, and evaluate Persian-NLP repositories only when they close a measured benchmark gap. Mizan, iPerUDT, Degarbayan-SC, FarSSiM and related corpora remain research candidates subject to dataset/license/provenance review before any local or CI installation.
+Finish and verify PR #100. Do not advance to Phase 22 until Phase 21 is canonical on `main`.
