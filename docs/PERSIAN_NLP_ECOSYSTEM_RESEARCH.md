@@ -88,6 +88,21 @@ Before adopting any candidate during Literary Evaluation Corpus & Benchmarking:
 - Security blockers are not waived for convenience; wait for a patched path or implement the small needed capability natively.
 - If a heavy toolkit is useful only for one diagnostic, expose that one diagnostic through an optional sidecar rather than importing the toolkit into the product core.
 
+## Phase 21 corpus-candidate due diligence — 2026-09-18
+
+The four high-interest resources identified for literary/natural-Persian work were inspected at repository level before any download or installation. They remain **research candidates only**:
+
+| Candidate | Observed value | Repository license signal | Phase 21 decision |
+| --- | --- | --- | --- |
+| `omidkashefi/Mizan` | about 1M Persian-English sentence pairs described as collected from literary works | repository contains `LICENSE.md`: CC BY 4.0 | **Do not bundle or treat as benchmark gold yet.** The repository license is clear, but the parallel text is derived from third-party literary works; verify underlying-text provenance/rights and benchmark suitability separately before redistribution or CI use. |
+| `royakabiri/iPerUDT` | 3,000 informal Persian sentences / 54,904 tokens with UD syntax, useful for colloquial-syntax diagnostics | repository `LICENSE`: CC0 1.0 | **Best licensing signal of the four, but diagnostic rather than EN->FA reference data.** Candidate for a bounded Phase 21 Persian-naturalness/syntax diagnostic after provenance and task-fit review; no runtime dependency is justified yet. |
+| `mut-deep/Degarbayan-SC` | large colloquial paraphrase corpus described as 1.5M pairs aligned from movie subtitles | repository `LICENSE`: GPL-3.0 | **Research/reference only for now.** GPL on the repository does not by itself establish redistribution rights for third-party movie-subtitle text, and GPL is not a data-specific provenance solution. Do not vendor/download into CI until underlying subtitle rights and dataset terms are resolved. |
+| `mojtabasajjadi/FarSSiM` | 1,123 informal Persian short-text pairs from tweets with semantic-relatedness/entailment annotations | no explicit `LICENSE`, `LICENSE.md`, `LICENSE.txt`, or `COPYING` file found in the reviewed repository | **Blocked for project ingestion/bundling without explicit permission/license.** Public GitHub availability is not a reuse license; tweet-source provenance also needs review. |
+
+Practical consequence: Phase 21 should first create a small project-owned/rights-safe literary benchmark schema and scoring harness. External corpora can then be evaluated as optional evidence sources one by one. Do not let corpus availability determine the benchmark design, and do not use third-party literary/subtitle/tweet text as committed fixtures unless redistribution rights are explicit.
+
 ## Current roadmap placement
 
-Phase 20 remains Publication-Grade EPUB Round Trip and must be completed/merged before Phase 21 starts. This Persian ecosystem review changes **future dependency choices**, not the numbered-phase order. The next justified integration opportunity is Phase 21 benchmarking, after the Phase 20 publication gate is green and canonical.
+Phase 20 is canonical on `main` (PR #98; merge `1611cd731160c122baa68c9e80c1d4faeb7dfcfc`). This Persian ecosystem review therefore hands off to **Phase 21 — Literary Evaluation Corpus & Benchmarking**.
+
+Mizan, iPerUDT, Degarbayan-SC, FarSSiM and related datasets are **benchmark/corpus candidates, not automatic runtime dependencies**. Before any download, CI installation, bundling, or use as reference truth, Phase 21 must verify dataset-level license, provenance, redistribution/commercial-use terms, source/reference quality, and whether the corpus actually measures the literary failure class in question. Generic Persian NLP packages remain subject to the gap-first/security rules above.

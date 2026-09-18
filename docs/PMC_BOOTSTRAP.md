@@ -18,7 +18,7 @@ Build a production-grade English-to-Persian literary translation engine that rea
 - Translation memory, glossary, character knowledge, literary findings, and human decisions must be traceable and passage-relevant.
 - Human review remains the final approval/canon boundary.
 - Long books must be resumable without silently reusing outputs generated under stale source/context/profile fingerprints.
-- Publication output supports high-fidelity Persian DOCX and is being extended with source-preserving EPUB round trip in Phase 20.
+- Publication output supports high-fidelity Persian DOCX and canonical source-preserving Persian EPUB round trip from EPUB sources.
 
 ## Architecture Invariants
 
@@ -91,11 +91,11 @@ Canonical `main` is verified through Phase 19.
 - Hazm remains blocked until its mandatory compatible NLTK path is patched and freshly audited.
 - Vecalign/SentWeave remain research references while native Rust meets the measured need; DadmaTools remains conditional on a demonstrated gap.
 
-## Phase 20 Branch State — Not Canonical Until Merged
+## Phase 20 Canonical State
 
-Branch: `phase-20-publication-epub-roundtrip`.
+PR #98 merged to `main` at `1611cd731160c122baa68c9e80c1d4faeb7dfcfc`.
 
-Implemented branch work includes:
+Canonical Phase 20 includes:
 
 - BookForge source block IDs propagated into native `SourceLocation` and translated artifacts;
 - marker-aware source-preserving EPUB reconstruction with explicit `block_id -> translated text` mapping;
@@ -107,7 +107,7 @@ Implemented branch work includes:
 - permanent read-only Phase 20 CI with generated rights-safe EPUB fixture, EPUBCheck 5.3.0 input/output checks, repeated-export byte comparison, source checksum, representative resource/markup assertions, no-default-features compatibility, and Apple Silicon arm64 validation;
 - supporting explicit `adult-intimacy` fidelity style profile for confirmed-adult source material, while `literary` remains the default and automated intimacy evidence remains non-canonical.
 
-Do not call Phase 20 canonical until its PR is merged and post-merge validation is green.
+The final PR head passed the dedicated Phase 20 publication gate, Rust CI, Security/cargo-audit, Phase 18, Phase 19, Project Memory Tooling, and Apple Silicon arm64 checks. The permanent Phase 20 publication workflow is retained on `main` pushes.
 
 ## Phase 20 Durable Decisions
 
@@ -152,8 +152,8 @@ These are not current runtime dependencies and must not interrupt the numbered r
 
 - Phase 18 — Context Packet v2 & Selective Long-Novel Retrieval — canonical/merged.
 - Phase 19 — Literary Fidelity & Persian Naturalness Review Stack — canonical/merged.
-- Phase 20 — Publication-Grade EPUB Round Trip — active branch, not canonical until merge/post-merge verification.
-- Phase 21 — Literary Evaluation Corpus & Benchmarking — next only after Phase 20 is canonical.
+- Phase 20 — Publication-Grade EPUB Round Trip — canonical/merged (PR #98; `1611cd731160c122baa68c9e80c1d4faeb7dfcfc`).
+- Phase 21 — Literary Evaluation Corpus & Benchmarking — next numbered phase; begin with rights/provenance review and benchmark design before dependency adoption.
 - Phase 22 — Product Surface & Distribution Hardening.
 
 Always finish/verify the current numbered phase before starting the next numbered phase. Supporting tooling may land between phases only when runtime defaults remain intact, ownership/failure boundaries are explicit, and validation passes.

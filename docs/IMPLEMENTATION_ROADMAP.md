@@ -80,15 +80,15 @@ Current supporting tooling includes:
 
 OpenDataLoader PDF, ripwire, and Headroom remain future benchmark/developer candidates rather than runtime dependencies.
 
-## Current Phase
+## Verified Current Capability
 
-### Phase 20 — Publication-Grade EPUB Round Trip — branch implementation/validation
+### Phase 20 — Publication-Grade EPUB Round Trip — canonical
 
-Branch: `phase-20-publication-epub-roundtrip`.
+PR #98; merge commit `1611cd731160c122baa68c9e80c1d4faeb7dfcfc`.
 
 Goal: produce a translated Persian EPUB while preserving the source book's structure/assets deterministically and refusing unsafe structural guesses.
 
-Implemented on the branch:
+Delivered:
 
 - stable BookForge block identity propagated through native source provenance and translated artifacts;
 - explicit `BookForge block ID -> translated text` reconstruction mapping;
@@ -108,18 +108,15 @@ Standards decision:
 - use **EPUBCheck 5.3.0** as Phase 20's authoritative conformance gate because it checks EPUB 3.3;
 - defer EPUB 3.4 / EPUBCheck 5.4.x as the authoritative target while EPUB 3.4 remains a Candidate Recommendation; treat 5.4.x as future-compatibility evidence, not an automatic migration.
 
-Exit criteria:
+Completion evidence:
 
-- final permanent Phase 20 workflow green on the branch/PR head;
-- generated rights-safe EPUB 3.3 input/output both accepted by EPUBCheck 5.3.0;
-- representative CSS/image/link/inline markup survive; language and RTL metadata are correct;
-- repeated export is byte-identical and source checksum is unchanged;
-- full Rust/Clippy/workspace/security/release/CLI checks green on the PR head;
-- no temporary write-enabled Phase 20 workflows/scripts in the final diff;
-- PR merge to `main` and post-merge verification;
-- only then mark Phase 20 canonical.
+- final PR head passed the dedicated Phase 20 publication workflow, including EPUBCheck 5.3.0 input/output validation and Apple Silicon arm64 coverage;
+- representative CSS/image/link/inline markup preservation, Persian language/RTL metadata, repeated-export byte identity, and source checksum non-mutation were asserted;
+- Rust CI and Security/cargo-audit were green on the final PR head;
+- PR #98 merged to `main` at `1611cd731160c122baa68c9e80c1d4faeb7dfcfc`;
+- the permanent Phase 20 workflow is retained and configured to run on `main` pushes.
 
-Detailed research: `docs/PHASE_20_RESEARCH.md`.
+Detailed research and completion record: `docs/PHASE_20_RESEARCH.md`.
 
 ## Forward Roadmap
 
@@ -136,7 +133,7 @@ Planned work:
 - human-review scorecards for naturalness, voice, fidelity, subtext, readability, and profile-specific fidelity where appropriate;
 - compare model/provider/prompt/runtime changes without turning one metric into approval.
 
-Do not start Phase 21 until Phase 20 is merged and post-merge verified.
+Phase 21 is now the next numbered phase. Start with corpus rights/provenance and benchmark design before adopting any new Persian NLP runtime dependency.
 
 ### Phase 22 — Product Surface & Distribution Hardening
 

@@ -1,8 +1,8 @@
 # Phase 20 Research — Publication-Grade EPUB Round Trip
 
-Status: branch implementation on `phase-20-publication-epub-roundtrip`; not canonical until PR merge and post-merge verification.
+Status: canonical on `main`. PR #98 merged at `1611cd731160c122baa68c9e80c1d4faeb7dfcfc` on 2026-09-18 repository-local tracking date.
 
-Research snapshot: 2026-09-17.
+Research snapshot: 2026-09-17; completion record updated 2026-09-18.
 
 ## Goal
 
@@ -160,15 +160,18 @@ This profile exists because literary translation fidelity can be materially dama
 - broader cross-reader visual rendering matrix: useful future distribution/product hardening, not required to own the core round-trip contract.
 - publication accessibility authoring enhancements beyond structure preservation: treat separately from basic conformance so accessibility claims remain evidence-based.
 
-## Completion rule
+## Completion evidence
 
-Do not call Phase 20 canonical until:
+Phase 20 is canonical.
 
-- the permanent Phase 20 workflow is green on the final branch/PR head;
-- normal Rust CI/security/release checks are green;
-- temporary mutation workflows are absent;
-- docs reflect Phase 19 as canonical and Phase 20 as the current branch;
-- the Phase 20 PR is merged to `main`;
-- post-merge checks on `main` are green.
+- PR #98 final head: `dd768417727226ce8103b4ad983c188c8cf29e38`.
+- Merge commit on `main`: `1611cd731160c122baa68c9e80c1d4faeb7dfcfc`.
+- Dedicated Phase 20 workflow run `35266553729`: success; both `publication-gate` and `macos-arm64` jobs passed.
+- Rust CI run `35266553818`: success.
+- Security/cargo-audit run `35266553828`: success.
+- Phase 18 context/retrieval run `35266553749`, Phase 19 literary review run `35266553763`, and Project Memory Tooling run `35266553838`: success.
+- No unresolved PR review threads were present at merge.
+- Merge used the reviewed expected head SHA, so GitHub would have rejected the merge if the PR head changed after verification.
+- The permanent Phase 20 workflow is retained and configured to run on pushes to `main`, so future publication-path changes remain covered.
 
-Only then move to Phase 21.
+Next numbered phase: **Phase 21 — Literary Evaluation Corpus & Benchmarking**. New Persian NLP/data dependencies must remain conditional on rights/provenance review and a measured benchmark gap.
