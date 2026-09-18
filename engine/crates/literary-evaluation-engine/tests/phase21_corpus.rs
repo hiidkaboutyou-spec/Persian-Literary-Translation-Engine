@@ -5,7 +5,7 @@ use std::fs;
 use std::path::PathBuf;
 
 fn repo_file(relative: &str) -> String {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../..");
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");
     fs::read_to_string(root.join(relative)).expect("fixture should be readable")
 }
 
