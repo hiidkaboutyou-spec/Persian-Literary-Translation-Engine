@@ -9,9 +9,22 @@ const state = {
   translationRunning: false,
   progressTimer: null,
   literaryEvidence: null,
+  activeCommandIndex: 0,
+  paletteReturnFocus: null,
 };
 
 const $ = (id) => document.getElementById(id);
+
+const viewCommands = [
+  { view: "home", label: "Project", detail: "Open, create, import and inspect the book.", icon: "⌂", shortcut: "⌘1" },
+  { view: "workflow", label: "Workflow", detail: "Analyze, translate, pause, resume and export.", icon: "↝", shortcut: "⌘2" },
+  { view: "review", label: "Intelligence", detail: "Make human decisions over extracted literary evidence.", icon: "◇", shortcut: "⌘3" },
+  { view: "canon", label: "Canon", detail: "Edit durable character voice and terminology.", icon: "✦", shortcut: "⌘4" },
+  { view: "editor", label: "Translation Editor", detail: "Revise English and Persian paragraph pairs.", icon: "¶", shortcut: "⌘5" },
+  { view: "literary", label: "Literary Review", detail: "Inspect fidelity, naturalness and revision evidence.", icon: "≈", shortcut: "⌘6" },
+  { view: "history", label: "History", detail: "Read the durable project audit trail.", icon: "↺", shortcut: "⌘7" },
+  { view: "provider", label: "Provider", detail: "Configure session-only model access.", icon: "⌁", shortcut: "⌘8" },
+];
 
 function showNotice(message, kind = "success") {
   const node = $("notice");
@@ -57,18 +70,20 @@ function setView(name) {
     panel.classList.toggle("active", panel.dataset.viewPanel === name);
   });
   const titles = {
-    home: ["Project", "Open or create a translation project."],
-    workflow: ["Workflow", "Explicit analysis, translation and publication stages."],
-    review: ["Intelligence Review", "Human decisions over extracted literary intelligence."],
-    canon: ["Canon", "Character voice and terminology that guide long-form continuity."],
-    editor: ["Translation Editor", "Paragraph-level Persian revision with durable history."],
-    literary: ["Literary Review", "Post-translation fidelity and naturalness evidence."],
-    history: ["History", "Bounded audit history emitted by the application layer."],
-    provider: ["Provider", "Session-only provider configuration; secrets are never stored in projects."],
+    home: ["Project", "Open the book workspace or begin a new long-form translation."],
+    workflow: ["Workflow", "Move deliberately from literary analysis to translation and publication."],
+    review: ["Intelligence", "Review extracted literary evidence before anything becomes canon."],
+    canon: ["Canon", "Shape the durable voice, character and terminology context for the whole book."],
+    editor: ["Translation Editor", "Work paragraph by paragraph with English and Persian visible together."],
+    literary: ["Literary Review", "Inspect fidelity and Persian-naturalness evidence before accepting revisions."],
+    history: ["History", "Follow the durable audit trail of decisions, revisions and publication actions."],
+    provider: ["Provider", "Use model access for this app session without storing secrets in the project."],
   };
   const [title, subtitle] = titles[name] || titles.home;
   $("view-title").textContent = title;
   $("view-subtitle").textContent = subtitle;
+  document.documentElement.dataset.view = name;
+  closeCommandPalette(false);
 }
 
 function setProjectEnabled(enabled) {
@@ -84,6 +99,17 @@ function setProjectEnabled(enabled) {
   $("import-source").disabled = !enabled || !state.sourcePath;
 }
 
+function setStatusPill(value) {
+  const pill = $("status-pill");
+  const label = pill.querySelector(".status-text");
+  if (label) {
+    label.textContent = value || "No project";
+  } else {
+    pill.textContent = value || "No project";
+  }
+  pill.className = value ? "status-pill" : "status-pill muted";
+}
+
 function snapshotItem(label, value) {
   const item = document.createElement("div");
   item.className = "snapshot-item";
@@ -94,8 +120,7 @@ function snapshotItem(label, value) {
 function renderSnapshot(snapshot) {
   state.snapshot = snapshot;
   $("current-project").textContent = snapshot ? snapshot.name : "None";
-  $("status-pill").textContent = snapshot ? snapshot.status : "No project";
-  $("status-pill").className = snapshot ? "status-pill" : "status-pill muted";
+  setStatusPill(snapshot ? snapshot.status : null);
 
   const grid = $("snapshot-grid");
   grid.replaceChildren();
@@ -418,7 +443,7 @@ function renderHistory(items) {
     list.textContent = "No history entries.";
     return;
   }
-  list.className = "list";
+  list.className = "list timeline";
   [...items].reverse().forEach((item) => {
     const row = document.createElement("div");
     row.className = "list-row";
@@ -429,8 +454,123 @@ function renderHistory(items) {
   });
 }
 
+function matchingCommands(query) {
+  const wanted = query.trim().toLocaleLowerCase();
+  if (!wanted) return viewCommands;
+  return viewCommands.filter((command) => {
+    return (command.label + " " + command.detail).toLocaleLowerCase().includes(wanted);
+  });
+}
+
+function renderCommandResults() {
+  const results = $("command-results");
+  const commands = matchingCommands($("command-search").value);
+  state.activeCommandIndex = Math.max(0, Math.min(state.activeCommandIndex, Math.max(0, commands.length - 1)));
+  results.replaceChildren();
+
+  if (!commands.length) {
+    results.append(textNode("div", "No matching workspace view.", "empty-state"));
+    return;
+  }
+
+  commands.forEach((command, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "command-result" + (index === state.activeCommandIndex ? " selected" : "");
+    button.setAttribute("role", "option");
+    button.setAttribute("aria-selected", index === state.activeCommandIndex ? "true" : "false");
+
+    const icon = textNode("span", command.icon, "command-result-icon");
+    const copy = document.createElement("span");
+    copy.append(textNode("strong", command.label), textNode("small", command.detail));
+    const shortcut = textNode("kbd", command.shortcut);
+    button.append(icon, copy, shortcut);
+
+    button.addEventListener("mouseenter", () => {
+      state.activeCommandIndex = index;
+      renderCommandResults();
+    });
+    button.addEventListener("click", () => setView(command.view));
+    results.append(button);
+  });
+}
+
+function openCommandPalette() {
+  const palette = $("command-palette");
+  if (palette.classList.contains("open")) return;
+  state.paletteReturnFocus = document.activeElement;
+  state.activeCommandIndex = 0;
+  $("command-search").value = "";
+  renderCommandResults();
+  palette.classList.add("open");
+  palette.setAttribute("aria-hidden", "false");
+  window.requestAnimationFrame(() => $("command-search").focus());
+}
+
+function closeCommandPalette(restoreFocus = true) {
+  const palette = $("command-palette");
+  if (!palette.classList.contains("open")) return;
+  palette.classList.remove("open");
+  palette.setAttribute("aria-hidden", "true");
+  if (restoreFocus && state.paletteReturnFocus && typeof state.paletteReturnFocus.focus === "function") {
+    state.paletteReturnFocus.focus();
+  }
+  state.paletteReturnFocus = null;
+}
+
+function moveCommandSelection(delta) {
+  const commands = matchingCommands($("command-search").value);
+  if (!commands.length) return;
+  state.activeCommandIndex = (state.activeCommandIndex + delta + commands.length) % commands.length;
+  renderCommandResults();
+  const selected = $("command-results").querySelector(".command-result.selected");
+  if (selected) selected.scrollIntoView({ block: "nearest" });
+}
+
 document.querySelectorAll(".nav-item").forEach((button) => {
   button.addEventListener("click", () => setView(button.dataset.view));
+});
+
+$("open-palette").addEventListener("click", openCommandPalette);
+document.querySelector("[data-close-palette]").addEventListener("click", () => closeCommandPalette());
+$("command-search").addEventListener("input", () => {
+  state.activeCommandIndex = 0;
+  renderCommandResults();
+});
+
+document.addEventListener("keydown", (event) => {
+  const commandKey = event.metaKey || event.ctrlKey;
+
+  if (commandKey && event.key.toLocaleLowerCase() === "k") {
+    event.preventDefault();
+    if ($("command-palette").classList.contains("open")) closeCommandPalette();
+    else openCommandPalette();
+    return;
+  }
+
+  if ($("command-palette").classList.contains("open")) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeCommandPalette();
+    } else if (event.key === "ArrowDown") {
+      event.preventDefault();
+      moveCommandSelection(1);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      moveCommandSelection(-1);
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      const selected = $("command-results").querySelector(".command-result.selected");
+      if (selected) selected.click();
+    }
+    return;
+  }
+
+  if (commandKey && /^[1-8]$/.test(event.key)) {
+    event.preventDefault();
+    const command = viewCommands[Number(event.key) - 1];
+    if (command) setView(command.view);
+  }
 });
 
 $("pick-open-root").addEventListener("click", async () => {
@@ -629,3 +769,5 @@ $("check-provider").addEventListener("click", async () => {
 
 setProjectEnabled(false);
 renderSnapshot(null);
+renderCommandResults();
+setView("home");
