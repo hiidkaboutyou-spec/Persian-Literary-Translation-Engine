@@ -6,7 +6,7 @@ use memory_engine::{
     SemanticRetrievalStatus, SemanticSidecar, TranslationMemory,
 };
 
-use crate::ManuscriptIntelligence;
+use crate::{deterministic_speaker_context, ManuscriptIntelligence};
 
 const NEIGHBOR_EXCERPT_CHARS: usize = 900;
 
@@ -71,6 +71,22 @@ pub fn build_chapter_context_packet_with_semantic(
             "canonical character is present in the current source unit",
             1.0,
         ));
+    }
+
+    if let Some(text) =
+        deterministic_speaker_context(input.chapter_id, input.source_text, input.characters)
+    {
+        candidates.push(
+            ContextCandidate::new(
+                stable_evidence_id("speaker-map", &[input.chapter_id, &text]),
+                ContextKind::Character,
+                ContextAuthority::Deterministic,
+                text,
+                "high-precision explicit quote-speaker evidence; unresolved dialogue is omitted",
+                0.94,
+            )
+            .with_evidence_ids([input.chapter_id.to_string()]),
+        );
     }
 
     for relationship in input.characters.relevant_relationships(input.source_text) {
