@@ -48,7 +48,7 @@ This project is independent from every other repository. Do not import assumptio
 - Phase 19 literary review stays in the native `literary-review-engine` plus the optional `tools/literary-alignment` process boundary. Source/target alignment is monotonic, bounded, schema-validated, and advisory. A failed/missing aligner must not block translation, mutate canon, or be interpreted as a clean review.
 - Hazm is **blocked**, not approved, while its required NLTK dependency is affected by an unpatched security advisory. Reconsider only after a patched compatible NLTK release exists and a fresh dependency/security audit passes. Do not add an advisory waiver merely to enable Hazm.
 - Vecalign and SentWeave are Phase 19 research references only. Their alignment design may inform native code, but do not add their Python/Cython stacks while the native Rust aligner plus the already-approved BGE boundary satisfies the measured requirement.
-- DadmaTools remains conditional on a measured Persian NLP gap after native Phase 19 review; SacreBLEU/chrF++ remains a Phase 21 benchmark candidate after a rights-safe reference corpus exists.
+- DadmaTools remains conditional on a measured Persian NLP gap after native review/benchmarking. SacreBLEU 2.6.0/chrF2++ is approved only through the optional Phase 21 benchmark sidecar over project-supplied references; it must not download external corpora through project workflows or act as literary approval.
 - Serena, Global Agent Memory, MemoryWiki, and automatic chat-history memory systems are project-memory research references only unless a new gap analysis changes that decision. Do not install multiple overlapping memory systems by default.
 
 ## Phase 20 publication invariants
@@ -63,6 +63,17 @@ This project is independent from every other repository. Do not import assumptio
 - Images, CSS, navigation, links, footnotes/endnotes, and non-translatable resources remain source-derived and must survive round trip unless a documented publication transformation explicitly owns them.
 - Publication export must be deterministic on the same source/artifacts, and exporting must not mutate the imported source EPUB.
 - The default translation style remains `literary`. The `adult-intimacy` fidelity profile is explicit opt-in only and requires caller confirmation that every participant in sexual content is an adult. Never infer this confirmation. The profile preserves source explicitness/markedness, consent/refusal/coercion and power cues, agency/referents, sensory channels, POV, emotional intensity, and pacing; it must flag both sanitization and amplification and must not sexualize nonsexual source text. Its review evidence is never canon or human approval.
+
+## Phase 21 benchmark invariants
+
+- Committed literary benchmark source/reference text must be project-owned/rights-safe or have explicit dataset-level redistribution rights recorded in repository research.
+- A GitHub repository license does not automatically license underlying third-party novels, subtitles, tweets, or other corpus material.
+- Deterministic benchmark anchors are narrow regression assertions, not overall literary-quality scores.
+- Every claimed contrastive failure dimension must have at least one anchor/evidence path that the deliberately degraded variant actually fails.
+- Human scorecards remain a separate evidence channel and record reviewer expertise. Keep each evaluation pass focused; Phase 21 caps a case/pass at four dimensions.
+- Reference metrics such as chrF2++ and neural metrics such as COMET/XCOMET remain advisory evidence. Never set a universal score threshold that marks literary output human-approved.
+- Normal Rust build/test must not download external corpora or model weights. Optional benchmark sidecars stay isolated and failure-safe.
+- Do not add a generic Persian NLP stack until the Phase 21 benchmark demonstrates a concrete failure class that the current native/evidence stack cannot measure or diagnose.
 
 ## Coding standards
 
