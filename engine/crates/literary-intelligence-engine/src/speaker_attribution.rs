@@ -87,8 +87,17 @@ struct ExplicitMentionCue {
     end_char: usize,
     name_then_verb: bool,
     verb_then_name: bool,
+    name_then_verb_end_char: Option<usize>,
     name_then_verb_evidence: Option<String>,
     verb_then_name_evidence: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+struct PronounSpeechCue {
+    start_char: usize,
+    end_char: usize,
+    pronoun_then_verb: bool,
+    verb_then_pronoun: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -115,6 +124,7 @@ pub fn attribute_speakers(
     let patterns = character_patterns(characters);
     let all_quotes = quotes.clone();
     let explicit_cues = extract_explicit_mention_cues(&tokens, &patterns, &all_quotes);
+    let pronoun_cues = extract_pronoun_speech_cues(&tokens, &all_quotes);
     quotes
         .into_iter()
         .enumerate()
@@ -125,8 +135,8 @@ pub fn attribute_speakers(
                 &quote,
                 &all_quotes,
                 &chars,
-                &tokens,
                 &explicit_cues,
+                &pronoun_cues,
             )
         })
         .collect()
@@ -169,8 +179,8 @@ fn attribute_one_quote(
     quote: &QuoteSpan,
     all_quotes: &[QuoteSpan],
     chars: &[char],
-    tokens: &[LexToken],
     explicit_cues: &[ExplicitMentionCue],
+    pronoun_cues: &[PronounSpeechCue],
 ) -> SpeakerAttribution {
     let mut candidates = Vec::new();
 
@@ -192,7 +202,7 @@ fn attribute_one_quote(
             MentionPosition::Before => {
                 cue.name_then_verb
                     && cue.name_then_verb_evidence.is_some()
-                    && speech_verb_end_after_cue(tokens, cue).is_some_and(|verb_end| {
+                    && cue.name_then_verb_end_char.is_some_and(|verb_end| {
                         !contains_hard_sentence_boundary(chars, verb_end, quote.start_char)
                     })
             }
@@ -265,7 +275,7 @@ fn attribute_one_quote(
         );
     }
 
-    if has_nearby_pronoun_speech_cue(tokens, quote, all_quotes) {
+    if has_nearby_pronoun_speech_cue(pronoun_cues, quote, all_quotes) {
         return unresolved(
             paragraph_id,
             quote_index,
@@ -357,9 +367,10 @@ fn extract_explicit_mention_cues(
                 continue;
             }
 
-            let name_then_verb = tokens
+            let name_then_verb_token = tokens
                 .get(end)
-                .is_some_and(|token| is_speech_verb(&token.normalized));
+                .filter(|token| is_speech_verb(&token.normalized));
+            let name_then_verb = name_then_verb_token.is_some();
             let verb_then_name = start
                 .checked_sub(1)
                 .and_then(|idx| tokens.get(idx))
@@ -394,6 +405,7 @@ fn extract_explicit_mention_cues(
                 end_char,
                 name_then_verb,
                 verb_then_name,
+                name_then_verb_end_char: name_then_verb_token.map(|token| token.end_char),
                 name_then_verb_evidence,
                 verb_then_name_evidence,
             });
@@ -403,230 +415,58 @@ fn extract_explicit_mention_cues(
     cues
 }
 
-fn speech_verb_end_after_cue(tokens: &[LexToken], cue: &ExplicitMentionCue) -> Option<usize> {
-    tokens
-        .iter()
-        .find(|token| token.start_char >= cue.end_char && is_speech_verb(&token.normalized))
-        .map(|token| token.end_char)
-}
-
-fn character_patterns(characters: &CharacterBible) -> Vec<NamePattern> {
-    let mut patterns = Vec::new();
-    for profile in characters.profiles() {
-        patterns.push(NamePattern {
-            canonical: profile.name.clone(),
-            display: profile.name.clone(),
-            tokens: normalized_name_tokens(&profile.name),
-            alias: false,
-        });
-    }
-    for alias in characters.aliases() {
-        patterns.push(NamePattern {
-            canonical: alias.canonical_name.clone(),
-            display: alias.alias.clone(),
-            tokens: normalized_name_tokens(&alias.alias),
-            alias: true,
-        });
-    }
-    patterns.sort_by(|left, right| {
-        right
-            .tokens
-            .len()
-            .cmp(&left.tokens.len())
-            .then_with(|| left.canonical.cmp(&right.canonical))
-            .then_with(|| left.display.cmp(&right.display))
-    });
-    patterns
-}
-
-fn normalized_name_tokens(value: &str) -> Vec<String> {
-    lexical_tokens(value)
-        .into_iter()
-        .map(|token| token.normalized)
-        .collect()
-}
-
-fn lexical_tokens(text: &str) -> Vec<LexToken> {
-    let chars = text.chars().collect::<Vec<_>>();
-    let mut tokens = Vec::new();
-    let mut start = None;
-
-    for (index, ch) in chars.iter().copied().enumerate() {
-        let lexical = ch.is_alphanumeric() || ch == '\'' || ch == '’' || ch == '-';
-        match (start, lexical) {
-            (None, true) => start = Some(index),
-            (Some(begin), false) => {
-                push_token(&chars, begin, index, &mut tokens);
-                start = None;
-            }
-            _ => {}
-        }
-    }
-    if let Some(begin) = start {
-        push_token(&chars, begin, chars.len(), &mut tokens);
-    }
-    tokens
-}
-
-fn push_token(chars: &[char], start: usize, end: usize, tokens: &mut Vec<LexToken>) {
-    let raw = chars[start..end].iter().collect::<String>();
-    let normalized = normalize_case_insensitive(&raw);
-    if !normalized.is_empty() {
-        tokens.push(LexToken {
-            raw,
-            normalized,
-            start_char: start,
-            end_char: end,
-        });
-    }
-}
-
-fn detect_quotes(text: &str) -> Vec<QuoteSpan> {
-    let chars = text.chars().collect::<Vec<_>>();
-    let mut spans = Vec::new();
-    collect_paired_quotes(
-        &chars,
-        '"',
-        '"',
-        QuoteStyle::StraightDouble,
-        &mut spans,
-    );
-    collect_paired_quotes(&chars, '“', '”', QuoteStyle::CurlyDouble, &mut spans);
-    collect_paired_quotes(&chars, '«', '»', QuoteStyle::Guillemets, &mut spans);
-
-    if spans.is_empty() {
-        if let Some(first_non_space) = chars.iter().position(|ch| !ch.is_whitespace()) {
-            if chars[first_non_space] == '—' && first_non_space + 1 < chars.len() {
-                spans.push(QuoteSpan {
-                    start_char: first_non_space + 1,
-                    end_char: chars.len(),
-                    text: chars[first_non_space + 1..].iter().collect(),
-                    style: QuoteStyle::LeadingDash,
-                });
-            }
-        }
-    }
-
-    spans.sort_by_key(|span| (span.start_char, span.end_char));
-    spans.dedup_by_key(|span| (span.start_char, span.end_char));
-    spans
-}
-
-fn collect_paired_quotes(
-    chars: &[char],
-    open: char,
-    close: char,
-    style: QuoteStyle,
-    spans: &mut Vec<QuoteSpan>,
-) {
-    if open == close {
-        let positions = chars
-            .iter()
-            .enumerate()
-            .filter_map(|(index, ch)| (*ch == open).then_some(index))
-            .collect::<Vec<_>>();
-        for pair in positions.chunks_exact(2) {
-            let start = pair[0] + 1;
-            let end = pair[1];
-            if start <= end {
-                spans.push(QuoteSpan {
-                    start_char: start,
-                    end_char: end,
-                    text: chars[start..end].iter().collect(),
-                    style,
-                });
-            }
-        }
-        return;
-    }
-
-    let mut open_position = None;
-    for (index, ch) in chars.iter().copied().enumerate() {
-        if ch == open && open_position.is_none() {
-            open_position = Some(index);
-        } else if ch == close {
-            if let Some(open_index) = open_position.take() {
-                let start = open_index + 1;
-                let end = index;
-                if start <= end {
-                    spans.push(QuoteSpan {
-                        start_char: start,
-                        end_char: end,
-                        text: chars[start..end].iter().collect(),
-                        style,
-                    });
-                }
-            }
-        }
-    }
-}
-
-fn span_inside_any_quote(start: usize, end: usize, quotes: &[QuoteSpan]) -> bool {
-    quotes
-        .iter()
-        .any(|quote| start >= quote.start_char && end <= quote.end_char)
-}
-
-fn has_intervening_quote(
-    mention_start: usize,
-    mention_end: usize,
-    quote: &QuoteSpan,
-    all_quotes: &[QuoteSpan],
-) -> bool {
-    all_quotes.iter().any(|other| {
-        if other.start_char == quote.start_char && other.end_char == quote.end_char {
-            return false;
-        }
-        if mention_end <= quote.start_char {
-            other.start_char >= mention_end && other.end_char <= quote.start_char
-        } else if mention_start >= quote.end_char {
-            other.start_char >= quote.end_char && other.end_char <= mention_start
-        } else {
-            false
-        }
-    })
-}
-
-fn contains_hard_sentence_boundary(chars: &[char], start: usize, end: usize) -> bool {
-    if start >= end || start >= chars.len() {
-        return false;
-    }
-    chars[start..end.min(chars.len())]
-        .iter()
-        .any(|ch| matches!(*ch, '.' | '!' | '?' | '؟'))
-}
-
-fn has_nearby_pronoun_speech_cue(
+fn extract_pronoun_speech_cues(
     tokens: &[LexToken],
-    quote: &QuoteSpan,
     all_quotes: &[QuoteSpan],
-) -> bool {
-    let pronouns = ["he", "she", "they", "i", "we", "you"];
+) -> Vec<PronounSpeechCue> {
+    const PRONOUNS: [&str; 6] = ["he", "she", "they", "i", "we", "you"];
+    let mut cues = Vec::new();
+
     for (index, token) in tokens.iter().enumerate() {
-        if !pronouns.contains(&token.normalized.as_str())
+        if !PRONOUNS.contains(&token.normalized.as_str())
             || span_inside_any_quote(token.start_char, token.end_char, all_quotes)
         {
             continue;
         }
-        let Some(side) = mention_side(token.start_char, token.end_char, quote) else {
-            continue;
-        };
-        if side.distance > MAX_EXPLICIT_CUE_DISTANCE_CHARS {
-            continue;
-        }
-
-        let after = tokens
+        let pronoun_then_verb = tokens
             .get(index + 1)
             .is_some_and(|next| is_speech_verb(&next.normalized));
-        let before = index
+        let verb_then_pronoun = index
             .checked_sub(1)
             .and_then(|idx| tokens.get(idx))
             .is_some_and(|prev| is_speech_verb(&prev.normalized));
-        if after || (matches!(side.position, MentionPosition::After) && before) {
-            return true;
+        if pronoun_then_verb || verb_then_pronoun {
+            cues.push(PronounSpeechCue {
+                start_char: token.start_char,
+                end_char: token.end_char,
+                pronoun_then_verb,
+                verb_then_pronoun,
+            });
         }
     }
-    false
+
+    cues
+}
+
+fn has_nearby_pronoun_speech_cue(
+    cues: &[PronounSpeechCue],
+    quote: &QuoteSpan,
+    all_quotes: &[QuoteSpan],
+) -> bool {
+    cues.iter().any(|cue| {
+        let Some(side) = mention_side(cue.start_char, cue.end_char, quote) else {
+            return false;
+        };
+        if side.distance > MAX_EXPLICIT_CUE_DISTANCE_CHARS
+            || has_intervening_quote(cue.start_char, cue.end_char, quote, all_quotes)
+        {
+            return false;
+        }
+        match side.position {
+            MentionPosition::Before => cue.pronoun_then_verb,
+            MentionPosition::After => cue.pronoun_then_verb || cue.verb_then_pronoun,
+        }
+    })
 }
 
 fn is_speech_verb(value: &str) -> bool {
