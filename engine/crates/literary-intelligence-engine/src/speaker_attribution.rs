@@ -11,6 +11,7 @@ const MAX_CONTEXT_QUOTES: usize = 16;
 pub enum QuoteStyle {
     StraightDouble,
     CurlyDouble,
+    CurlySingle,
     Guillemets,
     LeadingDash,
 }
@@ -422,24 +423,46 @@ fn detect_quotes(text: &str) -> Vec<QuoteSpan> {
         &mut spans,
     );
     collect_paired_quotes(&chars, '“', '”', QuoteStyle::CurlyDouble, &mut spans);
+    collect_paired_quotes(&chars, '‘', '’', QuoteStyle::CurlySingle, &mut spans);
     collect_paired_quotes(&chars, '«', '»', QuoteStyle::Guillemets, &mut spans);
-
-    if spans.is_empty() {
-        if let Some(first_non_space) = chars.iter().position(|ch| !ch.is_whitespace()) {
-            if chars[first_non_space] == '—' && first_non_space + 1 < chars.len() {
-                spans.push(QuoteSpan {
-                    start_char: first_non_space + 1,
-                    end_char: chars.len(),
-                    text: chars[first_non_space + 1..].iter().collect(),
-                    style: QuoteStyle::LeadingDash,
-                });
-            }
-        }
-    }
+    collect_leading_dash_quotes(&chars, &mut spans);
 
     spans.sort_by_key(|span| (span.start_char, span.end_char));
     spans.dedup_by_key(|span| (span.start_char, span.end_char));
     spans
+}
+
+fn collect_leading_dash_quotes(chars: &[char], spans: &mut Vec<QuoteSpan>) {
+    let mut line_start = 0usize;
+    while line_start < chars.len() {
+        let line_end = chars[line_start..]
+            .iter()
+            .position(|ch| *ch == '\n')
+            .map(|offset| line_start + offset)
+            .unwrap_or(chars.len());
+
+        let first_non_space = (line_start..line_end)
+            .find(|index| !chars[*index].is_whitespace());
+        if let Some(dash_index) = first_non_space.filter(|index| chars[*index] == '—') {
+            let mut content_start = dash_index + 1;
+            while content_start < line_end && chars[content_start].is_whitespace() {
+                content_start += 1;
+            }
+            if content_start < line_end {
+                spans.push(QuoteSpan {
+                    start_char: content_start,
+                    end_char: line_end,
+                    text: chars[content_start..line_end].iter().collect(),
+                    style: QuoteStyle::LeadingDash,
+                });
+            }
+        }
+
+        if line_end == chars.len() {
+            break;
+        }
+        line_start = line_end + 1;
+    }
 }
 
 fn collect_paired_quotes(
@@ -828,6 +851,28 @@ mod tests {
             &bible(),
         );
         assert_eq!(result[0].speaker.as_deref(), Some("Reza"));
+    }
+
+    #[test]
+    fn curly_single_quotes_are_supported_without_treating_apostrophes_as_quotes() {
+        let result = attribute_speakers("p1", "‘Stay,’ Mina said. I don't know.", &bible());
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].speaker.as_deref(), Some("Mina"));
+        assert_eq!(result[0].quote.style, QuoteStyle::CurlySingle);
+    }
+
+    #[test]
+    fn multiple_leading_dash_lines_are_detected_without_speaker_guessing() {
+        let result = attribute_speakers(
+            "p1",
+            "— Stay here.\n— I will.",
+            &bible(),
+        );
+        assert_eq!(result.len(), 2);
+        assert!(result.iter().all(|item| item.speaker.is_none()));
+        assert!(result
+            .iter()
+            .all(|item| item.quote.style == QuoteStyle::LeadingDash));
     }
 
     #[test]
