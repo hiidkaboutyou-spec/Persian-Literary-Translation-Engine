@@ -5,8 +5,7 @@ use std::fs;
 use std::path::PathBuf;
 
 fn repo_file(relative: &str) -> String {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../../..");
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../..");
     fs::read_to_string(root.join(relative)).expect("fixture should be readable")
 }
 
@@ -25,10 +24,9 @@ fn reference_submission_passes_all_deterministic_anchors() {
     let corpus =
         LiteraryEvaluationCorpus::from_json(&repo_file("benchmarks/phase21/corpus-v1.json"))
             .unwrap();
-    let submission = CandidateSubmission::from_json(&repo_file(
-        "benchmarks/phase21/reference-submission.json",
-    ))
-    .unwrap();
+    let submission =
+        CandidateSubmission::from_json(&repo_file("benchmarks/phase21/reference-submission.json"))
+            .unwrap();
     let report = evaluate_submission(&corpus, &submission).unwrap();
     assert_eq!(report.anchor_passed, report.anchor_total);
     assert_eq!(report.anchor_pass_rate, 1.0);
@@ -39,14 +37,12 @@ fn contrastively_degraded_submission_scores_below_reference() {
     let corpus =
         LiteraryEvaluationCorpus::from_json(&repo_file("benchmarks/phase21/corpus-v1.json"))
             .unwrap();
-    let good = CandidateSubmission::from_json(&repo_file(
-        "benchmarks/phase21/reference-submission.json",
-    ))
-    .unwrap();
-    let bad = CandidateSubmission::from_json(&repo_file(
-        "benchmarks/phase21/degraded-submission.json",
-    ))
-    .unwrap();
+    let good =
+        CandidateSubmission::from_json(&repo_file("benchmarks/phase21/reference-submission.json"))
+            .unwrap();
+    let bad =
+        CandidateSubmission::from_json(&repo_file("benchmarks/phase21/degraded-submission.json"))
+            .unwrap();
     let good_report = evaluate_submission(&corpus, &good).unwrap();
     let bad_report = evaluate_submission(&corpus, &bad).unwrap();
     assert!(good_report.anchor_pass_rate > bad_report.anchor_pass_rate);
