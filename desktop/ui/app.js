@@ -631,8 +631,13 @@ function renderCommandResults(query = "") {
     );
     button.append(icon, copy, textNode("span", command.shortcut || "", "command-shortcut"));
     button.addEventListener("mouseenter", () => {
+      if (state.commandIndex === index) return;
       state.commandIndex = index;
-      renderCommandResults($("command-search").value);
+      results.querySelectorAll(".command-item").forEach((item, itemIndex) => {
+        const active = itemIndex === index;
+        item.classList.toggle("active", active);
+        item.setAttribute("aria-selected", String(active));
+      });
     });
     button.addEventListener("click", () => runPaletteCommand(command));
     results.append(button);
@@ -644,13 +649,18 @@ function openCommandPalette() {
   state.commandIndex = 0;
   $("command-search").value = "";
   renderCommandResults("");
-  if (!dialog.open) dialog.showModal();
+  if (!dialog.open) {
+    if (typeof dialog.showModal === "function") dialog.showModal();
+    else dialog.setAttribute("open", "");
+  }
   window.setTimeout(() => $("command-search").focus(), 0);
 }
 
 function closeCommandPalette() {
   const dialog = $("command-palette");
-  if (dialog.open) dialog.close();
+  if (!dialog.open) return;
+  if (typeof dialog.close === "function") dialog.close();
+  else dialog.removeAttribute("open");
 }
 
 function runPaletteCommand(command) {
