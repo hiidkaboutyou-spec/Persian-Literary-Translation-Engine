@@ -6,26 +6,58 @@
   <title>Persian Literary Translation Engine</title>
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body data-theme="system">
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
+  <div class="paper-grid" aria-hidden="true"></div>
   <div class="app-shell">
-    <aside class="sidebar">
+    <aside class="sidebar" aria-label="Workspace navigation">
       <div class="brand">
-        <span class="brand-mark">PL</span>
-        <div>
+        <span class="brand-mark" aria-hidden="true"><span class="brand-page left"></span><span class="brand-page right"></span><span class="brand-spark">✦</span></span>
+        <div class="brand-copy">
           <strong>Literary Engine</strong>
           <small>English → Persian</small>
         </div>
       </div>
+
+      <button id="command-trigger" class="command-trigger" type="button" aria-label="Open command palette">
+        <span class="command-trigger-label"><span class="search-glyph" aria-hidden="true">⌕</span> Search commands</span>
+        <kbd>⌘K</kbd>
+      </button>
+
       <nav id="nav">
-        <button class="nav-item active" data-view="home">Project</button>
-        <button class="nav-item" data-view="workflow">Workflow</button>
-        <button class="nav-item" data-view="review">Intelligence Review</button>
-        <button class="nav-item" data-view="canon">Canon</button>
-        <button class="nav-item" data-view="editor">Translation Editor</button>
-        <button class="nav-item" data-view="literary">Literary Review</button>
-        <button class="nav-item" data-view="history">History</button>
-        <button class="nav-item" data-view="provider">Provider</button>
+        <div class="nav-group">
+          <span class="nav-group-label">Workspace</span>
+          <button class="nav-item active" data-view="home" data-icon="⌂"><span>Project</span><kbd>⌘1</kbd></button>
+          <button class="nav-item" data-view="workflow" data-icon="↝"><span>Workflow</span><kbd>⌘2</kbd></button>
+          <button class="nav-item" data-view="editor" data-icon="✎"><span>Translation Editor</span><kbd>⌘3</kbd></button>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-label">Literary intelligence</span>
+          <button class="nav-item" data-view="review" data-icon="◇"><span>Intelligence Review</span><kbd>⌘4</kbd></button>
+          <button class="nav-item" data-view="canon" data-icon="☷"><span>Canon</span><kbd>⌘5</kbd></button>
+          <button class="nav-item" data-view="literary" data-icon="✦"><span>Literary Review</span><kbd>⌘6</kbd></button>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-label">System</span>
+          <button class="nav-item" data-view="history" data-icon="↺"><span>History</span><kbd>⌘7</kbd></button>
+          <button class="nav-item" data-view="provider" data-icon="⌁"><span>Provider</span><kbd>⌘8</kbd></button>
+        </div>
       </nav>
+
+      <div class="theme-panel" aria-label="Appearance">
+        <div class="theme-panel-heading">
+          <div><small>Appearance</small><strong id="theme-name">System</strong></div>
+          <span class="theme-hint">session</span>
+        </div>
+        <div class="theme-swatches" role="group" aria-label="Theme">
+          <button class="theme-swatch active" type="button" data-theme-value="system" aria-label="System theme" aria-pressed="true"><span class="swatch-system"></span></button>
+          <button class="theme-swatch" type="button" data-theme-value="midnight" aria-label="Midnight Ink theme" aria-pressed="false"><span class="swatch-midnight"></span></button>
+          <button class="theme-swatch" type="button" data-theme-value="paper" aria-label="Rose Paper theme" aria-pressed="false"><span class="swatch-paper"></span></button>
+          <button class="theme-swatch" type="button" data-theme-value="sage" aria-label="Sage Manuscript theme" aria-pressed="false"><span class="swatch-sage"></span></button>
+        </div>
+      </div>
+
       <div class="project-chip">
         <small>Current project</small>
         <span id="current-project">None</span>
@@ -34,16 +66,38 @@
 
     <main>
       <header class="topbar">
-        <div>
+        <div class="title-block">
+          <span id="view-eyebrow" class="eyebrow">Workspace</span>
           <h1 id="view-title">Project</h1>
           <p id="view-subtitle">Open or create a translation project.</p>
         </div>
-        <div id="status-pill" class="status-pill muted">No project</div>
+        <div class="topbar-actions">
+          <button id="top-command-trigger" class="top-command-trigger" type="button"><span aria-hidden="true">⌕</span><span>Commands</span><kbd>⌘K</kbd></button>
+          <div id="status-pill" class="status-pill muted">No project</div>
+        </div>
       </header>
 
       <div id="notice" class="notice hidden" role="status"></div>
 
       <section class="view active" data-view-panel="home">
+        <article class="workspace-hero">
+          <div class="hero-copy">
+            <span class="hero-kicker">Long-form literary workspace</span>
+            <h2>Protect the story.<br><em>Let the Persian feel authored.</em></h2>
+            <p>One workspace for manuscript intelligence, canon, translation, human review and publication — with every automated suggestion kept inspectable.</p>
+            <div class="hero-badges" aria-label="Workspace principles">
+              <span>Context-aware</span><span>Human-gated</span><span>Publication-safe</span>
+            </div>
+          </div>
+          <div class="hero-art" aria-hidden="true">
+            <div class="folio folio-back"></div>
+            <div class="folio folio-mid"></div>
+            <div class="folio folio-front"><span>«</span><i></i><i></i><i></i><strong>فصل</strong></div>
+            <div class="hero-orbit orbit-a"></div>
+            <div class="hero-orbit orbit-b"></div>
+          </div>
+        </article>
+
         <div class="grid two">
           <article class="card">
             <h2>Open project</h2>
@@ -176,7 +230,8 @@
         <article class="card">
           <div class="card-heading">
             <div><h2>Translation editor</h2><p>Manual edits are persisted as revisions and mark quality evidence stale.</p></div>
-            <div class="button-row">
+            <div class="button-row editor-actions">
+              <button id="editor-focus-toggle" type="button" aria-pressed="false">Focus Persian</button>
               <label class="inline-label">Chapter <input id="editor-chapter-index" type="number" min="1" value="1"></label>
               <button id="load-chapter" disabled>Load</button>
             </div>
@@ -238,6 +293,18 @@
       </section>
     </main>
   </div>
+  <dialog id="command-palette" class="command-palette" aria-label="Command palette">
+    <div class="palette-shell">
+      <div class="palette-search-row">
+        <span class="palette-search-icon" aria-hidden="true">⌕</span>
+        <input id="command-search" type="search" placeholder="Search workspace actions…" autocomplete="off" spellcheck="false" aria-label="Search commands">
+        <kbd>esc</kbd>
+      </div>
+      <div id="command-results" class="command-results" role="listbox" aria-label="Commands"></div>
+      <div class="palette-footer"><span><kbd>↑</kbd><kbd>↓</kbd> navigate</span><span><kbd>↵</kbd> run</span><span>themes + workspace actions</span></div>
+    </div>
+  </dialog>
+
   <script src="app.js"></script>
 </body>
 </html>
