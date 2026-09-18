@@ -1,6 +1,6 @@
 # Phase 21 Research — Literary Evaluation Corpus & Benchmarking
 
-Status: implementation branch `phase-21-literary-evaluation-benchmarking`; not canonical until PR merge and post-merge verification.
+Status: canonical on `main`. PR #100 merged at `0e4b8ebf1bdb4dd7c931e3ba44cc64f23358d4b1`.
 
 Research snapshot: 2026-09-18.
 
@@ -231,6 +231,18 @@ Before Phase 21 can merge:
 9. Phase 18/19/20 and normal Rust/security gates remain green.
 10. No benchmark score may be documented as human approval.
 
-## Completion rule
+## Completion evidence
 
-Do not call Phase 21 canonical until its final PR head passes the permanent Phase 21 workflow plus normal repository gates, is merged to `main`, and the canonical status/PMC handoff is recorded.
+Phase 21 is canonical.
+
+- Final PR head: `d543b0448bdb8c886e58c69b719183daf07a66bc`.
+- Implementation merge commit: `0e4b8ebf1bdb4dd7c931e3ba44cc64f23358d4b1`.
+- Dedicated Phase 21 run `35325302381`: success. Native benchmark, `reference-metric`, and `macos-arm64` all passed.
+- Rust CI run `35325302426`: success, including workspace tests, audit, release CLI build, and CLI smoke.
+- Security run `35325302301`: success.
+- Phase 18 run `35325302478`, Phase 19 run `35325302325`, Phase 20 run `35325302400`, and Project Memory Tooling run `35325302257`: success.
+- The initial Apple Silicon fixture-path defect was detected by CI, corrected from a four-level to three-level repository-root traversal, and the replacement head passed Apple Silicon compile/test plus SacreBLEU installation.
+- PR #100 had no unresolved review threads at merge and was merged with an expected-head SHA guard.
+- The permanent Phase 21 workflow is configured to run on `main` pushes.
+
+Next numbered phase: **Phase 22 — Product Surface & Distribution Hardening**.
