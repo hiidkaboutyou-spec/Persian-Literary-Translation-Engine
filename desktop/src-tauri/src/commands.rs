@@ -439,13 +439,7 @@ pub fn accept_literary_review_revision(
     let project = load_project(project_root).map_err(payload)?;
     let mut sink = VecEventSink::new();
     ApplicationService
-        .accept_literary_review_revision(
-            &project,
-            chapter_index,
-            &finding_id,
-            &reviewer,
-            &mut sink,
-        )
+        .accept_literary_review_revision(&project, chapter_index, &finding_id, &reviewer, &mut sink)
         .map_err(payload)
 }
 
