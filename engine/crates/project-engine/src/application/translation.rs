@@ -1151,7 +1151,6 @@ fn load_translation_memory() -> Result<TranslationMemory, ApplicationError> {
     }
 }
 
-
 #[cfg(test)]
 mod phase22_provider_tests {
     use super::resolved_openai_model;
