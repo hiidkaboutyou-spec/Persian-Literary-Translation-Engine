@@ -84,7 +84,6 @@ struct ExplicitCandidate {
     mention: String,
     alias: bool,
     subject_pattern: bool,
-    distance: usize,
     evidence: String,
 }
 
@@ -98,6 +97,7 @@ pub fn attribute_speakers(
         return Vec::new();
     }
 
+    let chars = text.chars().collect::<Vec<_>>();
     let tokens = lexical_tokens(text);
     let patterns = character_patterns(characters);
     let all_quotes = quotes.clone();
@@ -110,6 +110,7 @@ pub fn attribute_speakers(
                 index,
                 &quote,
                 &all_quotes,
+                &chars,
                 &tokens,
                 &patterns,
             )
@@ -153,6 +154,7 @@ fn attribute_one_quote(
     quote_index: usize,
     quote: &QuoteSpan,
     all_quotes: &[QuoteSpan],
+    chars: &[char],
     tokens: &[LexToken],
     patterns: &[NamePattern],
 ) -> SpeakerAttribution {
@@ -179,7 +181,9 @@ fn attribute_one_quote(
             let Some(side) = mention_side(mention_start, mention_end, quote) else {
                 continue;
             };
-            if side.distance > MAX_EXPLICIT_CUE_DISTANCE_CHARS {
+            if side.distance > MAX_EXPLICIT_CUE_DISTANCE_CHARS
+                || has_intervening_quote(mention_start, mention_end, quote, all_quotes)
+            {
                 continue;
             }
 
@@ -196,7 +200,12 @@ fn attribute_one_quote(
             // accepted. After a quote, both common literary tag orders are
             // allowed, but "name + verb" gets priority if both appear.
             let accepted = match side.position {
-                MentionPosition::Before => name_then_verb,
+                MentionPosition::Before => {
+                    name_then_verb
+                        && tokens.get(end).is_some_and(|verb| {
+                            !contains_hard_sentence_boundary(chars, verb.end_char, quote.start_char)
+                        })
+                }
                 MentionPosition::After => name_then_verb || verb_then_name,
             };
             if !accepted {
@@ -225,7 +234,6 @@ fn attribute_one_quote(
                 mention: pattern.display.clone(),
                 alias: pattern.alias,
                 subject_pattern,
-                distance: side.distance,
                 evidence,
             });
         }
@@ -236,10 +244,6 @@ fn attribute_one_quote(
     if candidates.iter().any(|candidate| candidate.subject_pattern) {
         candidates.retain(|candidate| candidate.subject_pattern);
     }
-    if let Some(min_distance) = candidates.iter().map(|candidate| candidate.distance).min() {
-        candidates.retain(|candidate| candidate.distance == min_distance);
-    }
-
     let mut by_character = BTreeMap::<String, ExplicitCandidate>::new();
     for candidate in candidates {
         by_character
@@ -503,6 +507,35 @@ fn span_inside_any_quote(start: usize, end: usize, quotes: &[QuoteSpan]) -> bool
         .any(|quote| start >= quote.start_char && end <= quote.end_char)
 }
 
+fn has_intervening_quote(
+    mention_start: usize,
+    mention_end: usize,
+    quote: &QuoteSpan,
+    all_quotes: &[QuoteSpan],
+) -> bool {
+    all_quotes.iter().any(|other| {
+        if other.start_char == quote.start_char && other.end_char == quote.end_char {
+            return false;
+        }
+        if mention_end <= quote.start_char {
+            other.start_char >= mention_end && other.end_char <= quote.start_char
+        } else if mention_start >= quote.end_char {
+            other.start_char >= quote.end_char && other.end_char <= mention_start
+        } else {
+            false
+        }
+    })
+}
+
+fn contains_hard_sentence_boundary(chars: &[char], start: usize, end: usize) -> bool {
+    if start >= end || start >= chars.len() {
+        return false;
+    }
+    chars[start..end.min(chars.len())]
+        .iter()
+        .any(|ch| matches!(*ch, '.' | '!' | '?' | '؟'))
+}
+
 fn has_nearby_pronoun_speech_cue(
     tokens: &[LexToken],
     quote: &QuoteSpan,
@@ -676,7 +709,7 @@ mod tests {
     }
 
     #[test]
-    fn nearest_explicit_tag_wins_across_multiple_quotes() {
+    fn quote_local_boundaries_isolate_multiple_quotes() {
         let result = attribute_speakers(
             "p1",
             "\"Stay,\" Mina said. \"No,\" Reza replied.",
@@ -685,6 +718,30 @@ mod tests {
         assert_eq!(result.len(), 2);
         assert_eq!(result[0].speaker.as_deref(), Some("Mina"));
         assert_eq!(result[1].speaker.as_deref(), Some("Reza"));
+    }
+
+    #[test]
+    fn conflicting_local_explicit_speakers_fail_closed() {
+        let result = attribute_speakers(
+            "p1",
+            "Mina said, Reza said, \"Stay.\"",
+            &bible(),
+        );
+        assert!(result[0].speaker.is_none());
+        assert_eq!(
+            result[0].method,
+            AttributionMethod::AmbiguousExplicitCandidates
+        );
+    }
+
+    #[test]
+    fn pre_quote_tag_across_sentence_boundary_is_not_reused() {
+        let result = attribute_speakers(
+            "p1",
+            "Mina said. \"No,\" Reza replied.",
+            &bible(),
+        );
+        assert_eq!(result[0].speaker.as_deref(), Some("Reza"));
     }
 
     #[test]
