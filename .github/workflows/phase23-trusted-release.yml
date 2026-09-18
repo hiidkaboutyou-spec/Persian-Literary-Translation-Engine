@@ -1,0 +1,188 @@
+name: Phase 23 Trusted Release
+
+on:
+  push:
+    branches:
+      - main
+      - phase-23-trusted-release-supply-chain
+    paths:
+      - 'engine/**'
+      - 'desktop/**'
+      - 'tools/agent-skills/ip-as-logo/**'
+      - '.github/workflows/release.yml'
+      - '.github/workflows/phase23-trusted-release.yml'
+      - 'docs/PHASE_23_RESEARCH.md'
+      - 'docs/IMPLEMENTATION_STATUS.md'
+      - 'docs/IMPLEMENTATION_ROADMAP.md'
+      - 'docs/PMC_BOOTSTRAP.md'
+      - 'docs/EXTERNAL_INTEGRATIONS.md'
+      - 'AGENTS.md'
+  pull_request:
+    paths:
+      - 'engine/**'
+      - 'desktop/**'
+      - 'tools/agent-skills/ip-as-logo/**'
+      - '.github/workflows/release.yml'
+      - '.github/workflows/phase23-trusted-release.yml'
+      - 'docs/PHASE_23_RESEARCH.md'
+      - 'docs/IMPLEMENTATION_STATUS.md'
+      - 'docs/IMPLEMENTATION_ROADMAP.md'
+      - 'docs/PMC_BOOTSTRAP.md'
+      - 'docs/EXTERNAL_INTEGRATIONS.md'
+      - 'AGENTS.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase23-trusted-release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release-contract:
+    name: Release contract and vendored skill
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Verify committed engine dependency graph
+        working-directory: engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f Cargo.lock
+          cargo metadata --locked --format-version 1 --no-deps > /dev/null
+
+      - name: Verify release workflow is lock-safe
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -n 'cargo generate-lockfile' .github/workflows/release.yml
+          grep -q 'cargo metadata --locked' .github/workflows/release.yml
+          grep -q 'cargo-cyclonedx --version 0.5.9 --locked' .github/workflows/release.yml
+          grep -q 'actions/attest@v4' .github/workflows/release.yml
+
+      - name: Verify pinned ip-as-logo provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object tools/agent-skills/ip-as-logo/SKILL.md)" = "391a7dc3214a34a4bc2c5e5c77ba40cef5709c19"
+          test "$(git hash-object tools/agent-skills/ip-as-logo/LICENSE)" = "234cc2396ef9ed37c4ea1d8c6026ed2e3b6001f6"
+          test -f tools/agent-skills/ip-as-logo/SOURCE.md
+          ! find tools/agent-skills/ip-as-logo -type f -perm /111 -print -quit | grep -q .
+
+      - name: Install pinned CycloneDX generator
+        run: cargo install cargo-cyclonedx --version 0.5.9 --locked
+
+      - name: Generate CLI SBOM smoke artifact
+        working-directory: engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          cargo cyclonedx \
+            --manifest-path cli/Cargo.toml \
+            --format json \
+            --describe binaries \
+            --override-filename phase23-cli-smoke.cdx.json \
+            --license-strict \
+            --spec-version 1.5
+          test -s cli/phase23-cli-smoke.cdx.json
+
+      - name: Upload CLI SBOM smoke artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase23-cli-sbom
+          path: engine/cli/phase23-cli-smoke.cdx.json
+          if-no-files-found: error
+          retention-days: 7
+
+  desktop-integrity:
+    name: Desktop integrity macOS arm64
+    runs-on: macos-15
+    timeout-minutes: 50
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Verify Apple Silicon
+        shell: bash
+        run: test "$(uname -m)" = arm64
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Verify committed desktop dependency graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f desktop/src-tauri/Cargo.lock
+          cargo metadata --locked --manifest-path desktop/src-tauri/Cargo.toml --format-version 1 --no-deps > /dev/null
+
+      - name: Verify updater remains fail-closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -q 'tauri-plugin-updater' desktop/src-tauri/Cargo.toml
+          ! grep -q '"createUpdaterArtifacts"[[:space:]]*:[[:space:]]*true' desktop/src-tauri/tauri.conf.json
+          ! grep -q 'dangerousInsecureTransportProtocol' desktop/src-tauri/tauri.conf.json
+
+      - name: Install pinned CycloneDX generator
+        run: cargo install cargo-cyclonedx --version 0.5.9 --locked
+
+      - name: Generate desktop SBOM
+        shell: bash
+        run: |
+          set -euo pipefail
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          cargo cyclonedx \
+            --manifest-path desktop/src-tauri/Cargo.toml \
+            --format json \
+            --describe binaries \
+            --target aarch64-apple-darwin \
+            --override-filename phase23-desktop.cdx.json \
+            --license-strict \
+            --spec-version 1.5
+          test -s desktop/src-tauri/phase23-desktop.cdx.json
+
+      - name: Install pinned Tauri CLI
+        run: cargo install tauri-cli --version 2.11.4 --locked
+
+      - name: Build unsigned validation app
+        working-directory: desktop/src-tauri
+        env:
+          APPLE_SIGNING_IDENTITY: '-'
+        run: cargo tauri build --bundles app -- --locked
+
+      - name: Create integrity manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP_DIR='desktop/src-tauri/target/release/bundle/macos/Persian Literary Translation Engine.app'
+          test -d "$APP_DIR"
+          APP_BIN="$(find "$APP_DIR/Contents/MacOS" -maxdepth 1 -type f | head -n 1)"
+          test -n "$APP_BIN"
+          {
+            printf 'commit %s\n' "$GITHUB_SHA"
+            shasum -a 256 "$APP_BIN"
+            shasum -a 256 desktop/src-tauri/Cargo.lock
+            shasum -a 256 desktop/src-tauri/phase23-desktop.cdx.json
+          } > desktop/src-tauri/phase23-integrity-manifest.txt
+
+      - name: Upload desktop integrity evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase23-desktop-integrity
+          path: |
+            desktop/src-tauri/phase23-desktop.cdx.json
+            desktop/src-tauri/phase23-integrity-manifest.txt
+          if-no-files-found: error
+          retention-days: 7
