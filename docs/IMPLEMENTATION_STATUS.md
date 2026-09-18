@@ -189,7 +189,7 @@ Implemented:
 - canonical character/alias identity reused from `CharacterBible`; no new canon owner;
 - explicit quote-speaker mappings added to Context Packet v2 as deterministic evidence;
 - pronoun-only and implicit conversational cases remain unresolved rather than guessed;
-- project-owned synthetic regression corpus covers explicit names, aliases, vocatives, ask-object disambiguation, guillemets, dash dialogue and multi-quote locality;
+- project-owned synthetic regression corpus covers explicit names, aliases, vocatives, pre/post-quote ask-object disambiguation, conflicting local cues, guillemets, dash dialogue and multi-quote locality;
 - dedicated Linux/Apple Silicon Phase-25 validation;
 - zero new external runtime/model dependencies.
 
@@ -201,4 +201,4 @@ The canonical CLI and desktop application remain operationally independent. Phas
 
 ## Current Handoff
 
-Finish Phase-23 branch validation, review any CI failures, confirm release/SBOM workflow syntax across supported targets, then open/merge the Phase-23 PR only when the exact final head is green. Do not enable updater or claim a notarized desktop release without real external credentials.
+Finish Phase-25 exact-head validation, review any remaining CI failures, and merge PR #106 only when the dedicated Phase-25 gate plus Rust CI, Security, Phases 18–24, Phase 22 Desktop, Phase 23 Trusted Release, and Project Memory Tooling are green. After merge, record the exact final head, merge SHA, successful run IDs, and the next research handoff before starting another numbered phase.
