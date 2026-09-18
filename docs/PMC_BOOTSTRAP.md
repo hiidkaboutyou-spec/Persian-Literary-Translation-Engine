@@ -167,13 +167,33 @@ Durable Phase 21 decisions:
 
 Detailed rationale: `docs/PHASE_21_RESEARCH.md`.
 
+## Phase 22 Active Decisions — Desktop Product
+
+Branch: `phase-22-product-surface-distribution`; PR #102.
+
+Durable decisions:
+
+1. **Tauri 2 selected** — use the reviewed stable 2.11 line because it matches the existing Rust `ApplicationService` facade, uses system WebViews, and has official macOS bundling/security support. Do not jump to an open 2.12 milestone or Tauri 3 alpha without a new review.
+2. **UI never owns domain orchestration** — translation, analysis, review, canon, persistence, locking, progress, recovery and export stay in `ApplicationService`.
+3. **Desktop dependency isolation** — `desktop/src-tauri` stays outside the `engine/` Cargo workspace. Tauri/WebView dependencies must never become hidden requirements for the core CLI/runtime.
+4. **Static local frontend** — no React/Vue/Svelte/Vite dependency is justified yet. Local HTML/CSS/JS is sufficient for rendering application DTOs and sending bounded commands.
+5. **No remote content** — no CDN, remote script/font/page or manuscript `innerHTML`. CSP remains restrictive and manuscript text is assigned as text/textarea content.
+6. **Filesystem authority stays Rust-side** — official dialog plugin selects files/folders; do not grant a general JavaScript filesystem API merely for convenience.
+7. **Secrets are session-only** — OpenAI key may be installed in the desktop process environment for the active session, but is never stored in project JSON, frontend storage, Git, PMC or projectmem.
+8. **Explicit model selection must be truthful** — `TranslationConfig.model` now has precedence over `OPENAI_MODEL`; UI configuration must never claim a selection the provider path ignores.
+9. **Updater deferred** — do not enable Tauri updater until update artifacts are signed and a trusted endpoint is configured/tested.
+10. **macOS release gate** — unsigned/ad-hoc bundle CI proves buildability; public direct distribution still requires Apple code signing/notarization credentials external to the repository.
+11. **Independent lockfile required** — Phase 22 cannot become canonical until the validated `desktop/src-tauri/Cargo.lock` is committed and subsequent builds are locked.
+
+Detailed rationale: `docs/PHASE_22_RESEARCH.md`.
+
 ## Current Roadmap
 
 - Phase 18 — Context Packet v2 & Selective Long-Novel Retrieval — canonical/merged.
 - Phase 19 — Literary Fidelity & Persian Naturalness Review Stack — canonical/merged.
 - Phase 20 — Publication-Grade EPUB Round Trip — canonical/merged (PR #98; `1611cd731160c122baa68c9e80c1d4faeb7dfcfc`).
 - Phase 21 — Literary Evaluation Corpus & Benchmarking — canonical/merged (PR #100; `0e4b8ebf1bdb4dd7c931e3ba44cc64f23358d4b1`).
-- Phase 22 — Product Surface & Distribution Hardening — next/current numbered phase.
+- Phase 22 — Product Surface & Distribution Hardening — active branch/PR #102; not canonical until desktop lockfile/final gates/merge.
 
 Always finish/verify the current numbered phase before starting the next numbered phase. Supporting tooling may land between phases only when runtime defaults remain intact, ownership/failure boundaries are explicit, and validation passes.
 
@@ -200,7 +220,8 @@ Before adding any GitHub repository/package/tool:
 - `AGENTS.md` — engineering/agent constraints
 - `docs/IMPLEMENTATION_STATUS.md` — implemented capabilities/current branch state
 - `docs/IMPLEMENTATION_ROADMAP.md` — roadmap
-- `docs/PHASE_21_RESEARCH.md` — current benchmark/evaluation research/decisions
+- `docs/PHASE_22_RESEARCH.md` — current product/distribution research/decisions
+- `docs/PHASE_21_RESEARCH.md` — benchmark/evaluation research/decisions
 - `docs/PHASE_20_RESEARCH.md` — publication research/decisions
 - `docs/PHASE_19_RESEARCH.md` — literary-review dependency/review research
 - `docs/ENGINEERING_DECISIONS.md` — durable engineering decisions

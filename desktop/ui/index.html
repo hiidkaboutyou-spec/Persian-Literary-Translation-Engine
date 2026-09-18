@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Persian Literary Translation Engine</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark">PL</span>
+        <div>
+          <strong>Literary Engine</strong>
+          <small>English → Persian</small>
+        </div>
+      </div>
+      <nav id="nav">
+        <button class="nav-item active" data-view="home">Project</button>
+        <button class="nav-item" data-view="workflow">Workflow</button>
+        <button class="nav-item" data-view="review">Intelligence Review</button>
+        <button class="nav-item" data-view="canon">Canon</button>
+        <button class="nav-item" data-view="editor">Translation Editor</button>
+        <button class="nav-item" data-view="literary">Literary Review</button>
+        <button class="nav-item" data-view="history">History</button>
+        <button class="nav-item" data-view="provider">Provider</button>
+      </nav>
+      <div class="project-chip">
+        <small>Current project</small>
+        <span id="current-project">None</span>
+      </div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <div>
+          <h1 id="view-title">Project</h1>
+          <p id="view-subtitle">Open or create a translation project.</p>
+        </div>
+        <div id="status-pill" class="status-pill muted">No project</div>
+      </header>
+
+      <div id="notice" class="notice hidden" role="status"></div>
+
+      <section class="view active" data-view-panel="home">
+        <div class="grid two">
+          <article class="card">
+            <h2>Open project</h2>
+            <p>Choose an existing project folder containing <code>project.json</code>.</p>
+            <div class="button-row">
+              <button id="pick-open-root" class="primary">Choose folder</button>
+              <button id="refresh-project" disabled>Refresh</button>
+            </div>
+          </article>
+          <article class="card">
+            <h2>Create project</h2>
+            <label>Project name<input id="new-project-name" value="Untitled Translation"></label>
+            <div class="button-row">
+              <button id="create-project" class="primary">Choose folder & create</button>
+            </div>
+          </article>
+        </div>
+
+        <article class="card">
+          <div class="card-heading">
+            <div><h2>Project snapshot</h2><p>Derived from the application layer; no UI-side state guessing.</p></div>
+            <button id="verify-source" disabled>Verify source</button>
+          </div>
+          <div id="snapshot-grid" class="snapshot-grid empty-state">Open a project to see its state.</div>
+          <div id="warnings" class="warnings"></div>
+        </article>
+
+        <article class="card">
+          <h2>Source book</h2>
+          <div class="button-row">
+            <button id="pick-import-source" disabled>Choose source file</button>
+            <span id="source-path" class="path-label">No file selected</span>
+            <button id="import-source" class="primary" disabled>Import</button>
+          </div>
+          <p class="help">TXT, Markdown, DOCX, EPUB and text-based PDF are supported. The project keeps its own immutable source copy.</p>
+        </article>
+      </section>
+
+      <section class="view" data-view-panel="workflow">
+        <div class="grid two">
+          <article class="card">
+            <h2>Analysis</h2>
+            <div class="stack">
+              <button id="run-analysis" class="primary" disabled>Run deterministic analysis</button>
+              <div class="inline-fields">
+                <label>Advanced provider
+                  <select id="advanced-provider"><option value="mock">Mock (offline)</option><option value="openai">OpenAI</option></select>
+                </label>
+                <label>Model<input id="advanced-model" placeholder="optional"></label>
+                <label>Max units<input id="advanced-max" type="number" min="1" placeholder="all"></label>
+              </div>
+              <button id="run-advanced" disabled>Run advanced analysis</button>
+            </div>
+          </article>
+
+          <article class="card">
+            <h2>Translation</h2>
+            <div class="inline-fields">
+              <label>Provider
+                <select id="translation-provider"><option value="auto">Auto</option><option value="echo">Echo (offline)</option><option value="openai">OpenAI</option></select>
+              </label>
+              <label>Model<input id="translation-model" placeholder="optional"></label>
+              <label>Target<input id="target-language" value="fa"></label>
+              <label>Max chapters<input id="translation-max" type="number" min="1" placeholder="all"></label>
+            </div>
+            <label>Style profile
+              <select id="style-profile"><option value="literary">Literary</option><option value="adult-intimacy">Adult intimacy fidelity</option></select>
+            </label>
+            <label class="check"><input id="adult-confirmed" type="checkbox"> I confirm every participant in sexual content is an adult.</label>
+            <div class="button-row">
+              <button id="start-translation" class="primary" disabled>Start</button>
+              <button id="resume-translation" disabled>Resume</button>
+              <button id="pause-translation" disabled>Request pause</button>
+            </div>
+            <div class="progress-wrap">
+              <div class="progress-track"><div id="progress-bar" class="progress-bar"></div></div>
+              <span id="progress-label">Not started</span>
+            </div>
+          </article>
+        </div>
+
+        <article class="card">
+          <h2>Publication</h2>
+          <div class="button-row">
+            <select id="export-format"><option value="docx">DOCX</option><option value="epub">EPUB round trip</option></select>
+            <button id="export-project" class="primary" disabled>Export</button>
+            <span id="export-result" class="path-label"></span>
+          </div>
+        </article>
+      </section>
+
+      <section class="view" data-view-panel="review">
+        <article class="card">
+          <div class="card-heading">
+            <div><h2>Intelligence review</h2><p>Human decisions remain explicit; the desktop surface never auto-promotes proposals.</p></div>
+            <div class="button-row">
+              <select id="review-status-filter"><option value="">All statuses</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="deferred">Deferred</option></select>
+              <button id="refresh-review" disabled>Refresh</button>
+            </div>
+          </div>
+          <label>Reviewer<input id="reviewer-name" value="desktop-user"></label>
+          <div id="review-list" class="list empty-state">Open a project to load review items.</div>
+        </article>
+      </section>
+
+      <section class="view" data-view-panel="canon">
+        <div class="grid two">
+          <article class="card">
+            <div class="card-heading"><h2>Characters</h2><button id="refresh-characters" disabled>Refresh</button></div>
+            <div id="character-list" class="list compact"></div>
+            <hr>
+            <label>Name<input id="character-name"></label>
+            <label>Voice notes<textarea id="character-voice"></textarea></label>
+            <label>Personality notes<textarea id="character-personality"></textarea></label>
+            <button id="save-character" class="primary" disabled>Save character</button>
+          </article>
+          <article class="card">
+            <div class="card-heading"><h2>Glossary</h2><button id="refresh-glossary" disabled>Refresh</button></div>
+            <div id="glossary-list" class="list compact"></div>
+            <hr>
+            <label>Source term<input id="glossary-source"></label>
+            <label>Preferred Persian<input id="glossary-target" dir="rtl"></label>
+            <label>Context<textarea id="glossary-context"></textarea></label>
+            <button id="save-glossary" class="primary" disabled>Save term</button>
+          </article>
+        </div>
+      </section>
+
+      <section class="view" data-view-panel="editor">
+        <article class="card">
+          <div class="card-heading">
+            <div><h2>Translation editor</h2><p>Manual edits are persisted as revisions and mark quality evidence stale.</p></div>
+            <div class="button-row">
+              <label class="inline-label">Chapter <input id="editor-chapter-index" type="number" min="1" value="1"></label>
+              <button id="load-chapter" disabled>Load</button>
+            </div>
+          </div>
+          <div id="chapter-meta"></div>
+          <div id="paragraph-editor" class="paragraph-editor empty-state">Load a translated chapter.</div>
+        </article>
+      </section>
+
+      <section class="view" data-view-panel="literary">
+        <article class="card">
+          <h2>Literary fidelity review</h2>
+          <div class="inline-fields">
+            <label>Provider
+              <select id="literary-provider"><option value="none">None (native only)</option><option value="mock">Mock</option><option value="openai">OpenAI</option></select>
+            </label>
+            <label>Model<input id="literary-model" placeholder="optional"></label>
+            <label>Max chapters<input id="literary-max" type="number" min="1" placeholder="all"></label>
+          </div>
+          <label class="check"><input id="semantic-alignment" type="checkbox" checked> Use semantic alignment when configured.</label>
+          <button id="run-literary-review" class="primary" disabled>Run literary review</button>
+          <hr>
+          <div class="button-row">
+            <label class="inline-label">Chapter <input id="literary-chapter-index" type="number" min="1" value="1"></label>
+            <button id="load-literary-review" disabled>Load evidence</button>
+          </div>
+          <pre id="literary-output" class="evidence">No review loaded.</pre>
+        </article>
+      </section>
+
+      <section class="view" data-view-panel="history">
+        <article class="card">
+          <div class="card-heading"><h2>Project history</h2><button id="refresh-history" disabled>Refresh</button></div>
+          <div id="history-list" class="list empty-state">Open a project to load history.</div>
+        </article>
+      </section>
+
+      <section class="view" data-view-panel="provider">
+        <article class="card narrow">
+          <h2>Provider session</h2>
+          <p>The API key is kept only in this app process for the current session. It is never written to the project or frontend storage.</p>
+          <label>OpenAI API key<input id="openai-key" type="password" autocomplete="off" spellcheck="false"></label>
+          <div class="button-row">
+            <button id="set-key" class="primary">Use for this session</button>
+            <button id="clear-key">Clear session key</button>
+          </div>
+          <hr>
+          <div class="inline-fields">
+            <label>Translation provider
+              <select id="provider-check-translation"><option value="auto">Auto</option><option value="echo">Echo</option><option value="openai">OpenAI</option></select>
+            </label>
+            <label>Analysis provider
+              <select id="provider-check-analysis"><option value="mock">Mock</option><option value="openai">OpenAI</option></select>
+            </label>
+          </div>
+          <button id="check-provider">Check configuration</button>
+          <p class="help">This checks local configuration presence. Authentication is still verified only when the provider performs a real request.</p>
+        </article>
+      </section>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

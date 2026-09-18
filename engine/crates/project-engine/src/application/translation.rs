@@ -114,25 +114,36 @@ fn chapter_stem(title: &str, index: usize) -> String {
 // Provider resolution (translation)
 // ---------------------------------------------------------------------------
 
+fn resolved_openai_model(configured: Option<&str>, env_model: Option<&str>) -> String {
+    configured
+        .map(str::trim)
+        .filter(|model| !model.is_empty())
+        .or_else(|| env_model.map(str::trim).filter(|model| !model.is_empty()))
+        .unwrap_or("gpt-5.6")
+        .to_string()
+}
+
+fn configured_openai_provider(
+    config: &TranslationConfig,
+) -> Result<Box<dyn TranslationProvider>, ApplicationError> {
+    let api_key = std::env::var("OPENAI_API_KEY").map_err(|_| {
+        ApplicationError::ProviderNotConfigured("OPENAI_API_KEY is not configured".to_string())
+    })?;
+    let env_model = std::env::var("OPENAI_MODEL").ok();
+    let model = resolved_openai_model(config.model.as_deref(), env_model.as_deref());
+    OpenAIProvider::new(api_key, model)
+        .map(|provider| Box::new(provider) as Box<dyn TranslationProvider>)
+        .map_err(|error| ApplicationError::ProviderAuthenticationFailed(error.to_string()))
+}
+
 fn configured_translation_provider(
     config: &TranslationConfig,
 ) -> Result<Box<dyn TranslationProvider>, ApplicationError> {
     let has_openai_key = std::env::var_os("OPENAI_API_KEY").is_some();
     match config.provider.as_str() {
         "echo" => Ok(Box::new(EchoProvider)),
-        "openai" => {
-            if !has_openai_key {
-                return Err(ApplicationError::ProviderNotConfigured(
-                    "OPENAI_API_KEY is not configured".to_string(),
-                ));
-            }
-            OpenAIProvider::from_env()
-                .map(|provider| Box::new(provider) as Box<dyn TranslationProvider>)
-                .map_err(|error| ApplicationError::ProviderAuthenticationFailed(error.to_string()))
-        }
-        "auto" if has_openai_key => OpenAIProvider::from_env()
-            .map(|provider| Box::new(provider) as Box<dyn TranslationProvider>)
-            .map_err(|error| ApplicationError::ProviderAuthenticationFailed(error.to_string())),
+        "openai" => configured_openai_provider(config),
+        "auto" if has_openai_key => configured_openai_provider(config),
         "auto" => Ok(Box::new(EchoProvider)),
         other => Err(ApplicationError::ProviderNotConfigured(format!(
             "unsupported translation provider '{other}'; expected auto, echo, or openai"
@@ -1137,5 +1148,27 @@ fn load_translation_memory() -> Result<TranslationMemory, ApplicationError> {
                 ))
             }),
         _ => Ok(TranslationMemory::new()),
+    }
+}
+
+#[cfg(test)]
+mod phase22_provider_tests {
+    use super::resolved_openai_model;
+
+    #[test]
+    fn explicit_model_overrides_environment_model() {
+        assert_eq!(
+            resolved_openai_model(Some("gpt-explicit"), Some("gpt-environment")),
+            "gpt-explicit"
+        );
+    }
+
+    #[test]
+    fn environment_model_is_fallback_only() {
+        assert_eq!(
+            resolved_openai_model(None, Some("gpt-environment")),
+            "gpt-environment"
+        );
+        assert_eq!(resolved_openai_model(Some("   "), None), "gpt-5.6");
     }
 }

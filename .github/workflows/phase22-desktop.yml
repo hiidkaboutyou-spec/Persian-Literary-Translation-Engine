@@ -1,0 +1,116 @@
+name: Phase 22 Desktop Product
+
+on:
+  push:
+    branches:
+      - phase-22-product-surface-distribution
+    paths:
+      - 'desktop/**'
+      - 'engine/crates/project-engine/**'
+      - 'docs/PHASE_22_RESEARCH.md'
+      - 'docs/IMPLEMENTATION_ROADMAP.md'
+      - 'docs/IMPLEMENTATION_STATUS.md'
+      - 'docs/PMC_BOOTSTRAP.md'
+      - 'docs/EXTERNAL_INTEGRATIONS.md'
+      - 'AGENTS.md'
+      - '.github/workflows/phase22-desktop.yml'
+  pull_request:
+    paths:
+      - 'desktop/**'
+      - 'engine/crates/project-engine/**'
+      - 'docs/PHASE_22_RESEARCH.md'
+      - 'docs/IMPLEMENTATION_ROADMAP.md'
+      - 'docs/IMPLEMENTATION_STATUS.md'
+      - 'docs/PMC_BOOTSTRAP.md'
+      - 'docs/EXTERNAL_INTEGRATIONS.md'
+      - 'AGENTS.md'
+      - '.github/workflows/phase22-desktop.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase22-desktop-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  desktop-macos-arm64:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Verify Apple Silicon
+        shell: bash
+        run: test "$(uname -m)" = arm64
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Verify committed desktop lockfile
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f desktop/src-tauri/Cargo.lock
+          cargo metadata --locked --manifest-path desktop/src-tauri/Cargo.toml --format-version 1 --no-deps > /dev/null
+
+      - name: Format desktop and affected application code
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo fmt --manifest-path desktop/src-tauri/Cargo.toml -- --check
+          (cd engine && cargo fmt --all -- --check)
+
+      - name: Clippy desktop
+        run: cargo clippy --locked --manifest-path desktop/src-tauri/Cargo.toml --all-targets -- -D warnings
+
+      - name: Test desktop backend
+        run: cargo test --locked --manifest-path desktop/src-tauri/Cargo.toml
+
+      - name: Test affected project engine
+        working-directory: engine
+        run: cargo test --locked -p project-engine
+
+      - name: Static UI security checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -R -nE 'https?://|<script[^>]+src=["'\'' ]*https?:|@import[[:space:]]+url\(' desktop/ui
+          ! grep -R -n 'innerHTML' desktop/ui
+          ! grep -R -nE 'localStorage|sessionStorage' desktop/ui
+          grep -q "connect-src ipc: http://ipc.localhost" desktop/src-tauri/tauri.conf.json
+
+      - name: Audit engine and desktop Rust graphs
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo install cargo-audit --locked 2>/dev/null || true
+          cargo audit --file engine/Cargo.lock
+          cargo audit --file desktop/src-tauri/Cargo.lock
+
+      - name: Install pinned Tauri CLI
+        run: cargo install tauri-cli --version 2.11.4 --locked
+
+      - name: Build unsigned macOS app bundle
+        working-directory: desktop/src-tauri
+        env:
+          APPLE_SIGNING_IDENTITY: '-'
+        run: cargo tauri build --bundles app -- --locked
+
+      - name: Verify app bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d desktop/src-tauri/target/release/bundle/macos/"Persian Literary Translation Engine.app"
+          test -f desktop/src-tauri/Cargo.lock
+
+      - name: Upload validated desktop lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase22-desktop-lockfile
+          path: desktop/src-tauri/Cargo.lock
+          if-no-files-found: error
+          retention-days: 7

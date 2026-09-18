@@ -75,6 +75,20 @@ This project is independent from every other repository. Do not import assumptio
 - Normal Rust build/test must not download external corpora or model weights. Optional benchmark sidecars stay isolated and failure-safe.
 - Do not add a generic Persian NLP stack until the Phase 21 benchmark demonstrates a concrete failure class that the current native/evidence stack cannot measure or diagnose.
 
+## Phase 22 desktop invariants
+
+- The desktop UI is an adapter over `project_engine::application::ApplicationService`. Never orchestrate engine crates, project JSON files, canon stores, translation checkpoints, or publication artifacts directly from JavaScript.
+- Keep `desktop/src-tauri` outside the core `engine/` Cargo workspace. Tauri/platform WebView dependencies must not become prerequisites for CLI/runtime builds.
+- Use only locally bundled frontend assets. Do not add remote pages, CDN scripts/fonts, or a production localhost web server.
+- Keep CSP restrictive and never render manuscript/provider/reviewer content with `innerHTML`.
+- File/folder selection belongs to the bounded Rust/native-dialog bridge. Do not grant general frontend filesystem access without a separately measured need/security review.
+- Provider credentials are session-only unless a future secrets-store phase explicitly designs encrypted OS-native persistence. Never write API keys to project files, frontend storage, logs, Git, PMC, or projectmem.
+- Long-running desktop commands must execute outside the UI event loop and call the existing synchronous application facade. Pause/resume/progress semantics remain application-owned.
+- Every UI-exposed provider/model option must map truthfully to application configuration; do not expose inert controls.
+- Tauri updater remains disabled until signed artifacts and a trusted update endpoint are explicitly configured and verified.
+- Public macOS distribution requires code signing/notarization. CI may prove an unsigned/ad-hoc app bundle, but never claim it is a notarized public release.
+- Phase 22 is not canonical without a committed independent desktop lockfile and `--locked` validation of its exact dependency graph.
+
 ## Coding standards
 
 - Follow idiomatic stable Rust and the module patterns already present in `engine/`.

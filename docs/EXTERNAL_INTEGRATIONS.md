@@ -170,6 +170,31 @@ Phase 21 exposes SacreBLEU only through `tools/sacrebleu-evaluator`. The boundar
 
 Decision: **approved as optional reference-overlap evidence, never as the literary judge or an acceptance threshold**. The committed Phase 21 reference corpus is synthetic/project-owned; third-party corpora remain independently licensed/provenanced assets and are not implicitly approved by this tool decision.
 
+## Tauri 2 — Phase 22 desktop product boundary
+
+Selected reviewed versions:
+
+- `tauri = 2.11.5`
+- `tauri-build = 2.6.3`
+- `tauri-plugin-dialog = 2.7.2`
+- distribution CI uses Tauri CLI `2.11.4`
+
+License: Tauri and official dialog plugin are MIT OR Apache-2.0.
+
+Ownership boundary:
+
+- Tauri owns native window/WebView integration, bounded IPC transport, native dialogs and application bundling.
+- `ApplicationService` remains the only product/domain orchestration facade.
+- Tauri types are not persisted in project schemas.
+- the desktop crate remains outside the `engine/` workspace so Tauri is not a core runtime/build dependency.
+- the frontend loads local bundled content only and receives no general filesystem capability.
+- provider secrets are not persisted by the integration.
+- signing/notarization and future updater credentials are external release secrets.
+
+Decision: **approved for Phase 22 product surface only**. Do not move literary logic into Tauri commands or frontend code.
+
+Research record: `docs/PHASE_22_RESEARCH.md`.
+
 ## Supporting-tool candidates outside translation runtime
 
 ### OpenDataLoader PDF — ingestion benchmark candidate
