@@ -228,7 +228,7 @@ Goal: make quote-speaker identity explicit enough to preserve character voice in
 
 Implemented:
 
-- native Rust quotation detection for straight double quotes, curly double quotes, guillemets, and conservative leading-dash dialogue detection;
+- native Rust quotation detection for straight double quotes, curly double quotes, curly single quotes, guillemets, and conservative leading-dash dialogue detection;
 - high-precision explicit name/approved-alias + speech-verb attribution with quote-local cue isolation;
 - fail-closed handling for pronoun-only, no-cue, ambiguous/collision, vocative, and `asked <object>` cases;
 - bounded deterministic `SPEAKER MAP` evidence injected into Context Packet v2 with Deterministic (not Canonical) authority;
