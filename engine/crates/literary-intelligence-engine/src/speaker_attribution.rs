@@ -1,0 +1,700 @@
+use character_engine::CharacterBible;
+use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, BTreeSet};
+use text_normalization::normalize_case_insensitive;
+
+const MAX_EXPLICIT_CUE_DISTANCE_CHARS: usize = 96;
+const MAX_CONTEXT_QUOTES: usize = 16;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum QuoteStyle {
+    StraightDouble,
+    CurlyDouble,
+    Guillemets,
+    LeadingDash,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct QuoteSpan {
+    pub start_char: usize,
+    pub end_char: usize,
+    pub text: String,
+    pub style: QuoteStyle,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AttributionMethod {
+    ExplicitNameSpeechVerb,
+    ExplicitAliasSpeechVerb,
+    PronounSpeechVerbUnresolved,
+    AmbiguousExplicitCandidates,
+    NoSpeakerCue,
+}
+
+impl AttributionMethod {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::ExplicitNameSpeechVerb => "explicit_name_speech_verb",
+            Self::ExplicitAliasSpeechVerb => "explicit_alias_speech_verb",
+            Self::PronounSpeechVerbUnresolved => "pronoun_speech_verb_unresolved",
+            Self::AmbiguousExplicitCandidates => "ambiguous_explicit_candidates",
+            Self::NoSpeakerCue => "no_speaker_cue",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SpeakerAttribution {
+    pub quote_id: String,
+    pub paragraph_id: String,
+    pub quote: QuoteSpan,
+    pub speaker: Option<String>,
+    pub mention: Option<String>,
+    pub method: AttributionMethod,
+    pub evidence: Option<String>,
+}
+
+impl SpeakerAttribution {
+    pub fn resolved(&self) -> bool {
+        self.speaker.is_some()
+    }
+}
+
+#[derive(Debug, Clone)]
+struct LexToken {
+    raw: String,
+    normalized: String,
+    start_char: usize,
+    end_char: usize,
+}
+
+#[derive(Debug, Clone)]
+struct NamePattern {
+    canonical: String,
+    display: String,
+    tokens: Vec<String>,
+    alias: bool,
+}
+
+#[derive(Debug, Clone)]
+struct ExplicitCandidate {
+    canonical: String,
+    mention: String,
+    alias: bool,
+    subject_pattern: bool,
+    evidence: String,
+}
+
+pub fn attribute_speakers(
+    paragraph_id: &str,
+    text: &str,
+    characters: &CharacterBible,
+) -> Vec<SpeakerAttribution> {
+    let quotes = detect_quotes(text);
+    if quotes.is_empty() {
+        return Vec::new();
+    }
+
+    let tokens = lexical_tokens(text);
+    let patterns = character_patterns(characters);
+    quotes
+        .into_iter()
+        .enumerate()
+        .map(|(index, quote)| {
+            attribute_one_quote(
+                paragraph_id,
+                index,
+                &quote,
+                &quotes_for_exclusion(text),
+                &tokens,
+                &patterns,
+            )
+        })
+        .collect()
+}
+
+pub fn deterministic_speaker_context(
+    source_id: &str,
+    text: &str,
+    characters: &CharacterBible,
+) -> Option<String> {
+    let resolved = attribute_speakers(source_id, text, characters)
+        .into_iter()
+        .filter(SpeakerAttribution::resolved)
+        .take(MAX_CONTEXT_QUOTES)
+        .collect::<Vec<_>>();
+    if resolved.is_empty() {
+        return None;
+    }
+
+    let mut lines = vec![
+        "SPEAKER MAP — deterministic explicit evidence only; unresolved dialogue is omitted:"
+            .to_string(),
+    ];
+    for item in resolved {
+        let speaker = item.speaker.as_deref().unwrap_or_default();
+        let excerpt = truncate_chars(item.quote.text.trim(), 90);
+        lines.push(format!(
+            "- {:?} → {} ({})",
+            excerpt,
+            speaker,
+            item.method.as_str()
+        ));
+    }
+    Some(lines.join("\n"))
+}
+
+fn attribute_one_quote(
+    paragraph_id: &str,
+    quote_index: usize,
+    quote: &QuoteSpan,
+    all_quotes: &[QuoteSpan],
+    tokens: &[LexToken],
+    patterns: &[NamePattern],
+) -> SpeakerAttribution {
+    let mut candidates = Vec::new();
+
+    for pattern in patterns {
+        if pattern.tokens.is_empty() || pattern.tokens.len() > tokens.len() {
+            continue;
+        }
+        for start in 0..=tokens.len() - pattern.tokens.len() {
+            let end = start + pattern.tokens.len();
+            if !tokens[start..end]
+                .iter()
+                .map(|token| token.normalized.as_str())
+                .eq(pattern.tokens.iter().map(String::as_str))
+            {
+                continue;
+            }
+            let mention_start = tokens[start].start_char;
+            let mention_end = tokens[end - 1].end_char;
+            if span_inside_any_quote(mention_start, mention_end, all_quotes) {
+                continue;
+            }
+            let Some(side) = mention_side(mention_start, mention_end, quote) else {
+                continue;
+            };
+            if side.distance > MAX_EXPLICIT_CUE_DISTANCE_CHARS {
+                continue;
+            }
+
+            let name_then_verb = tokens
+                .get(end)
+                .is_some_and(|token| is_speech_verb(&token.normalized));
+            let verb_then_name = start
+                .checked_sub(1)
+                .and_then(|idx| tokens.get(idx))
+                .is_some_and(|token| is_speech_verb(&token.normalized));
+
+            // Before a quote, "verb + name" is frequently an object ("asked
+            // Reza, ..."), so only the subject-like "name + verb" pattern is
+            // accepted. After a quote, both common literary tag orders are
+            // allowed, but "name + verb" gets priority if both appear.
+            let accepted = match side.position {
+                MentionPosition::Before => name_then_verb,
+                MentionPosition::After => name_then_verb || verb_then_name,
+            };
+            if !accepted {
+                continue;
+            }
+
+            let subject_pattern = name_then_verb;
+            let evidence = if name_then_verb {
+                format!(
+                    "{} {}",
+                    pattern.display,
+                    tokens.get(end).map(|token| token.raw.as_str()).unwrap_or("")
+                )
+            } else {
+                format!(
+                    "{} {}",
+                    tokens
+                        .get(start.saturating_sub(1))
+                        .map(|token| token.raw.as_str())
+                        .unwrap_or(""),
+                    pattern.display
+                )
+            };
+            candidates.push(ExplicitCandidate {
+                canonical: pattern.canonical.clone(),
+                mention: pattern.display.clone(),
+                alias: pattern.alias,
+                subject_pattern,
+                evidence,
+            });
+        }
+    }
+
+    // Subject-like explicit patterns outrank verb->name patterns when both
+    // occur around the same quote (e.g. "Mina asked Reza, \"Ready?\"").
+    if candidates.iter().any(|candidate| candidate.subject_pattern) {
+        candidates.retain(|candidate| candidate.subject_pattern);
+    }
+
+    let mut by_character = BTreeMap::<String, ExplicitCandidate>::new();
+    for candidate in candidates {
+        by_character
+            .entry(normalize_case_insensitive(&candidate.canonical))
+            .or_insert(candidate);
+    }
+
+    if by_character.len() == 1 {
+        let candidate = by_character.into_values().next().expect("one candidate");
+        return SpeakerAttribution {
+            quote_id: format!("{paragraph_id}:quote-{quote_index}"),
+            paragraph_id: paragraph_id.to_string(),
+            quote: quote.clone(),
+            speaker: Some(candidate.canonical),
+            mention: Some(candidate.mention),
+            method: if candidate.alias {
+                AttributionMethod::ExplicitAliasSpeechVerb
+            } else {
+                AttributionMethod::ExplicitNameSpeechVerb
+            },
+            evidence: Some(candidate.evidence),
+        };
+    }
+
+    if by_character.len() > 1 {
+        return unresolved(
+            paragraph_id,
+            quote_index,
+            quote,
+            AttributionMethod::AmbiguousExplicitCandidates,
+            Some(
+                by_character
+                    .into_values()
+                    .map(|candidate| candidate.canonical)
+                    .collect::<Vec<_>>()
+                    .join(" | "),
+            ),
+        );
+    }
+
+    if has_nearby_pronoun_speech_cue(tokens, quote, all_quotes) {
+        return unresolved(
+            paragraph_id,
+            quote_index,
+            quote,
+            AttributionMethod::PronounSpeechVerbUnresolved,
+            None,
+        );
+    }
+
+    unresolved(
+        paragraph_id,
+        quote_index,
+        quote,
+        AttributionMethod::NoSpeakerCue,
+        None,
+    )
+}
+
+fn unresolved(
+    paragraph_id: &str,
+    quote_index: usize,
+    quote: &QuoteSpan,
+    method: AttributionMethod,
+    evidence: Option<String>,
+) -> SpeakerAttribution {
+    SpeakerAttribution {
+        quote_id: format!("{paragraph_id}:quote-{quote_index}"),
+        paragraph_id: paragraph_id.to_string(),
+        quote: quote.clone(),
+        speaker: None,
+        mention: None,
+        method,
+        evidence,
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum MentionPosition {
+    Before,
+    After,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct MentionSide {
+    position: MentionPosition,
+    distance: usize,
+}
+
+fn mention_side(start: usize, end: usize, quote: &QuoteSpan) -> Option<MentionSide> {
+    if end <= quote.start_char {
+        Some(MentionSide {
+            position: MentionPosition::Before,
+            distance: quote.start_char.saturating_sub(end),
+        })
+    } else if start >= quote.end_char {
+        Some(MentionSide {
+            position: MentionPosition::After,
+            distance: start.saturating_sub(quote.end_char),
+        })
+    } else {
+        None
+    }
+}
+
+fn character_patterns(characters: &CharacterBible) -> Vec<NamePattern> {
+    let mut patterns = Vec::new();
+    for profile in characters.profiles() {
+        patterns.push(NamePattern {
+            canonical: profile.name.clone(),
+            display: profile.name.clone(),
+            tokens: normalized_name_tokens(&profile.name),
+            alias: false,
+        });
+    }
+    for alias in characters.aliases() {
+        patterns.push(NamePattern {
+            canonical: alias.canonical_name.clone(),
+            display: alias.alias.clone(),
+            tokens: normalized_name_tokens(&alias.alias),
+            alias: true,
+        });
+    }
+    patterns.sort_by(|left, right| {
+        right
+            .tokens
+            .len()
+            .cmp(&left.tokens.len())
+            .then_with(|| left.canonical.cmp(&right.canonical))
+            .then_with(|| left.display.cmp(&right.display))
+    });
+    patterns
+}
+
+fn normalized_name_tokens(value: &str) -> Vec<String> {
+    lexical_tokens(value)
+        .into_iter()
+        .map(|token| token.normalized)
+        .collect()
+}
+
+fn lexical_tokens(text: &str) -> Vec<LexToken> {
+    let chars = text.chars().collect::<Vec<_>>();
+    let mut tokens = Vec::new();
+    let mut start = None;
+
+    for (index, ch) in chars.iter().copied().enumerate() {
+        let lexical = ch.is_alphanumeric() || ch == '\'' || ch == '’' || ch == '-';
+        match (start, lexical) {
+            (None, true) => start = Some(index),
+            (Some(begin), false) => {
+                push_token(&chars, begin, index, &mut tokens);
+                start = None;
+            }
+            _ => {}
+        }
+    }
+    if let Some(begin) = start {
+        push_token(&chars, begin, chars.len(), &mut tokens);
+    }
+    tokens
+}
+
+fn push_token(chars: &[char], start: usize, end: usize, tokens: &mut Vec<LexToken>) {
+    let raw = chars[start..end].iter().collect::<String>();
+    let normalized = normalize_case_insensitive(&raw);
+    if !normalized.is_empty() {
+        tokens.push(LexToken {
+            raw,
+            normalized,
+            start_char: start,
+            end_char: end,
+        });
+    }
+}
+
+fn detect_quotes(text: &str) -> Vec<QuoteSpan> {
+    let chars = text.chars().collect::<Vec<_>>();
+    let mut spans = Vec::new();
+    collect_paired_quotes(
+        &chars,
+        '"',
+        '"',
+        QuoteStyle::StraightDouble,
+        &mut spans,
+    );
+    collect_paired_quotes(&chars, '“', '”', QuoteStyle::CurlyDouble, &mut spans);
+    collect_paired_quotes(&chars, '«', '»', QuoteStyle::Guillemets, &mut spans);
+
+    if spans.is_empty() {
+        if let Some(first_non_space) = chars.iter().position(|ch| !ch.is_whitespace()) {
+            if chars[first_non_space] == '—' && first_non_space + 1 < chars.len() {
+                spans.push(QuoteSpan {
+                    start_char: first_non_space + 1,
+                    end_char: chars.len(),
+                    text: chars[first_non_space + 1..].iter().collect(),
+                    style: QuoteStyle::LeadingDash,
+                });
+            }
+        }
+    }
+
+    spans.sort_by_key(|span| (span.start_char, span.end_char));
+    spans.dedup_by_key(|span| (span.start_char, span.end_char));
+    spans
+}
+
+fn quotes_for_exclusion(text: &str) -> Vec<QuoteSpan> {
+    detect_quotes(text)
+}
+
+fn collect_paired_quotes(
+    chars: &[char],
+    open: char,
+    close: char,
+    style: QuoteStyle,
+    spans: &mut Vec<QuoteSpan>,
+) {
+    if open == close {
+        let positions = chars
+            .iter()
+            .enumerate()
+            .filter_map(|(index, ch)| (*ch == open).then_some(index))
+            .collect::<Vec<_>>();
+        for pair in positions.chunks_exact(2) {
+            let start = pair[0] + 1;
+            let end = pair[1];
+            if start <= end {
+                spans.push(QuoteSpan {
+                    start_char: start,
+                    end_char: end,
+                    text: chars[start..end].iter().collect(),
+                    style,
+                });
+            }
+        }
+        return;
+    }
+
+    let mut open_position = None;
+    for (index, ch) in chars.iter().copied().enumerate() {
+        if ch == open && open_position.is_none() {
+            open_position = Some(index);
+        } else if ch == close {
+            if let Some(open_index) = open_position.take() {
+                let start = open_index + 1;
+                let end = index;
+                if start <= end {
+                    spans.push(QuoteSpan {
+                        start_char: start,
+                        end_char: end,
+                        text: chars[start..end].iter().collect(),
+                        style,
+                    });
+                }
+            }
+        }
+    }
+}
+
+fn span_inside_any_quote(start: usize, end: usize, quotes: &[QuoteSpan]) -> bool {
+    quotes
+        .iter()
+        .any(|quote| start >= quote.start_char && end <= quote.end_char)
+}
+
+fn has_nearby_pronoun_speech_cue(
+    tokens: &[LexToken],
+    quote: &QuoteSpan,
+    all_quotes: &[QuoteSpan],
+) -> bool {
+    let pronouns = ["he", "she", "they", "i", "we", "you"];
+    for (index, token) in tokens.iter().enumerate() {
+        if !pronouns.contains(&token.normalized.as_str())
+            || span_inside_any_quote(token.start_char, token.end_char, all_quotes)
+        {
+            continue;
+        }
+        let Some(side) = mention_side(token.start_char, token.end_char, quote) else {
+            continue;
+        };
+        if side.distance > MAX_EXPLICIT_CUE_DISTANCE_CHARS {
+            continue;
+        }
+
+        let after = tokens
+            .get(index + 1)
+            .is_some_and(|next| is_speech_verb(&next.normalized));
+        let before = index
+            .checked_sub(1)
+            .and_then(|idx| tokens.get(idx))
+            .is_some_and(|prev| is_speech_verb(&prev.normalized));
+        if after || (matches!(side.position, MentionPosition::After) && before) {
+            return true;
+        }
+    }
+    false
+}
+
+fn is_speech_verb(value: &str) -> bool {
+    matches!(
+        value,
+        "say"
+            | "says"
+            | "said"
+            | "ask"
+            | "asks"
+            | "asked"
+            | "reply"
+            | "replies"
+            | "replied"
+            | "answer"
+            | "answers"
+            | "answered"
+            | "whisper"
+            | "whispers"
+            | "whispered"
+            | "murmur"
+            | "murmurs"
+            | "murmured"
+            | "mutter"
+            | "mutters"
+            | "muttered"
+            | "shout"
+            | "shouts"
+            | "shouted"
+            | "yell"
+            | "yells"
+            | "yelled"
+            | "cry"
+            | "cries"
+            | "cried"
+            | "exclaim"
+            | "exclaims"
+            | "exclaimed"
+            | "add"
+            | "adds"
+            | "added"
+            | "observe"
+            | "observes"
+            | "observed"
+            | "call"
+            | "calls"
+            | "called"
+    )
+}
+
+fn truncate_chars(value: &str, max_chars: usize) -> String {
+    let mut out = value.chars().take(max_chars).collect::<String>();
+    if value.chars().count() > max_chars {
+        out.push('…');
+    }
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use character_engine::CharacterProfile;
+
+    fn bible() -> CharacterBible {
+        let mut bible = CharacterBible::new();
+        bible.add(CharacterProfile {
+            name: "Mina".into(),
+            voice_notes: "quiet and precise".into(),
+            personality_notes: "guarded".into(),
+        });
+        bible.add(CharacterProfile {
+            name: "Reza".into(),
+            voice_notes: "warm".into(),
+            personality_notes: "patient".into(),
+        });
+        bible.add_alias("Mina", "Min");
+        bible
+    }
+
+    #[test]
+    fn resolves_explicit_name_after_quote() {
+        let result = attribute_speakers("p1", "\"Stay here,\" Mina said.", &bible());
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].speaker.as_deref(), Some("Mina"));
+        assert_eq!(
+            result[0].method,
+            AttributionMethod::ExplicitNameSpeechVerb
+        );
+    }
+
+    #[test]
+    fn resolves_explicit_name_before_quote() {
+        let result = attribute_speakers("p1", "Mina whispered, \"Stay here.\"", &bible());
+        assert_eq!(result[0].speaker.as_deref(), Some("Mina"));
+    }
+
+    #[test]
+    fn resolves_alias_without_changing_canonical_identity() {
+        let result = attribute_speakers("p1", "“Stay,” Min replied.", &bible());
+        assert_eq!(result[0].speaker.as_deref(), Some("Mina"));
+        assert_eq!(result[0].mention.as_deref(), Some("Min"));
+        assert_eq!(
+            result[0].method,
+            AttributionMethod::ExplicitAliasSpeechVerb
+        );
+    }
+
+    #[test]
+    fn vocative_inside_quote_is_not_mistaken_for_speaker() {
+        let result = attribute_speakers("p1", "\"Reza, stay,\" Mina said.", &bible());
+        assert_eq!(result[0].speaker.as_deref(), Some("Mina"));
+    }
+
+    #[test]
+    fn ask_object_before_quote_is_not_mistaken_for_speaker() {
+        let result = attribute_speakers("p1", "Mina asked Reza, \"Ready?\"", &bible());
+        assert_eq!(result[0].speaker.as_deref(), Some("Mina"));
+    }
+
+    #[test]
+    fn pronoun_speech_cue_remains_unresolved() {
+        let result = attribute_speakers("p1", "\"Stay,\" she said.", &bible());
+        assert!(result[0].speaker.is_none());
+        assert_eq!(
+            result[0].method,
+            AttributionMethod::PronounSpeechVerbUnresolved
+        );
+    }
+
+    #[test]
+    fn ambiguous_explicit_candidates_fail_closed() {
+        let result =
+            attribute_speakers("p1", "Mina said, Reza said, \"Stay.\"", &bible());
+        assert!(result[0].speaker.is_none());
+        assert_eq!(
+            result[0].method,
+            AttributionMethod::AmbiguousExplicitCandidates
+        );
+    }
+
+    #[test]
+    fn guillemets_are_supported() {
+        let result = attribute_speakers("p1", "«Stay,» Mina said.", &bible());
+        assert_eq!(result[0].speaker.as_deref(), Some("Mina"));
+        assert_eq!(result[0].quote.style, QuoteStyle::Guillemets);
+    }
+
+    #[test]
+    fn leading_dash_dialogue_is_detected_but_not_guessed() {
+        let result = attribute_speakers("p1", "— Stay here.", &bible());
+        assert_eq!(result.len(), 1);
+        assert!(result[0].speaker.is_none());
+        assert_eq!(result[0].quote.style, QuoteStyle::LeadingDash);
+    }
+
+    #[test]
+    fn context_contains_only_resolved_explicit_speakers() {
+        let context = deterministic_speaker_context(
+            "chapter-1",
+            "\"Stay,\" Mina said. \"No,\" she replied.",
+            &bible(),
+        )
+        .unwrap();
+        assert!(context.contains("Mina"));
+        assert!(!context.contains("she"));
+    }
+}
