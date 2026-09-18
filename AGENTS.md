@@ -181,7 +181,7 @@ For Phase 20 publishing changes, run the dedicated `Phase 20 EPUB Round Trip` wo
 - Resolve only supported high-precision explicit name/alias + speech-verb patterns by default. Do not guess pronoun/coreference or conversational turn-taking.
 - Never infer character gender from names or use gender assumptions to resolve `he/she/they`.
 - Do not treat a vocative/name inside quoted text as the speaker.
-- Preserve the `asked <object>` guard and nearest-explicit-cue isolation; a later quote tag must not contaminate an earlier quote.
+- Preserve the `asked <object>` guard and quote-local cue isolation; cues cannot cross another quotation or a hard pre-quote sentence boundary, and conflicting local character cues fail closed.
 - Unresolved/ambiguous dialogue is a valid output. Never turn lack of attribution into a silent pass or fabricated character.
 - Context Packet speaker maps have Deterministic authority, not Canonical/HumanApproved authority.
 - Keep speaker context bounded; do not dump whole-book dialogue or model traces into provider context.
