@@ -7,7 +7,7 @@
 
 use super::analysis::load_manuscript;
 use super::error::ApplicationError;
-use super::models::content_fingerprint;
+use super::models::{content_fingerprint, ProjectEventSink, TranslationRevision};
 use super::project::{atomic_write_json, ProjectLayout};
 use super::review::{load_canon, load_ledger};
 use super::translation;
@@ -359,6 +359,109 @@ pub fn get_literary_review(
         || artifact.translation_context_fingerprint != translated.context_fingerprint;
 
     Ok(LiteraryReviewArtifactView { artifact, stale })
+}
+
+/// Apply one provider/native review proposal only after an explicit human action.
+///
+/// The stored review must still match the current source/translation, the finding
+/// must identify exactly one translated paragraph, and the proposal must contain
+/// concrete replacement text. Before mutation, deterministic structural and
+/// Persian-typography evidence is re-run on the proposed paragraph. Critical
+/// native failures block the patch. Applying the patch uses the normal manual
+/// revision ledger, so the prior text remains auditable and the chapter review
+/// becomes stale until it is explicitly re-run.
+pub fn accept_literary_review_revision(
+    layout: &ProjectLayout,
+    chapter_index: usize,
+    finding_id: &str,
+    reviewer: &str,
+    sink: &mut dyn ProjectEventSink,
+) -> Result<TranslationRevision, ApplicationError> {
+    let view = get_literary_review(layout, chapter_index)?;
+    if view.stale {
+        return Err(ApplicationError::ReviewRevisionUnavailable(
+            "stored literary review is stale; re-run review before accepting a proposal".into(),
+        ));
+    }
+
+    let finding = view
+        .artifact
+        .report
+        .findings
+        .iter()
+        .find(|finding| finding.id == finding_id)
+        .ok_or_else(|| {
+            ApplicationError::ReviewRevisionUnavailable(format!(
+                "finding '{finding_id}' is not present in the current literary review"
+            ))
+        })?;
+    let proposal = finding.revision_proposal.as_ref().ok_or_else(|| {
+        ApplicationError::ReviewRevisionUnavailable(format!(
+            "finding '{finding_id}' has no revision proposal"
+        ))
+    })?;
+    let suggested = proposal
+        .suggested_text
+        .as_deref()
+        .map(str::trim)
+        .filter(|text| !text.is_empty())
+        .ok_or_else(|| {
+            ApplicationError::ReviewRevisionUnavailable(format!(
+                "finding '{finding_id}' has no concrete suggested text"
+            ))
+        })?;
+    if finding.target_indices.len() != 1 {
+        return Err(ApplicationError::ReviewRevisionUnavailable(format!(
+            "finding '{finding_id}' must identify exactly one target paragraph; found {}",
+            finding.target_indices.len()
+        )));
+    }
+
+    let translated = translation::get_translated_chapter(layout, chapter_index)?;
+    let rendered_segments = paragraph_segments(&translated_text(&translated.paragraphs));
+    if rendered_segments.len() != translated.paragraphs.len() {
+        return Err(ApplicationError::ReviewRevisionUnavailable(
+            "translated chapter does not currently have a one-to-one paragraph mapping; apply the revision manually after resolving structure"
+                .into(),
+        ));
+    }
+    let target_index = finding.target_indices[0];
+    let paragraph = translated.paragraphs.get(target_index).ok_or_else(|| {
+        ApplicationError::ReviewRevisionUnavailable(format!(
+            "finding '{finding_id}' points to target paragraph {target_index}, which is outside the current translation"
+        ))
+    })?;
+    if rendered_segments[target_index].trim() != paragraph.translated.trim() {
+        return Err(ApplicationError::ReviewRevisionUnavailable(
+            "review target paragraph no longer maps exactly to the stored translation".into(),
+        ));
+    }
+
+    let mut verification = review_native(
+        format!("{}:proposal:{finding_id}", view.artifact.chapter_id),
+        &paragraph.source,
+        suggested,
+        Default::default(),
+    );
+    attach_native_persian_typography(&mut verification, suggested);
+    if verification
+        .findings
+        .iter()
+        .any(|finding| finding.severity == literary_review_engine::ReviewSeverity::Critical)
+    {
+        return Err(ApplicationError::ReviewRevisionUnavailable(
+            "suggested revision failed deterministic structural verification".into(),
+        ));
+    }
+
+    translation::apply_manual_translation_edit(
+        layout,
+        chapter_index,
+        &paragraph.paragraph_id,
+        suggested,
+        Some(reviewer),
+        sink,
+    )
 }
 
 fn configured_provider(
