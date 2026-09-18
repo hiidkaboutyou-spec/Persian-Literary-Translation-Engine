@@ -14,7 +14,8 @@ use super::translation;
 use chrono::{DateTime, Utc};
 use human_review_workflow::{ReviewKind, ReviewStatus, ReviewedValue};
 use literary_review_engine::{
-    attach_alignment_evidence, attach_provider_review, review_native, AlignmentConfig,
+    attach_alignment_evidence, attach_native_persian_typography, attach_provider_review,
+    review_native, AlignmentConfig,
     AlignmentSidecar, AlignmentToolRequest, LiteraryReviewProvider, LiteraryReviewReport,
     MockReviewProvider, OpenAIReviewProvider, ReviewDimension, ReviewProviderRequest,
     ReviewRequestLimits,
@@ -173,6 +174,7 @@ pub fn run_literary_review(
         let target = translated_text(&translated.paragraphs);
         let source = chapter.content.as_str();
         let mut report = review_native(chapter.id.clone(), source, &target, Default::default());
+        attach_native_persian_typography(&mut report, &target);
 
         let (semantic_alignment, alignment_failed) = if !settings.semantic_alignment {
             (
