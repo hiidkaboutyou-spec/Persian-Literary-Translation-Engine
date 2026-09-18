@@ -105,9 +105,16 @@ fn exported_persian_epub_reopens_in_independent_rbook_parser() {
     let mut reader = epub.reader();
     let mut readable = Vec::new();
     while let Some(item) = reader.read_next() {
-        readable.push(item.expect("rbook should read every spine item").content().to_owned());
+        readable.push(
+            item.expect("rbook should read every spine item")
+                .content()
+                .to_owned(),
+        );
     }
-    assert!(!readable.is_empty(), "exported EPUB must expose readable spine content");
+    assert!(
+        !readable.is_empty(),
+        "exported EPUB must expose readable spine content"
+    );
 
     let joined = readable.join("\n");
     assert!(joined.contains("dir=\"rtl\""));
