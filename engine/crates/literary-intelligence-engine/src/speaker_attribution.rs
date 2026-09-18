@@ -88,7 +88,10 @@ struct ExplicitMentionCue {
     end_char: usize,
     name_then_verb: bool,
     verb_then_name: bool,
+    name_then_verb_start_char: Option<usize>,
     name_then_verb_end_char: Option<usize>,
+    verb_then_name_start_char: Option<usize>,
+    verb_then_name_end_char: Option<usize>,
     name_then_verb_evidence: Option<String>,
     verb_then_name_evidence: Option<String>,
 }
@@ -107,7 +110,8 @@ struct ExplicitCandidate {
     mention: String,
     alias: bool,
     subject_pattern: bool,
-    distance: usize,
+    speech_verb_start_char: usize,
+    speech_verb_end_char: usize,
     evidence: String,
 }
 
@@ -199,7 +203,7 @@ fn attribute_one_quote(
         // Before a quote, "verb + name" is frequently an object ("asked
         // Reza, ..."), so only the subject-like "name + verb" pattern is
         // accepted. After a quote, both common literary tag orders are
-        // collected; proximity and grammatical tie-breaks are applied below.
+        // collected; same-verb object disambiguation is applied below.
         let accepted = match side.position {
             MentionPosition::Before => {
                 cue.name_then_verb
@@ -215,40 +219,53 @@ fn attribute_one_quote(
         }
 
         let subject_pattern = cue.name_then_verb;
-        let evidence = if cue.name_then_verb {
-            cue.name_then_verb_evidence.clone()
+        let (speech_verb_start_char, speech_verb_end_char, evidence) = if cue.name_then_verb {
+            (
+                cue.name_then_verb_start_char.unwrap_or_default(),
+                cue.name_then_verb_end_char.unwrap_or_default(),
+                cue.name_then_verb_evidence.clone().unwrap_or_default(),
+            )
         } else {
-            cue.verb_then_name_evidence.clone()
-        }
-        .unwrap_or_default();
+            (
+                cue.verb_then_name_start_char.unwrap_or_default(),
+                cue.verb_then_name_end_char.unwrap_or_default(),
+                cue.verb_then_name_evidence.clone().unwrap_or_default(),
+            )
+        };
 
         candidates.push(ExplicitCandidate {
             canonical: cue.canonical.clone(),
             mention: cue.mention.clone(),
             alias: cue.alias,
             subject_pattern,
-            distance: side.distance,
+            speech_verb_start_char,
+            speech_verb_end_char,
             evidence,
         });
     }
 
-    // Prefer the closest explicit cue before applying grammatical tie-breaks.
-    // This avoids stealing an earlier quote for a farther character tag that
-    // happens to use the subject-like name+verb order.
-    if let Some(min_distance) = candidates
+    // If name+verb and verb+name candidates share the exact same speech-verb
+    // token, the inverted candidate is the verb's object/addressee rather than
+    // a second speaker (e.g. "\"Ready?\" Mina asked Reza."). Remove only that
+    // structurally linked object candidate. Distinct local speaker cues remain
+    // conflicting and therefore fail closed below.
+    let subject_verb_spans = candidates
         .iter()
-        .map(|candidate| candidate.distance)
-        .min()
-    {
-        candidates.retain(|candidate| candidate.distance == min_distance);
-    }
-
-    // At the same distance, subject-like explicit patterns outrank inverted
-    // verb->name patterns. This preserves the object guard for constructions
-    // such as "\"Ready?\" Mina asked Reza."
-    if candidates.iter().any(|candidate| candidate.subject_pattern) {
-        candidates.retain(|candidate| candidate.subject_pattern);
-    }
+        .filter(|candidate| candidate.subject_pattern)
+        .map(|candidate| {
+            (
+                candidate.speech_verb_start_char,
+                candidate.speech_verb_end_char,
+            )
+        })
+        .collect::<Vec<_>>();
+    candidates.retain(|candidate| {
+        candidate.subject_pattern
+            || !subject_verb_spans.contains(&(
+                candidate.speech_verb_start_char,
+                candidate.speech_verb_end_char,
+            ))
+    });
     let mut by_character = BTreeMap::<String, ExplicitCandidate>::new();
     for candidate in candidates {
         by_character
@@ -592,10 +609,11 @@ fn extract_explicit_mention_cues(
                 .get(end)
                 .filter(|token| is_speech_verb(&token.normalized));
             let name_then_verb = name_then_verb_token.is_some();
-            let verb_then_name = start
+            let verb_then_name_token = start
                 .checked_sub(1)
                 .and_then(|idx| tokens.get(idx))
-                .is_some_and(|token| is_speech_verb(&token.normalized));
+                .filter(|token| is_speech_verb(&token.normalized));
+            let verb_then_name = verb_then_name_token.is_some();
             if !name_then_verb && !verb_then_name {
                 continue;
             }
@@ -629,7 +647,10 @@ fn extract_explicit_mention_cues(
                 end_char,
                 name_then_verb,
                 verb_then_name,
+                name_then_verb_start_char: name_then_verb_token.map(|token| token.start_char),
                 name_then_verb_end_char: name_then_verb_token.map(|token| token.end_char),
+                verb_then_name_start_char: verb_then_name_token.map(|token| token.start_char),
+                verb_then_name_end_char: verb_then_name_token.map(|token| token.end_char),
                 name_then_verb_evidence,
                 verb_then_name_evidence,
             });
@@ -846,12 +867,22 @@ mod tests {
     }
 
     #[test]
-    fn nearest_post_quote_tag_wins_over_farther_subject_like_cue() {
+    fn distinct_local_post_quote_cues_fail_closed_instead_of_picking_nearest() {
         let result = attribute_speakers(
             "p1",
             "\"Stay,\" said Mina, while Reza replied softly.",
             &bible(),
         );
+        assert!(result[0].speaker.is_none());
+        assert_eq!(
+            result[0].method,
+            AttributionMethod::AmbiguousExplicitCandidates
+        );
+    }
+
+    #[test]
+    fn post_quote_ask_object_is_removed_only_when_it_shares_the_subject_verb() {
+        let result = attribute_speakers("p1", "\"Ready?\" Mina asked Reza.", &bible());
         assert_eq!(result[0].speaker.as_deref(), Some("Mina"));
         assert_eq!(
             result[0].method,
