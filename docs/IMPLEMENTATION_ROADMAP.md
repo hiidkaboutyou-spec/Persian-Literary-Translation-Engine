@@ -120,14 +120,13 @@ Detailed research and completion record: `docs/PHASE_20_RESEARCH.md`.
 
 ## Forward Roadmap
 
-### Phase 21 — Literary Evaluation Corpus & Benchmarking — active branch/validation
+### Phase 21 — Literary Evaluation Corpus & Benchmarking — canonical
 
-Branch: `phase-21-literary-evaluation-benchmarking`.
-PR: #100.
+PR #100; implementation merge commit `0e4b8ebf1bdb4dd7c931e3ba44cc64f23358d4b1`.
 
 Goal: measure whether changes improve actual Persian literary translation quality rather than only passing unit tests.
 
-Implemented on the branch:
+Delivered:
 
 - project-owned/rights-safe EN -> FA literary challenge corpus with eight focused cases;
 - strict provenance schema that refuses committed corpora not explicitly marked rights-safe;
@@ -139,18 +138,20 @@ Implemented on the branch:
 - isolated pinned SacreBLEU 2.6.0 chrF2++ sidecar as reference-overlap evidence only;
 - no Mizan/iPerUDT/Degarbayan/FarSSiM data vendored into the project.
 
-Exit criteria:
+Completion evidence:
 
-- final Phase 21 workflow green on Linux and Apple Silicon;
-- Rust fmt/Clippy/tests/security green on the final PR head;
-- committed corpus passes rights/provenance and contrastive-sanity checks;
-- reference sanity submission passes all deterministic anchors and deliberately degraded submission scores lower;
-- SacreBLEU 2.6.0 install/protocol/audit checks green without external corpus downloads;
-- Phase 18/19/20 regressions remain green;
-- PR merge to `main`, post-merge gate verification, and canonical status/PMC record;
-- only then advance to Phase 22.
+- final PR head `d543b0448bdb8c886e58c69b719183daf07a66bc`;
+- Phase 21 workflow run `35325302381`: success across native benchmark, optional reference metric, and Apple Silicon arm64 jobs;
+- Rust CI `35325302426`, Security `35325302301`, Phase 18 `35325302478`, Phase 19 `35325302325`, Phase 20 `35325302400`, and Project Memory Tooling `35325302257`: success;
+- committed corpus passed rights/provenance validation and contrastive-sanity checks;
+- reference submission passed every deterministic anchor; deliberately degraded submission scored lower;
+- SacreBLEU 2.6.0 install/protocol/pip-audit checks passed without project-driven external corpus downloads;
+- PR #100 merged to `main` at `0e4b8ebf1bdb4dd7c931e3ba44cc64f23358d4b1`;
+- permanent Phase 21 workflow is configured for future `main` pushes.
 
-Detailed research: `docs/PHASE_21_RESEARCH.md`.
+Detailed research and completion record: `docs/PHASE_21_RESEARCH.md`.
+
+## Current Phase
 
 ### Phase 22 — Product Surface & Distribution Hardening
 
