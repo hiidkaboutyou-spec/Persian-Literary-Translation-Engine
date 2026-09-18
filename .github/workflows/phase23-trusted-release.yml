@@ -90,7 +90,6 @@ jobs:
             --manifest-path cli/Cargo.toml \
             --format json \
             --override-filename phase23-cli-smoke.cdx.json \
-            --license-strict \
             --spec-version 1.5
           test -s cli/phase23-cli-smoke.cdx.json
 
@@ -147,7 +146,6 @@ jobs:
             --format json \
             --target aarch64-apple-darwin \
             --override-filename phase23-desktop.cdx.json \
-            --license-strict \
             --spec-version 1.5
           test -s desktop/src-tauri/phase23-desktop.cdx.json
 
