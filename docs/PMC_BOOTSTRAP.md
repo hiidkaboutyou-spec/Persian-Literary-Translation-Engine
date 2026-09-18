@@ -167,9 +167,9 @@ Durable Phase 21 decisions:
 
 Detailed rationale: `docs/PHASE_21_RESEARCH.md`.
 
-## Phase 22 Active Decisions — Desktop Product
+## Phase 22 Canonical Decisions — Desktop Product
 
-Branch: `phase-22-product-surface-distribution`; PR #102.
+Canonical via PR #102; merge `dc2bf1eee2f5d2dedc7c97d0164c3c26b8ac979b`.
 
 Durable decisions:
 
@@ -187,13 +187,33 @@ Durable decisions:
 
 Detailed rationale: `docs/PHASE_22_RESEARCH.md`.
 
+## Phase 23 Active Decisions — Trusted Release & Supply Chain
+
+Branch: `phase-23-trusted-release-supply-chain`.
+
+Durable decisions:
+
+1. **Release lockfiles are immutable inputs** — release workflows may verify committed Cargo.lock files with `cargo metadata --locked` but must not run `cargo generate-lockfile` immediately before publishing.
+2. **SBOM is release evidence, not runtime** — use pinned `cargo-cyclonedx 0.5.9` only in CI/release tooling. Normal translation/desktop runtime must not depend on it.
+3. **Three independent release evidence layers** — SHA-256 checksums, CycloneDX SBOMs, and GitHub/Sigstore artifact attestations answer different questions and must not be collapsed into a single "safe" claim.
+4. **Attest actual releases, not routine test artifacts** — tagged CLI releases receive provenance/SBOM attestations. Ordinary Phase-23 validation artifacts are not promoted as trusted public releases.
+5. **Apple credentials stay external** — Developer ID certificates, App Store Connect/Notary keys, keychain material and notarization credentials are never committed to Git, PMC, projectmem, project files, or frontend state.
+6. **Updater stays fail-closed** — do not add `tauri-plugin-updater`, update endpoints, or updater artifacts until a real Tauri signing key/public trust root and HTTPS distribution path are configured and tested.
+7. **ip-as-logo is design-only** — the vendored MIT Agent Skill is pinned to upstream commit `acb834c717bcd0a487c49732d08397ba280d690b`. It has no translation/runtime authority.
+8. **No installer for a text-only skill** — vendor the reviewed `SKILL.md` + license directly rather than running a moving `npx skills@latest` supply-chain path.
+9. **Visual candidates require human selection** — mascot/app-icon outputs never replace canonical product identity automatically.
+10. **Upstream skill updates are review events** — no auto-sync; any revision requires new provenance/license/security review and recorded blob IDs.
+
+Detailed rationale: `docs/PHASE_23_RESEARCH.md`.
+
 ## Current Roadmap
 
 - Phase 18 — Context Packet v2 & Selective Long-Novel Retrieval — canonical/merged.
 - Phase 19 — Literary Fidelity & Persian Naturalness Review Stack — canonical/merged.
 - Phase 20 — Publication-Grade EPUB Round Trip — canonical/merged (PR #98; `1611cd731160c122baa68c9e80c1d4faeb7dfcfc`).
 - Phase 21 — Literary Evaluation Corpus & Benchmarking — canonical/merged (PR #100; `0e4b8ebf1bdb4dd7c931e3ba44cc64f23358d4b1`).
-- Phase 22 — Product Surface & Distribution Hardening — active branch/PR #102; not canonical until desktop lockfile/final gates/merge.
+- Phase 22 — Product Surface & Distribution Hardening — canonical/merged (PR #102; `dc2bf1eee2f5d2dedc7c97d0164c3c26b8ac979b`).
+- Phase 23 — Trusted Release & Supply-Chain Hardening — active branch `phase-23-trusted-release-supply-chain`; validation pending.
 
 Always finish/verify the current numbered phase before starting the next numbered phase. Supporting tooling may land between phases only when runtime defaults remain intact, ownership/failure boundaries are explicit, and validation passes.
 
@@ -220,7 +240,8 @@ Before adding any GitHub repository/package/tool:
 - `AGENTS.md` — engineering/agent constraints
 - `docs/IMPLEMENTATION_STATUS.md` — implemented capabilities/current branch state
 - `docs/IMPLEMENTATION_ROADMAP.md` — roadmap
-- `docs/PHASE_22_RESEARCH.md` — current product/distribution research/decisions
+- `docs/PHASE_23_RESEARCH.md` — current trusted-release/supply-chain/branding-tool research
+- `docs/PHASE_22_RESEARCH.md` — canonical product/distribution research/decisions
 - `docs/PHASE_21_RESEARCH.md` — benchmark/evaluation research/decisions
 - `docs/PHASE_20_RESEARCH.md` — publication research/decisions
 - `docs/PHASE_19_RESEARCH.md` — literary-review dependency/review research
