@@ -62,6 +62,12 @@
       "expected": [{"speaker":null,"method":"no_speaker_cue"}]
     },
     {
+      "id": "curly-single-quotes",
+      "text": "‘Stay,’ Mina said. I don't know.",
+      "characters": [{"name":"Mina","aliases":[]}],
+      "expected": [{"speaker":"Mina","method":"explicit_name_speech_verb"}]
+    },
+    {
       "id": "guillemets",
       "text": "«Stay,» Mina said.",
       "characters": [{"name":"Mina","aliases":[]}],
