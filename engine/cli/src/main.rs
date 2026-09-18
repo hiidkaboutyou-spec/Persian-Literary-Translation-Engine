@@ -20,6 +20,7 @@ use translation_core::{
 };
 
 mod advanced;
+mod benchmark_cmd;
 mod project_cmd;
 mod review;
 
@@ -121,6 +122,7 @@ fn usage() {
         "    analyze is deterministic and offline; analyze-advanced explicitly requests model-assisted analysis"
     );
     println!("  literary-engine review <sync|list|show|approve|edit|reject|defer|reopen|promote> ... [--format json]");
+    println!("  literary-engine benchmark <corpus.json> <submission.json> [--format json]");
     println!(
         "  literary-engine prepare <file.txt|file.md|file.docx|file.epub|file.pdf> [target-language] [--format json]"
     );
@@ -895,6 +897,7 @@ fn run() -> Result<(), String> {
         ("analyze", [path, ..]) => analyze(path, &format),
         ("analyze-advanced", args) => advanced::run_analyze_advanced(args, &format),
         ("review", args) => review::run_review(args, &format),
+        ("benchmark", args) => benchmark_cmd::run_benchmark(args, &format),
         ("project", args) => project_cmd::run_project(args, &format),
         ("prepare", [path]) => prepare(path, "fa", &format),
         ("prepare", [path, target]) => prepare(path, target, &format),
