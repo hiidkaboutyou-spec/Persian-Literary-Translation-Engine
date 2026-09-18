@@ -43,6 +43,237 @@ pub fn normalize_case_insensitive(text: &str) -> String {
     normalize(text).to_lowercase()
 }
 
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum PersianTypographyIssueKind {
+    ArabicLetterVariant,
+    ArabicDigitVariant,
+    Kashida,
+    DuplicateZwnj,
+    InvalidZwnj,
+    PrefixSpacing,
+    SpaceBeforePunctuation,
+    MultipleSpaces,
+}
+
+impl PersianTypographyIssueKind {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::ArabicLetterVariant => "Arabic letter variant",
+            Self::ArabicDigitVariant => "Arabic-Indic digit variant",
+            Self::Kashida => "decorative kashida/tatweel",
+            Self::DuplicateZwnj => "duplicate zero-width non-joiner",
+            Self::InvalidZwnj => "misplaced zero-width non-joiner",
+            Self::PrefixSpacing => "می/نمی prefix separated by a normal space",
+            Self::SpaceBeforePunctuation => "space before punctuation",
+            Self::MultipleSpaces => "repeated spaces",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PersianTypographyIssue {
+    pub kind: PersianTypographyIssueKind,
+    /// Character offset, not a byte offset. This keeps evidence safe for UTF-8 UI display.
+    pub char_index: usize,
+    pub suggestion: Option<String>,
+}
+
+/// Returns true when the text contains at least one Persian/Arabic-script letter.
+///
+/// This deliberately checks letters rather than the whole Arabic Unicode block,
+/// so punctuation or Arabic-Indic digits alone do not cause a target to be
+/// treated as Persian prose.
+pub fn contains_persian_letters(text: &str) -> bool {
+    text.chars().any(is_persian_script_letter)
+}
+
+/// Applies only deterministic, low-risk Unicode cleanup suitable for Persian
+/// publication text.
+///
+/// This function intentionally does **not** rewrite punctuation style, collapse
+/// expressive marks, add/remove ordinary spaces around affixes, or otherwise
+/// "improve" literary prose. Those cases are diagnostics only.
+pub fn polish_persian_unicode(text: &str) -> String {
+    let mapped = text
+        .chars()
+        .filter_map(|ch| match ch {
+            'ي' | 'ى' => Some('ی'),
+            'ك' => Some('ک'),
+            '٠' => Some('۰'),
+            '١' => Some('۱'),
+            '٢' => Some('۲'),
+            '٣' => Some('۳'),
+            '٤' => Some('۴'),
+            '٥' => Some('۵'),
+            '٦' => Some('۶'),
+            '٧' => Some('۷'),
+            '٨' => Some('۸'),
+            '٩' => Some('۹'),
+            '\u{0640}' => None, // tatweel/kashida is decorative, not lexical content
+            other => Some(other),
+        })
+        .collect::<Vec<_>>();
+
+    let mut out = String::with_capacity(text.len());
+    for (index, ch) in mapped.iter().copied().enumerate() {
+        if ch != '\u{200c}' {
+            out.push(ch);
+            continue;
+        }
+
+        let previous = index.checked_sub(1).and_then(|i| mapped.get(i)).copied();
+        let next = mapped.get(index + 1).copied();
+        let invalid = previous.is_none()
+            || next.is_none()
+            || previous.is_some_and(char::is_whitespace)
+            || next.is_some_and(char::is_whitespace)
+            || previous.is_some_and(is_spacing_punctuation)
+            || next.is_some_and(is_spacing_punctuation)
+            || previous == Some('\u{200c}');
+        if !invalid {
+            out.push(ch);
+        }
+    }
+    out
+}
+
+/// Produces narrow, deterministic typography evidence without rewriting text.
+///
+/// The diagnostics are intentionally conservative. A finding means "review this
+/// typography/orthography surface", not "the sentence is bad Persian".
+pub fn inspect_persian_typography(text: &str) -> Vec<PersianTypographyIssue> {
+    let chars = text.chars().collect::<Vec<_>>();
+    let mut issues = Vec::new();
+
+    for (index, ch) in chars.iter().copied().enumerate() {
+        let suggestion = match ch {
+            'ي' | 'ى' => Some("ی".to_string()),
+            'ك' => Some("ک".to_string()),
+            '٠' => Some("۰".to_string()),
+            '١' => Some("۱".to_string()),
+            '٢' => Some("۲".to_string()),
+            '٣' => Some("۳".to_string()),
+            '٤' => Some("۴".to_string()),
+            '٥' => Some("۵".to_string()),
+            '٦' => Some("۶".to_string()),
+            '٧' => Some("۷".to_string()),
+            '٨' => Some("۸".to_string()),
+            '٩' => Some("۹".to_string()),
+            '\u{0640}' => Some(String::new()),
+            _ => None,
+        };
+        let kind = match ch {
+            'ي' | 'ى' | 'ك' => Some(PersianTypographyIssueKind::ArabicLetterVariant),
+            '٠'..='٩' => Some(PersianTypographyIssueKind::ArabicDigitVariant),
+            '\u{0640}' => Some(PersianTypographyIssueKind::Kashida),
+            _ => None,
+        };
+        if let Some(kind) = kind {
+            issues.push(PersianTypographyIssue {
+                kind,
+                char_index: index,
+                suggestion,
+            });
+        }
+
+        if ch == '\u{200c}' {
+            let previous = index.checked_sub(1).and_then(|i| chars.get(i)).copied();
+            let next = chars.get(index + 1).copied();
+            if previous == Some('\u{200c}') {
+                issues.push(PersianTypographyIssue {
+                    kind: PersianTypographyIssueKind::DuplicateZwnj,
+                    char_index: index,
+                    suggestion: Some(String::new()),
+                });
+            } else if previous.is_none()
+                || next.is_none()
+                || previous.is_some_and(char::is_whitespace)
+                || next.is_some_and(char::is_whitespace)
+                || previous.is_some_and(is_spacing_punctuation)
+                || next.is_some_and(is_spacing_punctuation)
+            {
+                issues.push(PersianTypographyIssue {
+                    kind: PersianTypographyIssueKind::InvalidZwnj,
+                    char_index: index,
+                    suggestion: Some(String::new()),
+                });
+            }
+        }
+
+        if ch == ' ' {
+            if chars.get(index + 1).is_some_and(|next| *next == ' ') {
+                issues.push(PersianTypographyIssue {
+                    kind: PersianTypographyIssueKind::MultipleSpaces,
+                    char_index: index + 1,
+                    suggestion: Some(String::new()),
+                });
+            }
+            if chars.get(index + 1).is_some_and(|next| is_spacing_punctuation(*next)) {
+                issues.push(PersianTypographyIssue {
+                    kind: PersianTypographyIssueKind::SpaceBeforePunctuation,
+                    char_index: index,
+                    suggestion: Some(String::new()),
+                });
+            }
+        }
+    }
+
+    detect_prefix_spacing(&chars, &mut issues);
+    issues
+}
+
+fn detect_prefix_spacing(chars: &[char], issues: &mut Vec<PersianTypographyIssue>) {
+    for (index, prefix) in [(0usize, ['م', 'ی']), (0usize, ['ن', 'م'])] {
+        let _ = (index, prefix);
+    }
+
+    for start in 0..chars.len() {
+        let boundary_before = start == 0 || !is_persian_script_letter(chars[start - 1]);
+
+        let mi = chars.get(start) == Some(&'م')
+            && chars.get(start + 1) == Some(&'ی')
+            && chars.get(start + 2) == Some(&' ')
+            && chars
+                .get(start + 3)
+                .is_some_and(|ch| is_persian_script_letter(*ch));
+        if boundary_before && mi {
+            issues.push(PersianTypographyIssue {
+                kind: PersianTypographyIssueKind::PrefixSpacing,
+                char_index: start + 2,
+                suggestion: Some("\u{200c}".to_string()),
+            });
+        }
+
+        let nemi = chars.get(start) == Some(&'ن')
+            && chars.get(start + 1) == Some(&'م')
+            && chars.get(start + 2) == Some(&'ی')
+            && chars.get(start + 3) == Some(&' ')
+            && chars
+                .get(start + 4)
+                .is_some_and(|ch| is_persian_script_letter(*ch));
+        if boundary_before && nemi {
+            issues.push(PersianTypographyIssue {
+                kind: PersianTypographyIssueKind::PrefixSpacing,
+                char_index: start + 3,
+                suggestion: Some("\u{200c}".to_string()),
+            });
+        }
+    }
+}
+
+fn is_persian_script_letter(ch: char) -> bool {
+    ch.is_alphabetic()
+        && (('\u{0600}'..='\u{06ff}').contains(&ch)
+            || ('\u{0750}'..='\u{077f}').contains(&ch)
+            || ('\u{08a0}'..='\u{08ff}').contains(&ch))
+}
+
+fn is_spacing_punctuation(ch: char) -> bool {
+    matches!(ch, '،' | '؛' | '؟' | '!' | '?' | ',' | ';' | ':' | '.' | '…')
+}
+
+
 /// Returns `true` when the normalized text contains negation markers.
 ///
 /// Handles English contractions (`don't`, `won't`, `can't`) and Persian
@@ -163,6 +394,47 @@ pub fn similarity(a: &str, b: &str) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn safe_persian_polish_normalizes_only_low_risk_unicode_surfaces() {
+        assert_eq!(
+            polish_persian_unicode("عليـ كاتب ٣٤٥ و می‌رود!!!"),
+            "علی کاتب ۳۴۵ و می‌رود!!!"
+        );
+        assert_eq!(polish_persian_unicode("نسخه 123"), "نسخه 123");
+    }
+
+    #[test]
+    fn safe_persian_polish_preserves_valid_zwnj_and_drops_invalid_ones() {
+        assert_eq!(polish_persian_unicode("می‌روم"), "می‌روم");
+        assert_eq!(polish_persian_unicode("\u{200c}سلام"), "سلام");
+        assert_eq!(polish_persian_unicode("سلام\u{200c} دنیا"), "سلام دنیا");
+        assert_eq!(polish_persian_unicode("می‌\u{200c}روم"), "می‌روم");
+    }
+
+    #[test]
+    fn typography_diagnostics_are_advisory_and_precise() {
+        let issues = inspect_persian_typography("من نمي روم  ؟");
+        assert!(issues
+            .iter()
+            .any(|issue| issue.kind == PersianTypographyIssueKind::ArabicLetterVariant));
+        assert!(issues
+            .iter()
+            .any(|issue| issue.kind == PersianTypographyIssueKind::PrefixSpacing));
+        assert!(issues
+            .iter()
+            .any(|issue| issue.kind == PersianTypographyIssueKind::MultipleSpaces));
+        assert!(issues
+            .iter()
+            .any(|issue| issue.kind == PersianTypographyIssueKind::SpaceBeforePunctuation));
+    }
+
+    #[test]
+    fn persian_letter_detection_ignores_punctuation_only() {
+        assert!(contains_persian_letters("سلام!"));
+        assert!(!contains_persian_letters("۱۲۳؟"));
+        assert!(!contains_persian_letters("English only"));
+    }
 
     #[test]
     fn normalizes_arabic_and_persian_letter_variants() {
