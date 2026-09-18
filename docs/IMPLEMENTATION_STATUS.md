@@ -179,9 +179,21 @@ Every required final-head gate was green: Phase 18–24, Rust CI, Security, Phas
 
 Detailed research and completion criteria: `docs/PHASE_24_RESEARCH.md`.
 
-## Current Research Handoff
+## Current Branch — Phase 25 Narrative Speaker & Coreference Intelligence
 
-No Phase 25 was pre-defined before Phase 24 completion. The next research target is the remaining fiction-intelligence gap: rights-safe character/coreference/quote-speaker evidence and benchmarking against the current explicit-name/alias character context. No heavy NLP/model dependency is approved merely by this handoff.
+Branch: `phase-25-narrative-speaker-intelligence`; draft PR #106.
+
+Implemented:
+
+- native high-precision quotation speaker attribution inside `literary-intelligence-engine`;
+- canonical character/alias identity reused from `CharacterBible`; no new canon owner;
+- explicit quote-speaker mappings added to Context Packet v2 as deterministic evidence;
+- pronoun-only and implicit conversational cases remain unresolved rather than guessed;
+- project-owned synthetic regression corpus covers explicit names, aliases, vocatives, ask-object disambiguation, guillemets, dash dialogue and multi-quote locality;
+- dedicated Linux/Apple Silicon Phase-25 validation;
+- zero new external runtime/model dependencies.
+
+External model adoption remains gated by exact code/model/data licensing and a measurable rights-safe benchmark gain. Detailed research: `docs/PHASE_25_RESEARCH.md`.
 
 ## CLI / Desktop
 
