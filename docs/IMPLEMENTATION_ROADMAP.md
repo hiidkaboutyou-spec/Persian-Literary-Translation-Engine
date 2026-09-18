@@ -219,6 +219,39 @@ Research/dependency decisions remain: Virastar/`rezkam/persian` are references o
 
 Detailed research: `docs/PHASE_24_RESEARCH.md`.
 
+### Phase 25 — Editorial Motion Desktop UX — active branch/validation
+
+Branch: `phase-25-editorial-motion-desktop-ux`.
+
+Goal: turn the functional Tauri product surface into a distinctive, reading-first literary workspace without changing backend/domain contracts or introducing a frontend framework/runtime.
+
+Implemented:
+
+- original “Editorial Translation Atelier” visual system inspired by MotionSites-style depth and contemporary editorial interfaces, without copying source layouts/assets;
+- warm paper/ink light and dark palettes with native macOS display/system/Persian font stacks;
+- grouped manuscript/editorial/system navigation while preserving existing Tauri view and command IDs;
+- manuscript hero built entirely with local HTML/CSS;
+- motion tokens, view-entry choreography, page/orb ambient motion, button/card microinteractions and pointer-relative card glow;
+- full `prefers-reduced-motion` fallback and `:focus-visible` keyboard treatment;
+- EN↔FA translation editor redesigned as a side-by-side reading desk with responsive stacking;
+- native macOS titlebar retained after reviewing Tauri custom-titlebar/overlay caveats;
+- zero new frontend dependency: no React, Tailwind, Framer/Motion, GSAP, Vite, Node build step, CDN or remote font/asset;
+- permanent Phase-25 static UI and Apple Silicon compatibility gate.
+
+Research-only references include MotionSites AI, Awwwards/editorial interface patterns, Motion Primitives (MIT; React/Motion/Tailwind mismatch), and a dependency-free vanilla microinteraction reference. None is a runtime dependency.
+
+Exit criteria:
+
+- UI ID/JS contracts remain intact;
+- static local-content/security rules remain green;
+- reduced-motion/keyboard-accessibility checks pass;
+- dedicated Phase-25 Linux/macOS checks pass;
+- Phase 22 produces a real locked Apple Silicon `.app` from the same final head;
+- affected Rust/Security/Project Memory regressions remain green;
+- exact completion evidence is recorded before merge.
+
+Detailed research: `docs/PHASE_25_RESEARCH.md`.
+
 ## Next Action Rule
 
 Always finish and verify the current numbered phase before starting the next numbered phase. Supporting tooling may be added only when it leaves runtime defaults intact and has an explicit owner/failure boundary. Do not treat branch-only work as merged. When a phase changes architecture, persistence, quality, or publishing contracts, update `IMPLEMENTATION_STATUS.md`, this roadmap, engineering decisions, external-integration notes, and project-memory notes together.
