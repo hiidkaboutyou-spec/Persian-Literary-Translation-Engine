@@ -148,12 +148,29 @@ These are not current runtime dependencies and must not interrupt the numbered r
 - **MemoryWiki** relevant ideas but current maturity/provenance do not justify dependency.
 - **automatic transcript/session memory systems** not selected; raw chat capture is the wrong abstraction and increases privacy/secret-retention risk.
 
+## Phase 21 Branch State — Not Canonical Until Merged
+
+Branch: `phase-21-literary-evaluation-benchmarking`; PR #100.
+
+Durable Phase 21 decisions:
+
+1. **Benchmark ownership** — committed gold/challenge fixtures must be project-owned/rights-safe or have explicit reviewed redistribution rights. Public availability is not a license.
+2. **Evaluation shape** — use multiple independent evidence channels. Deterministic anchors, chrF2++, COMET/XCOMET, provider critics, and human ratings must not be collapsed into one approval score.
+3. **Contrastive validity** — every declared benchmark failure type needs a deliberately degraded variant that actually triggers the intended challenge; otherwise the benchmark claim is unproven.
+4. **Human-first literary judgment** — human scorecards record reviewer expertise, focused 1–5 dimensions, notes, and optional pairwise preference. One pass/case is capped at four dimensions to keep evaluation cognitively bounded.
+5. **Reference metrics** — SacreBLEU 2.6.0/chrF2++ is optional isolated evidence only. It must not download external test sets through the project workflow and never acts as an acceptance threshold.
+6. **Neural metrics** — reuse the existing COMET/XCOMET process boundary; do not add another neural metric stack or default model download.
+7. **Persian corpora** — iPerUDT may later be useful as CC0 colloquial-syntax evidence; Mizan, Degarbayan-SC, and FarSSiM remain blocked from committed benchmark use until their dataset-level rights/provenance questions are resolved. None are installed merely because they are available.
+8. **Dependency proof** — Phase 21 is the mechanism that must prove a real gap before DadmaTools/other Persian NLP packages are considered. Hazm remains blocked on the recorded security path.
+
+Detailed rationale: `docs/PHASE_21_RESEARCH.md`.
+
 ## Current Roadmap
 
 - Phase 18 — Context Packet v2 & Selective Long-Novel Retrieval — canonical/merged.
 - Phase 19 — Literary Fidelity & Persian Naturalness Review Stack — canonical/merged.
 - Phase 20 — Publication-Grade EPUB Round Trip — canonical/merged (PR #98; `1611cd731160c122baa68c9e80c1d4faeb7dfcfc`).
-- Phase 21 — Literary Evaluation Corpus & Benchmarking — next numbered phase; begin with rights/provenance review and benchmark design before dependency adoption.
+- Phase 21 — Literary Evaluation Corpus & Benchmarking — active branch/PR #100; not canonical until merge/post-merge verification.
 - Phase 22 — Product Surface & Distribution Hardening.
 
 Always finish/verify the current numbered phase before starting the next numbered phase. Supporting tooling may land between phases only when runtime defaults remain intact, ownership/failure boundaries are explicit, and validation passes.
@@ -181,7 +198,8 @@ Before adding any GitHub repository/package/tool:
 - `AGENTS.md` — engineering/agent constraints
 - `docs/IMPLEMENTATION_STATUS.md` — implemented capabilities/current branch state
 - `docs/IMPLEMENTATION_ROADMAP.md` — roadmap
-- `docs/PHASE_20_RESEARCH.md` — current publication research/decisions
+- `docs/PHASE_21_RESEARCH.md` — current benchmark/evaluation research/decisions
+- `docs/PHASE_20_RESEARCH.md` — publication research/decisions
 - `docs/PHASE_19_RESEARCH.md` — literary-review dependency/review research
 - `docs/ENGINEERING_DECISIONS.md` — durable engineering decisions
 - `docs/AI_MEMORY_PIPELINE.md` and `docs/HYBRID_MEMORY_SEARCH_ARCHITECTURE.md` — runtime memory design

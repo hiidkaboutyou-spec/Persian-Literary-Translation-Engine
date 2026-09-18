@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "corpus_id": "phase21-project-owned-en-fa-v1",
+  "system_id": "phase21-degraded-sanity",
+  "outputs": [
+    {
+      "case_id": "negation-subtext",
+      "translation": "«گفتم که برام مهمه.» مینا گفت و کاغذ را هی کوچک‌تر تا زد. «خوبه.»"
+    },
+    {
+      "case_id": "relationship-register",
+      "translation": "دکتر مهر گفت: «بهتره بنشینید، خانم رحیمی.» یک دقیقه بعد ندا نزدیک شد و گفت: «بنشینید، ری. خیلی بد به نظر می‌رسید.»"
+    },
+    {
+      "case_id": "sarcastic-voice",
+      "translation": "«خیلی بد شد. من اصلاً نمی‌خواستم ساعت دو صبح پشت در بمانم و واقعاً ناراحت شدم.»"
+    },
+    {
+      "case_id": "terminology-continuity",
+      "translation": "پیش از غروب از باغ شیشه‌ای گذشتند. وقتی ناقوس‌ها به صدا درآمدند، گلخانه شیشه‌ای دیگر خالی شده بود."
+    },
+    {
+      "case_id": "agency-sequence",
+      "translation": "سارا نامه را زیر چراغ پنهان کرد و بعد نیلا کلید را به او داد."
+    },
+    {
+      "case_id": "detail-omission",
+      "translation": "با یک چتر قرمز و کفش‌های خیس وارد شد."
+    },
+    {
+      "case_id": "idiomatic-naturalness",
+      "translation": "او نگاهی به من داد که می‌گفت حتی تلاشش را هم نکن."
+    },
+    {
+      "case_id": "context-carryover",
+      "translation": "گربه یک بار به در اتاق خواب چنگ زد. لاله بدون روشن کردن چراغ در را باز کرد."
+    }
+  ]
+}

@@ -151,11 +151,24 @@ No source code is copied or linked. Selective glossary/context ideas overlap nat
 
 TransAgents can inform translator/editor/fidelity/voice/naturalness role separation, but its orchestration and memory architecture are not runtime dependencies. Provider judgments remain separate from deterministic quality checks and human review.
 
-## SacreBLEU / chrF++ — Phase 21 candidate
+## SacreBLEU / chrF++ — Phase 21 optional benchmark evidence
 
+Upstream: `mjpost/sacrebleu`.
+
+Pinned package:
+
+```text
+sacrebleu==2.6.0
+```
+
+Release date: 12 January 2026.
+Upstream tag/release commit reviewed: `2277caccfc7b956671a6a09f1646f62250034157`.
 License: Apache-2.0.
-Potential value: reproducible reference-based BLEU/chrF/TER benchmarking.
-Decision: defer until a rights-safe EN->FA literary reference corpus exists. Reference metrics remain benchmark evidence, never the literary judge.
+Python requirement: >=3.9.
+
+Phase 21 exposes SacreBLEU only through `tools/sacrebleu-evaluator`. The boundary computes chrF2++ over project-supplied hypothesis/reference strings, returns JSON evidence, and does not download SacreBLEU/WMT test sets. Normal build/translation/review/publication does not require Python or SacreBLEU.
+
+Decision: **approved as optional reference-overlap evidence, never as the literary judge or an acceptance threshold**. The committed Phase 21 reference corpus is synthetic/project-owned; third-party corpora remain independently licensed/provenanced assets and are not implicitly approved by this tool decision.
 
 ## Supporting-tool candidates outside translation runtime
 
