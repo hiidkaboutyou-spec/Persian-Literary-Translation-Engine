@@ -4,8 +4,12 @@
 //! same boundary used by CLI/product surfaces. External evidence stays
 //! optional and review artifacts must become stale after a manual edit.
 
+use literary_review_engine::{
+    EvidenceSource, ReviewDimension, ReviewFinding, ReviewSeverity, RevisionProposal,
+};
 use project_engine::application::{
-    silent_sink, ApplicationService, EvidenceRunState, LiteraryReviewSettings, TranslationConfig,
+    silent_sink, ApplicationError, ApplicationService, EvidenceRunState, LiteraryReviewSettings,
+    TranslationConfig,
 };
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -150,4 +154,94 @@ fn mock_provider_evidence_is_recorded_without_becoming_human_approval() {
     );
     assert!(!artifact.stale);
     assert_eq!(service.snapshot(&project).unwrap().review, review_before);
+}
+
+
+#[test]
+fn suggested_review_revision_requires_explicit_acceptance_and_invalidates_old_evidence() {
+    let service = ApplicationService;
+    let project = translated_project("bounded-review-revision");
+
+    service
+        .review_translation(
+            &project,
+            &LiteraryReviewSettings {
+                provider: "none".into(),
+                model: None,
+                semantic_alignment: false,
+                max_chapters: Some(1),
+            },
+        )
+        .expect("initial review should succeed");
+
+    let mut view = service.get_literary_review(&project, 0).unwrap();
+    let chapter_before = service.get_translated_chapter(&project, 0).unwrap();
+    let first = chapter_before.paragraphs.first().unwrap();
+    let finding_id = "phase24-explicit-review-patch";
+    view.artifact.report.findings.push(ReviewFinding {
+        id: finding_id.into(),
+        dimension: ReviewDimension::PersianNaturalness,
+        severity: ReviewSeverity::Advisory,
+        evidence_source: EvidenceSource::Provider,
+        summary: "bounded test revision".into(),
+        source_indices: vec![0],
+        target_indices: vec![0],
+        confidence: Some(0.9),
+        revision_proposal: Some(RevisionProposal {
+            rationale: "make the target a concrete Persian test sentence".into(),
+            suggested_text: Some("شیرین وارد باغ شد.".into()),
+        }),
+    });
+
+    let review_path = project
+        .layout
+        .translation_dir
+        .join("reviews")
+        .join("001.literary-review.json");
+    std::fs::write(
+        &review_path,
+        serde_json::to_vec_pretty(&view.artifact).unwrap(),
+    )
+    .unwrap();
+
+    // Merely storing a model/provider suggestion is non-mutating.
+    assert_eq!(
+        service.get_translated_chapter(&project, 0).unwrap().paragraphs[0].translated,
+        first.translated
+    );
+
+    let mut sink = silent_sink();
+    let revision = service
+        .accept_literary_review_revision(
+            &project,
+            0,
+            finding_id,
+            "human-reviewer",
+            &mut sink,
+        )
+        .expect("explicit human acceptance should apply one bounded paragraph");
+    assert_eq!(revision.previous, first.translated);
+    assert_eq!(revision.new, "شیرین وارد باغ شد.");
+    assert_eq!(revision.reviewer.as_deref(), Some("human-reviewer"));
+
+    let chapter_after = service.get_translated_chapter(&project, 0).unwrap();
+    assert_eq!(chapter_after.paragraphs[0].translated, "شیرین وارد باغ شد.");
+    assert!(chapter_after.quality_stale);
+
+    let stale = service.get_literary_review(&project, 0).unwrap();
+    assert!(stale.stale);
+
+    let second = service
+        .accept_literary_review_revision(
+            &project,
+            0,
+            finding_id,
+            "human-reviewer",
+            &mut sink,
+        )
+        .unwrap_err();
+    assert!(matches!(
+        second,
+        ApplicationError::ReviewRevisionUnavailable(_)
+    ));
 }
