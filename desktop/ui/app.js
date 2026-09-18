@@ -722,6 +722,11 @@ document.addEventListener("keydown", (event) => {
   }
 
   if (!$("command-palette").open) return;
+  if (event.key === "Escape") {
+    event.preventDefault();
+    closeCommandPalette();
+    return;
+  }
   if (event.key === "ArrowDown" || event.key === "ArrowUp") {
     event.preventDefault();
     if (!visibleCommands.length) return;
