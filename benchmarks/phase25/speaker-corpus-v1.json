@@ -10,103 +10,271 @@
     {
       "id": "post-quote-canonical",
       "text": "\"Stay here,\" Mina said.",
-      "characters": [{"name":"Mina","aliases":[]}],
-      "expected": [{"speaker":"Mina","method":"explicit_name_speech_verb"}]
+      "characters": [
+        {
+          "name": "Mina",
+          "aliases": []
+        }
+      ],
+      "expected": [
+        {
+          "speaker": "Mina",
+          "method": "explicit_name_speech_verb"
+        }
+      ]
     },
     {
       "id": "pre-quote-canonical",
       "text": "Mina whispered, \"Stay here.\"",
-      "characters": [{"name":"Mina","aliases":[]}],
-      "expected": [{"speaker":"Mina","method":"explicit_name_speech_verb"}]
+      "characters": [
+        {
+          "name": "Mina",
+          "aliases": []
+        }
+      ],
+      "expected": [
+        {
+          "speaker": "Mina",
+          "method": "explicit_name_speech_verb"
+        }
+      ]
     },
     {
       "id": "post-quote-alias",
       "text": "“Stay,” Min replied.",
-      "characters": [{"name":"Mina","aliases":["Min"]}],
-      "expected": [{"speaker":"Mina","method":"explicit_alias_speech_verb"}]
+      "characters": [
+        {
+          "name": "Mina",
+          "aliases": [
+            "Min"
+          ]
+        }
+      ],
+      "expected": [
+        {
+          "speaker": "Mina",
+          "method": "explicit_alias_speech_verb"
+        }
+      ]
     },
     {
       "id": "verb-name-after-quote",
       "text": "“Stay,” said Mina.",
-      "characters": [{"name":"Mina","aliases":[]}],
-      "expected": [{"speaker":"Mina","method":"explicit_name_speech_verb"}]
+      "characters": [
+        {
+          "name": "Mina",
+          "aliases": []
+        }
+      ],
+      "expected": [
+        {
+          "speaker": "Mina",
+          "method": "explicit_name_speech_verb"
+        }
+      ]
     },
     {
       "id": "vocative-is-not-speaker",
       "text": "\"Reza, stay,\" Mina said.",
       "characters": [
-        {"name":"Mina","aliases":[]},
-        {"name":"Reza","aliases":[]}
+        {
+          "name": "Mina",
+          "aliases": []
+        },
+        {
+          "name": "Reza",
+          "aliases": []
+        }
       ],
-      "expected": [{"speaker":"Mina","method":"explicit_name_speech_verb"}]
+      "expected": [
+        {
+          "speaker": "Mina",
+          "method": "explicit_name_speech_verb"
+        }
+      ]
     },
     {
       "id": "ask-object-is-not-speaker",
       "text": "Mina asked Reza, \"Ready?\"",
       "characters": [
-        {"name":"Mina","aliases":[]},
-        {"name":"Reza","aliases":[]}
+        {
+          "name": "Mina",
+          "aliases": []
+        },
+        {
+          "name": "Reza",
+          "aliases": []
+        }
       ],
-      "expected": [{"speaker":"Mina","method":"explicit_name_speech_verb"}]
+      "expected": [
+        {
+          "speaker": "Mina",
+          "method": "explicit_name_speech_verb"
+        }
+      ]
     },
     {
       "id": "pronoun-remains-unresolved",
       "text": "\"Stay,\" she said.",
-      "characters": [{"name":"Mina","aliases":[]}],
-      "expected": [{"speaker":null,"method":"pronoun_speech_verb_unresolved"}]
+      "characters": [
+        {
+          "name": "Mina",
+          "aliases": []
+        }
+      ],
+      "expected": [
+        {
+          "speaker": null,
+          "method": "pronoun_speech_verb_unresolved"
+        }
+      ]
     },
     {
       "id": "no-speech-cue-remains-unresolved",
       "text": "\"Stay.\" Mina frowned.",
-      "characters": [{"name":"Mina","aliases":[]}],
-      "expected": [{"speaker":null,"method":"no_speaker_cue"}]
+      "characters": [
+        {
+          "name": "Mina",
+          "aliases": []
+        }
+      ],
+      "expected": [
+        {
+          "speaker": null,
+          "method": "no_speaker_cue"
+        }
+      ]
     },
     {
       "id": "curly-single-quotes",
       "text": "‘Stay,’ Mina said. I don't know.",
-      "characters": [{"name":"Mina","aliases":[]}],
-      "expected": [{"speaker":"Mina","method":"explicit_name_speech_verb"}]
+      "characters": [
+        {
+          "name": "Mina",
+          "aliases": []
+        }
+      ],
+      "expected": [
+        {
+          "speaker": "Mina",
+          "method": "explicit_name_speech_verb"
+        }
+      ]
     },
     {
       "id": "guillemets",
       "text": "«Stay,» Mina said.",
-      "characters": [{"name":"Mina","aliases":[]}],
-      "expected": [{"speaker":"Mina","method":"explicit_name_speech_verb"}]
+      "characters": [
+        {
+          "name": "Mina",
+          "aliases": []
+        }
+      ],
+      "expected": [
+        {
+          "speaker": "Mina",
+          "method": "explicit_name_speech_verb"
+        }
+      ]
     },
     {
       "id": "leading-dash-detected-not-guessed",
       "text": "— Stay here.",
-      "characters": [{"name":"Mina","aliases":[]}],
-      "expected": [{"speaker":null,"method":"no_speaker_cue"}]
+      "characters": [
+        {
+          "name": "Mina",
+          "aliases": []
+        }
+      ],
+      "expected": [
+        {
+          "speaker": null,
+          "method": "no_speaker_cue"
+        }
+      ]
     },
     {
       "id": "conflicting-local-speakers-unresolved",
       "text": "Mina said, Reza said, \"Stay.\"",
       "characters": [
-        {"name":"Mina","aliases":[]},
-        {"name":"Reza","aliases":[]}
+        {
+          "name": "Mina",
+          "aliases": []
+        },
+        {
+          "name": "Reza",
+          "aliases": []
+        }
       ],
-      "expected": [{"speaker":null,"method":"ambiguous_explicit_candidates"}]
+      "expected": [
+        {
+          "speaker": null,
+          "method": "ambiguous_explicit_candidates"
+        }
+      ]
     },
     {
       "id": "prior-sentence-tag-not-reused",
       "text": "Mina said. \"No,\" Reza replied.",
       "characters": [
-        {"name":"Mina","aliases":[]},
-        {"name":"Reza","aliases":[]}
+        {
+          "name": "Mina",
+          "aliases": []
+        },
+        {
+          "name": "Reza",
+          "aliases": []
+        }
       ],
-      "expected": [{"speaker":"Reza","method":"explicit_name_speech_verb"}]
+      "expected": [
+        {
+          "speaker": "Reza",
+          "method": "explicit_name_speech_verb"
+        }
+      ]
     },
     {
       "id": "two-quotes-local-cues",
       "text": "\"Stay,\" Mina said. \"No,\" Reza replied.",
       "characters": [
-        {"name":"Mina","aliases":[]},
-        {"name":"Reza","aliases":[]}
+        {
+          "name": "Mina",
+          "aliases": []
+        },
+        {
+          "name": "Reza",
+          "aliases": []
+        }
       ],
       "expected": [
-        {"speaker":"Mina","method":"explicit_name_speech_verb"},
-        {"speaker":"Reza","method":"explicit_name_speech_verb"}
+        {
+          "speaker": "Mina",
+          "method": "explicit_name_speech_verb"
+        },
+        {
+          "speaker": "Reza",
+          "method": "explicit_name_speech_verb"
+        }
+      ]
+    },
+    {
+      "id": "nearest-post-quote-tag",
+      "text": "\"Stay,\" said Mina, while Reza replied softly.",
+      "characters": [
+        {
+          "name": "Mina",
+          "aliases": []
+        },
+        {
+          "name": "Reza",
+          "aliases": []
+        }
+      ],
+      "expected": [
+        {
+          "speaker": "Mina",
+          "method": "explicit_name_speech_verb"
+        }
       ]
     }
   ]
