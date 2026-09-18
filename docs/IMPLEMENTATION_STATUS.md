@@ -6,7 +6,7 @@ A production-grade English-to-Persian literary translation engine with a Rust co
 
 ## Canonical Main State
 
-`main` is verified through Phase 21.
+`main` is verified through Phase 24.
 
 Phase 21 implementation merged through PR #100 at:
 
@@ -169,23 +169,19 @@ PR #103; final reviewed head `bdf3e563380f5f169a9ecf48847c100baf904c67`; merge c
 
 Delivered locked release builds, per-target CycloneDX SBOMs, provenance/SBOM attestations for tagged CLI artifacts, multi-platform release-contract validation, Apple Silicon desktop integrity evidence, fail-closed updater state, and exact-revision optional `ip-as-logo` design skill provenance. Real Developer ID/notarization/updater signing credentials remain external and were not fabricated.
 
-## Current Branch — Phase 24 Literary Precision & Persian Polish
+## Phase 24 — Literary Precision & Persian Polish — canonical
 
-Branch: `phase-24-literary-precision-persian-polish`; draft PR #104.
+PR #104; final reviewed head `e8a0420a57aa4a6663fda8d32bd4336069237421`; merge commit `2fa48dfd39437f79e6ac9db949f54e6595f2cc0a`.
 
-Implemented:
+Delivered native Persian typography evidence, explicit bounded human acceptance of review-proposed paragraph revisions, desktop support for that action, and independent strict EPUB reopen validation through dev-only `rbook 0.7.10`. Existing BookForge/runtime, human-approval and review-staleness boundaries remain intact.
 
-- separate native Persian publication-quality helpers without changing the long-standing comparison semantics of `text-normalization::normalize`;
-- deterministic low-risk Arabic/Persian Unicode cleanup and conservative typography findings for Arabic variants, Arabic-Indic digits, tatweel, invalid/duplicate ZWNJ, `می/نمی` spacing, repeated spaces and punctuation spacing;
-- Persian typography evidence attached to literary review as a narrow `PersianNaturalness` channel, with explicit advisory language that fluency/idiom/voice/rhythm/style are not judged by it;
-- fresh/single-target/concrete literary-review proposals can be accepted only through an explicit human action; proposal application re-runs native structural/Persian checks, uses the existing manual revision ledger, and stales old evidence;
-- desktop product command/UI for that explicit acceptance path;
-- exact `rbook 0.7.10` as a document-engine dev dependency only, with a strict independent reopen regression over a generated rights-safe Persian RTL EPUB;
-- committed engine dependency graph and permanent Phase-24 locked validation.
+Every required final-head gate was green: Phase 18–24, Rust CI, Security, Phase 22 Desktop, Phase 23 Trusted Release and Project Memory Tooling.
 
-Heavy BookNLP/FastCoref model stacks were deliberately not installed. They remain optional benchmark candidates only if future rights-safe character/speaker tests prove a gap.
+Detailed research and completion criteria: `docs/PHASE_24_RESEARCH.md`.
 
-Detailed research and exit criteria: `docs/PHASE_24_RESEARCH.md`.
+## Current Research Handoff
+
+No Phase 25 was pre-defined before Phase 24 completion. The next research target is the remaining fiction-intelligence gap: rights-safe character/coreference/quote-speaker evidence and benchmarking against the current explicit-name/alias character context. No heavy NLP/model dependency is approved merely by this handoff.
 
 ## CLI / Desktop
 
