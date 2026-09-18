@@ -101,6 +101,65 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  cli-release-matrix:
+    name: CLI release matrix ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            binary: literary-engine
+          - os: macos-14
+            target: aarch64-apple-darwin
+            binary: literary-engine
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            binary: literary-engine.exe
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install Rust target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Verify committed engine dependency graph
+        working-directory: engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f Cargo.lock
+          cargo metadata --locked --format-version 1 --no-deps > /dev/null
+
+      - name: Build release binary
+        working-directory: engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo build --release --locked -p literary-engine --target "${{ matrix.target }}"
+          test -f "target/${{ matrix.target }}/release/${{ matrix.binary }}"
+
+      - name: Install pinned CycloneDX generator
+        run: cargo install cargo-cyclonedx --version 0.5.9 --locked
+
+      - name: Generate target SBOM
+        working-directory: engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          cargo cyclonedx \
+            --manifest-path cli/Cargo.toml \
+            --format json \
+            --target "${{ matrix.target }}" \
+            --override-filename "phase23-${{ matrix.target }}.cdx.json" \
+            --spec-version 1.5
+          test -s "cli/phase23-${{ matrix.target }}.cdx.json"
+
   desktop-integrity:
     name: Desktop integrity macOS arm64
     runs-on: macos-15
