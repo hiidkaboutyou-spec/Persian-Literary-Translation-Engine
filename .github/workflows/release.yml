@@ -35,10 +35,10 @@ jobs:
         working-directory: engine
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Install Rust target
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable reviewed 2026-09-18
         with:
           targets: ${{ matrix.target }}
 
@@ -76,7 +76,7 @@ jobs:
           cp "cli/literary-engine-${{ matrix.target }}.cdx.json" "release/${{ matrix.artifact }}.cdx.json"
 
       - name: Upload release inputs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ${{ matrix.artifact }}
           path: engine/release/*
@@ -95,7 +95,7 @@ jobs:
       attestations: write
     steps:
       - name: Download release artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
           path: dist
 
@@ -113,24 +113,24 @@ jobs:
           sha256sum release/* > release/SHA256SUMS.txt
 
       - name: Attest release provenance
-        uses: actions/attest@v4
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
         with:
           subject-path: 'release/*'
 
       - name: Attest Linux SBOM
-        uses: actions/attest@v4
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
         with:
           subject-path: release/literary-engine-linux-x86_64
           sbom-path: release/literary-engine-linux-x86_64.cdx.json
 
       - name: Attest macOS SBOM
-        uses: actions/attest@v4
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
         with:
           subject-path: release/literary-engine-macos-arm64
           sbom-path: release/literary-engine-macos-arm64.cdx.json
 
       - name: Attest Windows SBOM
-        uses: actions/attest@v4
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
         with:
           subject-path: release/literary-engine-windows-x86_64.exe
           sbom-path: release/literary-engine-windows-x86_64.cdx.json
