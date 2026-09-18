@@ -153,13 +153,39 @@ Detailed research and completion record: `docs/PHASE_21_RESEARCH.md`.
 
 ## Current Phase
 
-### Phase 22 — Product Surface & Distribution Hardening
+### Phase 22 — Product Surface & Distribution Hardening — active branch/validation
+
+Branch: `phase-22-product-surface-distribution`.
+PR: #102.
 
 Goal: expose the stable application layer through a usable product without moving domain logic into the UI.
 
-Possible surfaces call `ApplicationService` directly and should support project home/status, intelligence review, canon editing, translation progress, literary-review evidence, manual revision history, publication export, recovery hints, and provider configuration checks.
+Implemented on the branch:
 
-Distribution hardening may later add a broader cross-reader EPUB rendering matrix and deliberate EPUB 3.4 migration after the standard is stable and separately approved.
+- isolated Tauri 2.11 desktop shell outside the `engine/` workspace;
+- locally bundled static frontend with no Node runtime and no remote content;
+- bounded IPC commands backed by `ApplicationService`;
+- project home/status, import/source verification, analysis, intelligence review, character/glossary canon, translation progress/pause/resume, manual paragraph revision, literary-review evidence, history and DOCX/EPUB export;
+- session-only provider credential input and typed application recovery errors;
+- explicit translation model-selection bug fix at the application boundary;
+- official native dialog plugin from Rust rather than broad frontend filesystem access;
+- Apple Silicon application-bundle CI, Rust audit, static-UI security assertions and core regression validation;
+- signing/notarization documented as external release credentials rather than embedded repository secrets;
+- updater deferred until a signed update channel exists.
+
+Exit criteria:
+
+- exact independent desktop Cargo lockfile committed and all desktop commands use `--locked`;
+- desktop fmt/Clippy/tests and affected project-engine tests green;
+- no remote frontend dependency, `innerHTML`, localStorage/sessionStorage secret persistence or general JS filesystem access;
+- Apple Silicon macOS app bundle builds successfully;
+- desktop and core Rust graphs pass vulnerability audit;
+- existing Phase 18–21/Rust/Security gates remain green;
+- final PR merge and canonical Status/Roadmap/PMC record.
+
+Detailed research: `docs/PHASE_22_RESEARCH.md`.
+
+A cross-reader EPUB rendering matrix and deliberate EPUB 3.4 migration remain later distribution/standards work; they are not silently folded into the first desktop shell.
 
 ## Next Action Rule
 
