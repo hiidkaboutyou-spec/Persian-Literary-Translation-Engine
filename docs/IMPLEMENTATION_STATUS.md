@@ -183,10 +183,29 @@ Detailed research and completion criteria: `docs/PHASE_24_RESEARCH.md`.
 
 No Phase 25 was pre-defined before Phase 24 completion. The next research target is the remaining fiction-intelligence gap: rights-safe character/coreference/quote-speaker evidence and benchmarking against the current explicit-name/alias character context. No heavy NLP/model dependency is approved merely by this handoff.
 
+## Current Branch — Phase 25 Editorial Motion Desktop UX
+
+Branch: `phase-25-editorial-motion-desktop-ux`.
+
+Phase 24 is canonical through merge `2fa48dfd39437f79e6ac9db949f54e6595f2cc0a`; Phase 25 changes presentation only and keeps every Rust/domain/persistence/publication boundary intact.
+
+Current Phase-25 implementation:
+
+- redesigned local static Tauri frontend as an editorial translation atelier rather than a generic dashboard;
+- grouped navigation, manuscript hero, editorial hierarchy and book-oriented visual identity;
+- side-by-side English/Persian editing surface with Persian-native RTL typography;
+- light/dark paper-and-ink design tokens with restrained plum/terracotta/sage/amber accents;
+- CSS/vanilla-JS motion only, with macOS `prefers-reduced-motion` respected;
+- keyboard `:focus-visible` treatment and explicit navigation `aria-current`;
+- native macOS titlebar preserved; no traffic-light/private-window plugin added;
+- no remote assets, frontend storage, `innerHTML`, framework, package manager or frontend build pipeline added.
+
+Research and validation policy: `docs/PHASE_25_RESEARCH.md`.
+
 ## CLI / Desktop
 
 The canonical CLI and desktop application remain operationally independent. Phase 23 adds release evidence around them; it does not move distribution tooling into runtime code.
 
 ## Current Handoff
 
-Finish Phase-23 branch validation, review any CI failures, confirm release/SBOM workflow syntax across supported targets, then open/merge the Phase-23 PR only when the exact final head is green. Do not enable updater or claim a notarized desktop release without real external credentials.
+Validate Phase 25 on its exact final head, including the dedicated editorial-motion gate and Phase 22 Apple Silicon app bundle. Merge only after the static security/accessibility contracts and desktop regression gates are green. The earlier fiction-intelligence research target remains deferred; no BookNLP/FastCoref runtime dependency is authorized by the UI phase.

@@ -98,6 +98,18 @@ This project is independent from every other repository. Do not import assumptio
 - Generated visual candidates are non-canonical until a human explicitly selects them. Do not silently replace the current app icon or product identity.
 - Updating the vendored skill requires a new pinned upstream commit plus provenance, license, and security review.
 
+## Phase 25 desktop UX invariants
+
+- Keep the desktop frontend local/static and framework-free unless a later numbered phase proves a capability gap that vanilla HTML/CSS/JS cannot meet.
+- Do not add remote fonts, image hosts, scripts, CSS imports, CDN assets, React, Tailwind, Framer/Motion, GSAP, Vite, or a frontend package manager for visual polish alone.
+- Preserve every existing DOM ID/command binding required by `desktop/ui/app.js` when changing layout.
+- Decorative motion must obey `prefers-reduced-motion: reduce`; no workflow, review state, warning, or action may be communicated only through animation.
+- Preserve visible `:focus-visible` keyboard treatment and explicit `aria-current` navigation state.
+- Keep the native macOS titlebar/traffic lights unless a separately researched phase justifies changing native window behavior.
+- The translation editor remains a reading surface first: source and Persian text need comfortable line-height, RTL correctness, and clear source/target separation.
+- Visual changes must not move project/domain orchestration into JavaScript; `ApplicationService` and bounded Tauri commands remain authoritative.
+- Phase-25 validation must include static local-content/security checks and a real Phase-22 Apple Silicon app bundle on the exact final head.
+
 ## Coding standards
 
 - Follow idiomatic stable Rust and the module patterns already present in `engine/`.

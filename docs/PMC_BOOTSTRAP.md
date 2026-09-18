@@ -276,3 +276,22 @@ Updating this repository seed does **not** mean the user's local PMC/Obsidian va
 13. Phase-24 dependency commands must be `--locked` after the committed lockfile. Do not reintroduce a CI lockfile bootstrap on canonical main.
 14. No source manuscript, generated translation, reviewer private data or provider secret may be added to repository/project memory.
 15. **Next research target is speaker/coreference evidence** — the current character context is strong for canonical names/aliases but does not itself resolve pronouns or quotation speakers. Any Phase-25 work must begin with a rights-safe benchmark and must not install BookNLP/FastCoref or another model stack until it proves a measurable gain.
+
+## Phase 25 Active Decisions — Editorial Motion Desktop UX
+
+Branch: `phase-25-editorial-motion-desktop-ux`.
+
+1. **UI identity is editorial, not SaaS-dashboard** — use book/paper/typography hierarchy appropriate to long-form literary work.
+2. **MotionSites is inspiration, not a dependency/template** — borrow depth/choreography/composition only; do not copy layouts/assets or import its tooling.
+3. **Static frontend remains canonical** — no React, Tailwind, Motion/Framer, GSAP, Vite or Node build/runtime is added.
+4. **No remote visual dependencies** — system/native fonts and local CSS/HTML only; no CDN fonts/scripts/images.
+5. **macOS native titlebar stays native** — do not introduce overlay/custom traffic-light positioning merely for aesthetics; Tauri documents OS-version/drag caveats.
+6. **Reduced motion is non-negotiable** — all decorative continuous/entrance motion must collapse under `prefers-reduced-motion: reduce`.
+7. **Keyboard visibility is non-negotiable** — interactive controls keep visible `:focus-visible` treatment and navigation uses `aria-current`.
+8. **Motion carries no authority/state by itself** — every project/review/translation state remains available as text and application data.
+9. **Dual-language editor prioritizes reading** — source and Persian translation remain visible side-by-side at normal widths, stacking responsively when space is constrained.
+10. **ApplicationService remains owner** — Phase 25 changes no Tauri command/domain/persistence/publishing contract.
+11. **Current UI references are research-only** — Motion Primitives (MIT, framework mismatch) and dependency-free vanilla microinteraction repos are not installed or vendored.
+12. **Phase 25 is not canonical until Apple Silicon bundle proof** — the final PR head must pass Phase 22 macOS app build plus the dedicated Phase-25 UI contract.
+
+Detailed research: `docs/PHASE_25_RESEARCH.md`.

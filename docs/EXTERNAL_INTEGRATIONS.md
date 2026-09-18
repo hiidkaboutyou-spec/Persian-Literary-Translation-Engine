@@ -319,6 +319,32 @@ Software license: MIT; reviewed F-Coref/LingMess model cards advertise MIT.
 
 Decision: not installed. It may be an optional benchmark competitor for English coreference, but it does not itself solve quotation speaker attribution and cannot become canon/runtime without demonstrated benefit.
 
+## Phase 25 UI references — research only
+
+### MotionSites AI
+
+Reference: `https://motionsites.ai`.
+
+Used only as visual research for layered composition, depth and motion language. No code, asset, prompt pack, package or remote runtime is integrated.
+
+### Motion Primitives
+
+Upstream: `ibelick/motion-primitives`.
+License: MIT.
+
+Useful reference for motion choreography, but built around Motion/React/Tailwind and therefore rejected as a Phase-25 dependency. The desktop remains static HTML/CSS/vanilla JS.
+
+### micro-interactions-library
+
+Upstream: `silvvrodriguez/micro-interactions-library`.
+README license statement: MIT.
+
+Useful reference for isolated vanilla/CSS microinteraction principles. No source is vendored; Phase 25 owns its own implementation and keeps interaction effects nonessential/reduced-motion-safe.
+
+### Tauri macOS window customization
+
+Official Tauri documentation was reviewed for custom/transparent/overlay titlebars. Phase 25 deliberately retains the native macOS titlebar because overlay/custom approaches have OS-version/drag/native-window-behavior caveats and provide no translation capability benefit.
+
 ## Supporting-tool candidates outside translation runtime
 
 ### OpenDataLoader PDF — ingestion benchmark candidate

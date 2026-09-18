@@ -1,0 +1,118 @@
+name: Phase 25 Editorial Motion UX
+
+on:
+  push:
+    branches:
+      - main
+      - phase-25-editorial-motion-desktop-ux
+    paths:
+      - 'desktop/**'
+      - 'docs/PHASE_25_RESEARCH.md'
+      - 'docs/IMPLEMENTATION_ROADMAP.md'
+      - 'docs/IMPLEMENTATION_STATUS.md'
+      - 'docs/PMC_BOOTSTRAP.md'
+      - 'AGENTS.md'
+      - '.github/workflows/phase25-editorial-motion.yml'
+  pull_request:
+    paths:
+      - 'desktop/**'
+      - 'docs/PHASE_25_RESEARCH.md'
+      - 'docs/IMPLEMENTATION_ROADMAP.md'
+      - 'docs/IMPLEMENTATION_STATUS.md'
+      - 'docs/PMC_BOOTSTRAP.md'
+      - 'AGENTS.md'
+      - '.github/workflows/phase25-editorial-motion.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase25-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ui-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Verify static local frontend boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -R -nE 'https?://|<script[^>]+src=["'\'' ]*https?:|@import[[:space:]]+url\(' desktop/ui
+          ! grep -R -n 'innerHTML' desktop/ui
+          ! grep -R -nE 'localStorage|sessionStorage' desktop/ui
+          test ! -f desktop/package.json
+          test ! -f desktop/ui/package.json
+
+      - name: Verify motion and keyboard accessibility contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'prefers-reduced-motion: reduce' desktop/ui/styles.css
+          grep -q ':focus-visible' desktop/ui/styles.css
+          grep -q 'aria-current' desktop/ui/app.js
+          grep -q 'Iowan Old Style' desktop/ui/styles.css
+
+      - name: Verify JavaScript syntax
+        run: node --check desktop/ui/app.js
+
+      - name: Verify HTML IDs are unique and JS references exist
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          import re
+          from pathlib import Path
+
+          class IdParser(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.ids = []
+              def handle_starttag(self, tag, attrs):
+                  for key, value in attrs:
+                      if key == 'id' and value:
+                          self.ids.append(value)
+
+          html = Path('desktop/ui/index.html').read_text()
+          js = Path('desktop/ui/app.js').read_text()
+          parser = IdParser()
+          parser.feed(html)
+          duplicates = sorted({x for x in parser.ids if parser.ids.count(x) > 1})
+          if duplicates:
+              raise SystemExit(f'duplicate ids: {duplicates}')
+
+          required = sorted(set(re.findall(r'\$\("([A-Za-z0-9_-]+)"\)', js)))
+          missing = [x for x in required if x not in parser.ids]
+          if missing:
+              raise SystemExit(f'IDs referenced by app.js but missing from HTML: {missing}')
+          print(f'validated {len(parser.ids)} unique ids and {len(required)} JS references')
+          PY
+
+  macos-arm64:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Verify Apple Silicon
+        shell: bash
+        run: test "$(uname -m)" = arm64
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable reviewed 2026-09-18
+
+      - name: Verify native macOS titlebar and locked desktop graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -q '"titleBarStyle"' desktop/src-tauri/tauri.conf.json
+          ! grep -q '"decorations"[[:space:]]*:[[:space:]]*false' desktop/src-tauri/tauri.conf.json
+          cargo metadata --locked --manifest-path desktop/src-tauri/Cargo.toml --format-version 1 --no-deps > /dev/null
+
+      - name: Compile desktop backend against UI shell
+        run: cargo check --locked --manifest-path desktop/src-tauri/Cargo.toml --all-targets

@@ -7,43 +7,82 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <div class="ambient-canvas" aria-hidden="true">
+    <span class="ambient-orb orb-plum"></span>
+    <span class="ambient-orb orb-amber"></span>
+    <span class="ambient-orb orb-sage"></span>
+    <span class="paper-grain"></span>
+  </div>
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">
-        <span class="brand-mark">PL</span>
-        <div>
+        <span class="brand-mark" aria-hidden="true"><span>آ</span><i>A</i></span>
+        <div class="brand-copy">
           <strong>Literary Engine</strong>
-          <small>English → Persian</small>
+          <small>translation atelier</small>
         </div>
       </div>
-      <nav id="nav">
-        <button class="nav-item active" data-view="home">Project</button>
-        <button class="nav-item" data-view="workflow">Workflow</button>
-        <button class="nav-item" data-view="review">Intelligence Review</button>
-        <button class="nav-item" data-view="canon">Canon</button>
-        <button class="nav-item" data-view="editor">Translation Editor</button>
-        <button class="nav-item" data-view="literary">Literary Review</button>
-        <button class="nav-item" data-view="history">History</button>
-        <button class="nav-item" data-view="provider">Provider</button>
+      <div class="sidebar-rule"><span>EN</span><i></i><span>FA</span></div>
+      <nav id="nav" aria-label="Workspace">
+        <span class="nav-kicker">Manuscript</span>
+        <button class="nav-item active" data-view="home" aria-current="page"><span class="nav-glyph">01</span><span>Project</span></button>
+        <button class="nav-item" data-view="workflow"><span class="nav-glyph">02</span><span>Workflow</span></button>
+        <button class="nav-item" data-view="review"><span class="nav-glyph">03</span><span>Intelligence</span></button>
+        <span class="nav-kicker">Editorial</span>
+        <button class="nav-item" data-view="canon"><span class="nav-glyph">04</span><span>Canon</span></button>
+        <button class="nav-item" data-view="editor"><span class="nav-glyph">05</span><span>Translation</span></button>
+        <button class="nav-item" data-view="literary"><span class="nav-glyph">06</span><span>Literary Review</span></button>
+        <span class="nav-kicker">System</span>
+        <button class="nav-item" data-view="history"><span class="nav-glyph">07</span><span>History</span></button>
+        <button class="nav-item" data-view="provider"><span class="nav-glyph">08</span><span>Provider</span></button>
       </nav>
       <div class="project-chip">
-        <small>Current project</small>
+        <small>Current manuscript</small>
         <span id="current-project">None</span>
+        <em>local-first · macOS ready</em>
       </div>
     </aside>
 
     <main>
       <header class="topbar">
-        <div>
+        <div class="topbar-copy">
+          <span class="topbar-kicker">Manuscript studio</span>
           <h1 id="view-title">Project</h1>
           <p id="view-subtitle">Open or create a translation project.</p>
         </div>
-        <div id="status-pill" class="status-pill muted">No project</div>
+        <div id="status-pill" class="status-pill muted"><span class="status-dot" aria-hidden="true"></span><span id="status-text">No project</span></div>
       </header>
 
       <div id="notice" class="notice hidden" role="status"></div>
 
       <section class="view active" data-view-panel="home">
+        <article class="atelier-hero">
+          <div class="hero-copy">
+            <span class="hero-kicker">English → Persian · long-form literary translation</span>
+            <h2>Translate the book.<br><em>Keep its pulse.</em></h2>
+            <p>A quiet workspace for voice, continuity, context and human editorial judgment — built around the manuscript, not around a chat box.</p>
+            <div class="hero-tags" aria-label="Core principles">
+              <span>Voice</span><span>Context</span><span>Fidelity</span><span>فارسی طبیعی</span>
+            </div>
+          </div>
+          <div class="manuscript-stage" aria-hidden="true">
+            <div class="orbit-line orbit-one"></div>
+            <div class="orbit-line orbit-two"></div>
+            <div class="paper-sheet paper-back"><span>CONTEXT</span></div>
+            <div class="paper-sheet paper-mid"><span>VOICE</span></div>
+            <div class="paper-sheet paper-front">
+              <small>MANUSCRIPT / 01</small>
+              <strong>Every sentence<br>remembers the book.</strong>
+              <i>EN → فا</i>
+            </div>
+            <span class="floating-note note-a">continuity</span>
+            <span class="floating-note note-b">human review</span>
+          </div>
+        </article>
+        <div class="section-heading">
+          <span>01 / Begin</span>
+          <div><h2>Manuscript setup</h2><p>Create a workspace or return to a book already in progress.</p></div>
+        </div>
         <div class="grid two">
           <article class="card">
             <h2>Open project</h2>
@@ -62,7 +101,11 @@
           </article>
         </div>
 
-        <article class="card">
+        <div class="section-heading compact">
+          <span>02 / State</span>
+          <div><h2>Project intelligence</h2><p>One glance at the manuscript’s current state and next editorial move.</p></div>
+        </div>
+        <article class="card spotlight-card">
           <div class="card-heading">
             <div><h2>Project snapshot</h2><p>Derived from the application layer; no UI-side state guessing.</p></div>
             <button id="verify-source" disabled>Verify source</button>
@@ -71,7 +114,8 @@
           <div id="warnings" class="warnings"></div>
         </article>
 
-        <article class="card">
+        <article class="card source-card">
+          <span class="card-number">03</span>
           <h2>Source book</h2>
           <div class="button-row">
             <button id="pick-import-source" disabled>Choose source file</button>
@@ -83,6 +127,7 @@
       </section>
 
       <section class="view" data-view-panel="workflow">
+        <div class="view-intro"><span>Pipeline / deliberate, inspectable, resumable</span><h2>From source to Persian edition</h2><p>Each stage stays explicit: understand the manuscript, translate with bounded context, then publish only after review.</p></div>
         <div class="grid two">
           <article class="card">
             <h2>Analysis</h2>
@@ -173,7 +218,8 @@
       </section>
 
       <section class="view" data-view-panel="editor">
-        <article class="card">
+        <div class="view-intro"><span>Dual-language desk / source ↔ translation</span><h2>The page is the interface.</h2><p>English stays visible beside Persian so revision never loses sight of the original sentence.</p></div>
+        <article class="card editor-card">
           <div class="card-heading">
             <div><h2>Translation editor</h2><p>Manual edits are persisted as revisions and mark quality evidence stale.</p></div>
             <div class="button-row">
@@ -187,6 +233,7 @@
       </section>
 
       <section class="view" data-view-panel="literary">
+        <div class="view-intro"><span>Evidence / not authority</span><h2>Review without surrendering judgment.</h2><p>Automated evidence can point to a problem; only a person decides what becomes the book.</p></div>
         <article class="card">
           <h2>Literary fidelity review</h2>
           <div class="inline-fields">
