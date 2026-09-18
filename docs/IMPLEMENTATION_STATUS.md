@@ -163,27 +163,29 @@ Signing/notarization remains a real external-credential release concern; the can
 
 Detailed record: `docs/PHASE_22_RESEARCH.md`.
 
-## Current Branch — Phase 23 Trusted Release & Supply-Chain Hardening
+## Phase 23 — Trusted Release & Supply-Chain Hardening — canonical
 
-Branch: `phase-23-trusted-release-supply-chain`.
+PR #103; final reviewed head `bdf3e563380f5f169a9ecf48847c100baf904c67`; merge commit `adc2ab2294feec6ff190b4e4d11c3fa6407ca7f2`.
 
-Phase 23 hardens the release path without changing literary translation behavior.
+Delivered locked release builds, per-target CycloneDX SBOMs, provenance/SBOM attestations for tagged CLI artifacts, multi-platform release-contract validation, Apple Silicon desktop integrity evidence, fail-closed updater state, and exact-revision optional `ip-as-logo` design skill provenance. Real Developer ID/notarization/updater signing credentials remain external and were not fabricated.
 
-Implemented on the branch so far:
+## Current Branch — Phase 24 Literary Precision & Persian Polish
 
-- fixed the CLI release workflow so it verifies the committed `engine/Cargo.lock` instead of regenerating it during release;
-- pinned `cargo-cyclonedx 0.5.9` for per-target JSON SBOM generation;
-- added GitHub `actions/attest@v4` provenance and per-binary SBOM attestation configuration for tagged releases;
-- retained SHA-256 release checksums;
-- added permanent Phase-23 CLI release-contract/SBOM validation;
-- added permanent Apple Silicon desktop SBOM + locked app-build + integrity-manifest validation;
-- explicitly checks that Tauri updater remains disabled until a real signing trust root and trusted endpoint exist;
-- vendored the user-requested `ip-as-logo` Agent Skill from exact upstream commit `acb834c717bcd0a487c49732d08397ba280d690b`, preserving its MIT notice and verifying exact upstream Git blobs in CI;
-- the visual skill is developer/design-only and cannot affect translation/runtime/publishing.
+Branch: `phase-24-literary-precision-persian-polish`; draft PR #104.
 
-Public desktop release remains credential-blocked for Developer ID signing and Apple notarization; those credentials are not fabricated or stored in the repository.
+Implemented:
 
-Detailed research and exit criteria: `docs/PHASE_23_RESEARCH.md`.
+- separate native Persian publication-quality helpers without changing the long-standing comparison semantics of `text-normalization::normalize`;
+- deterministic low-risk Arabic/Persian Unicode cleanup and conservative typography findings for Arabic variants, Arabic-Indic digits, tatweel, invalid/duplicate ZWNJ, `می/نمی` spacing, repeated spaces and punctuation spacing;
+- Persian typography evidence attached to literary review as a narrow `PersianNaturalness` channel, with explicit advisory language that fluency/idiom/voice/rhythm/style are not judged by it;
+- fresh/single-target/concrete literary-review proposals can be accepted only through an explicit human action; proposal application re-runs native structural/Persian checks, uses the existing manual revision ledger, and stales old evidence;
+- desktop product command/UI for that explicit acceptance path;
+- exact `rbook 0.7.10` as a document-engine dev dependency only, with a strict independent reopen regression over a generated rights-safe Persian RTL EPUB;
+- committed engine dependency graph and permanent Phase-24 locked validation.
+
+Heavy BookNLP/FastCoref model stacks were deliberately not installed. They remain optional benchmark candidates only if future rights-safe character/speaker tests prove a gap.
+
+Detailed research and exit criteria: `docs/PHASE_24_RESEARCH.md`.
 
 ## CLI / Desktop
 
