@@ -110,8 +110,17 @@
       ]
     },
     {
-      "id": "nearest-post-quote-tag",
+      "id": "distinct-local-post-quote-cues",
       "text": "\"Stay,\" said Mina, while Reza replied softly.",
+      "characters": [
+        {"name":"Mina","aliases":[]},
+        {"name":"Reza","aliases":[]}
+      ],
+      "expected": [{"speaker":null,"method":"ambiguous_explicit_candidates"}]
+    },
+    {
+      "id": "post-quote-ask-object",
+      "text": "\"Ready?\" Mina asked Reza.",
       "characters": [
         {"name":"Mina","aliases":[]},
         {"name":"Reza","aliases":[]}
