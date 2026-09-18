@@ -29,31 +29,57 @@ jobs:
             artifact: literary-engine-windows-x86_64
             binary: literary-engine.exe
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 40
     defaults:
       run:
         working-directory: engine
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
       - name: Install Rust target
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable reviewed 2026-09-18
         with:
           targets: ${{ matrix.target }}
-      - name: Resolve dependencies
-        run: cargo generate-lockfile
-      - name: Build release binary
-        run: cargo build --release --locked -p literary-engine --target ${{ matrix.target }}
-      - name: Stage binary
+
+      - name: Verify committed dependency graph
         shell: bash
         run: |
+          set -euo pipefail
+          test -f Cargo.lock
+          cargo metadata --locked --format-version 1 --no-deps > /dev/null
+
+      - name: Build release binary
+        run: cargo build --release --locked -p literary-engine --target ${{ matrix.target }}
+
+      - name: Install pinned CycloneDX generator
+        run: cargo install cargo-cyclonedx --version 0.5.9 --locked
+
+      - name: Generate target SBOM
+        shell: bash
+        run: |
+          set -euo pipefail
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          cargo cyclonedx \
+            --manifest-path cli/Cargo.toml \
+            --format json \
+            --target "${{ matrix.target }}" \
+            --override-filename "literary-engine-${{ matrix.target }}.cdx" \
+            --spec-version 1.5
+
+      - name: Stage binary and SBOM
+        shell: bash
+        run: |
+          set -euo pipefail
           mkdir -p release
           cp "target/${{ matrix.target }}/release/${{ matrix.binary }}" "release/${{ matrix.binary }}"
-      - name: Upload binary artifact
-        uses: actions/upload-artifact@v4
+          cp "cli/literary-engine-${{ matrix.target }}.cdx.json" "release/${{ matrix.artifact }}.cdx.json"
+
+      - name: Upload release inputs
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ${{ matrix.artifact }}
-          path: engine/release/${{ matrix.binary }}
+          path: engine/release/*
           if-no-files-found: error
           retention-days: 14
 
@@ -62,14 +88,18 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
       contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
     steps:
       - name: Download release artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
           path: dist
+
       - name: Normalize release filenames
         shell: bash
         run: |
@@ -78,16 +108,40 @@ jobs:
           cp dist/literary-engine-linux-x86_64/literary-engine release/literary-engine-linux-x86_64
           cp dist/literary-engine-macos-arm64/literary-engine release/literary-engine-macos-arm64
           cp dist/literary-engine-windows-x86_64/literary-engine.exe release/literary-engine-windows-x86_64.exe
+          cp dist/literary-engine-linux-x86_64/literary-engine-linux-x86_64.cdx.json release/
+          cp dist/literary-engine-macos-arm64/literary-engine-macos-arm64.cdx.json release/
+          cp dist/literary-engine-windows-x86_64/literary-engine-windows-x86_64.cdx.json release/
           sha256sum release/* > release/SHA256SUMS.txt
+
+      - name: Attest release provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: 'release/*'
+
+      - name: Attest Linux SBOM
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: release/literary-engine-linux-x86_64
+          sbom-path: release/literary-engine-linux-x86_64.cdx.json
+
+      - name: Attest macOS SBOM
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: release/literary-engine-macos-arm64
+          sbom-path: release/literary-engine-macos-arm64.cdx.json
+
+      - name: Attest Windows SBOM
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: release/literary-engine-windows-x86_64.exe
+          sbom-path: release/literary-engine-windows-x86_64.cdx.json
+
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "${GITHUB_REF_NAME}" \
-            release/literary-engine-linux-x86_64 \
-            release/literary-engine-macos-arm64 \
-            release/literary-engine-windows-x86_64.exe \
-            release/SHA256SUMS.txt \
+            release/* \
             --verify-tag \
             --generate-notes \
             --title "Persian Literary Translation Engine ${GITHUB_REF_NAME}"
