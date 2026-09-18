@@ -142,10 +142,7 @@ impl SacreBleuSidecar {
         }
         if !result.corpus_chrf2pp.is_finite()
             || result.items.len() != items.len()
-            || result
-                .items
-                .iter()
-                .any(|item| !item.chrf2pp.is_finite())
+            || result.items.iter().any(|item| !item.chrf2pp.is_finite())
         {
             return Err(SacreBleuError::Protocol(
                 "sidecar returned invalid score data".to_string(),
