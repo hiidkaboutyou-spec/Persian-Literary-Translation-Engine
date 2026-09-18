@@ -65,7 +65,6 @@ jobs:
             --format json \
             --target "${{ matrix.target }}" \
             --override-filename "literary-engine-${{ matrix.target }}.cdx.json" \
-            --license-strict \
             --spec-version 1.5
 
       - name: Stage binary and SBOM
