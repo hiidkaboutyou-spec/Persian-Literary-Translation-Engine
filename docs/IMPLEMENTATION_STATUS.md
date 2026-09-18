@@ -134,8 +134,34 @@ Canonical CI includes the permanent Phase 21 Linux + Apple Silicon benchmark wor
 
 Coverage now also includes Phase 21 rights/provenance schema enforcement, deterministic anchor evaluation, contrastive degradation sanity, human-scorecard validation, CLI benchmark JSON/text output, optional chrF2++ protocol validation, and Apple Silicon benchmark compatibility.
 
+## Current Branch — Phase 22 Product Surface & Distribution Hardening
+
+Branch: `phase-22-product-surface-distribution`.
+PR: #102.
+
+Phase 22 is **not canonical until the final PR head passes the desktop/core gates, the independent desktop lockfile is committed, PR #102 merges to `main`, and canonical state is recorded**.
+
+Implemented on the branch:
+
+- isolated Tauri 2 desktop crate under `desktop/src-tauri`, intentionally outside the core `engine/` workspace;
+- reviewed/pinned Tauri 2.11.5, tauri-build 2.6.3 and official dialog plugin 2.7.2;
+- static local HTML/CSS/JS frontend with no Node/Vite/web-server runtime;
+- product surfaces for project snapshot/source import, analysis, intelligence review, character/glossary canon, translation/pause/resume/progress, paragraph revisions, literary review evidence, publication export, history and provider configuration;
+- thin IPC adapter: desktop commands call `ApplicationService` rather than domain crates for orchestration;
+- native source/folder picker from Rust; no general JavaScript filesystem permission;
+- session-only OpenAI key handling with no project/localStorage persistence;
+- strict local-content CSP and no remote frontend resources;
+- long-running calls dispatched through Tauri's blocking task pool;
+- application-layer fix so explicit `TranslationConfig.model` is actually honored before the `OPENAI_MODEL` fallback;
+- Apple Silicon macOS bundle validation workflow and explicit signing/notarization gate;
+- updater intentionally deferred until a signed release endpoint exists.
+
+Detailed research and exit criteria: `docs/PHASE_22_RESEARCH.md`.
+
+## CLI / Desktop
+
+The canonical CLI remains fully usable and independent from Tauri. The Phase 22 desktop surface consumes the same `ApplicationService`; its platform dependencies are isolated so GUI availability cannot become a requirement for core translation/review/export.
+
 ## Current Handoff
 
-Phase 21 is complete/canonical. The next numbered phase is **Phase 22 — Product Surface & Distribution Hardening**.
-
-Do not add new benchmark/runtime dependencies merely because Phase 21 exists; use the benchmark to prove concrete quality gaps first. Phase 22 should consume the stable `ApplicationService`/benchmark/review/publication boundaries rather than move domain logic into UI code.
+Finish PR #102 validation and lockfile bootstrap. Do not call Phase 22 canonical or start a new numbered phase until the exact desktop dependency graph is committed and the final head passes Apple Silicon bundle, audits, static-UI security, project-engine, and existing regression gates.
