@@ -58,6 +58,16 @@ Decision:
 
 Attestation is evidence of provenance, not proof that an artifact is safe.
 
+GitHub's secure-use guidance states that a full-length action commit SHA is the immutable reference form. Phase 23 therefore pins the release-sensitive actions instead of relying on movable major tags:
+
+- `actions/attest` v4 reviewed SHA: `1e69f48acb82d1966a394da916b4c1698aa569d6`
+- `actions/checkout` v7 reviewed SHA: `3d3c42e5aac5ba805825da76410c181273ba90b1`
+- `actions/upload-artifact` v4 reviewed SHA: `ea165f8d65b6e75b540449e92b4886f43607fa02`
+- `actions/download-artifact` v5 reviewed SHA: `634f93cb2916e3fdff6788551b99b062d0335ce0`
+- `dtolnay/rust-toolchain` stable reviewed SHA: `6bed0761d98439e5a578e2877258200ad565ba87`
+
+The current `actions/attest` v4 documentation also requires `artifact-metadata: write`; Phase 23 grants it only to the tagged-release publish job together with `id-token: write` and `attestations: write`.
+
 ### 3. CycloneDX is the selected Rust SBOM path
 
 Reviewed integration:
@@ -192,7 +202,8 @@ Phase 23 can become canonical when:
 - the vendored design skill passes exact provenance checks;
 - release workflow never refreshes a committed lockfile;
 - CLI SBOM generation works across the supported release target matrix;
-- tagged release configuration contains provenance and SBOM attestation steps with narrowly scoped permissions;
+- tagged release configuration contains provenance and SBOM attestation steps with narrowly scoped permissions, including current `artifact-metadata: write` only on the publish job;
+- release-sensitive GitHub Actions are referenced by reviewed full-length commit SHAs rather than movable major-version tags;
 - Phase-23 CLI SBOM smoke gate passes;
 - the exact Linux x86_64, macOS arm64, and Windows x86_64 CLI release matrix builds with committed locks and emits non-empty target SBOMs;
 - Phase-23 Apple Silicon desktop SBOM + locked app build + integrity-manifest gate passes;
