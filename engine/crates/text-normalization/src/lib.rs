@@ -224,15 +224,13 @@ pub fn inspect_persian_typography(text: &str) -> Vec<PersianTypographyIssue> {
 }
 
 fn detect_prefix_spacing(chars: &[char], issues: &mut Vec<PersianTypographyIssue>) {
-    for (index, prefix) in [(0usize, ['م', 'ی']), (0usize, ['ن', 'م'])] {
-        let _ = (index, prefix);
-    }
-
     for start in 0..chars.len() {
         let boundary_before = start == 0 || !is_persian_script_letter(chars[start - 1]);
 
         let mi = chars.get(start) == Some(&'م')
-            && chars.get(start + 1) == Some(&'ی')
+            && chars
+                .get(start + 1)
+                .is_some_and(|ch| matches!(*ch, 'ی' | 'ي' | 'ى'))
             && chars.get(start + 2) == Some(&' ')
             && chars
                 .get(start + 3)
@@ -247,7 +245,9 @@ fn detect_prefix_spacing(chars: &[char], issues: &mut Vec<PersianTypographyIssue
 
         let nemi = chars.get(start) == Some(&'ن')
             && chars.get(start + 1) == Some(&'م')
-            && chars.get(start + 2) == Some(&'ی')
+            && chars
+                .get(start + 2)
+                .is_some_and(|ch| matches!(*ch, 'ی' | 'ي' | 'ى'))
             && chars.get(start + 3) == Some(&' ')
             && chars
                 .get(start + 4)
