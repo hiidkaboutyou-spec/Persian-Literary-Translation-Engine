@@ -302,12 +302,12 @@ pub fn attach_native_persian_typography(report: &mut LiteraryReviewReport, targe
             .into(),
     );
 
-    let mut grouped =
-        BTreeMap::<PersianTypographyIssueKind, (usize, usize, Option<String>)>::new();
+    let mut grouped = BTreeMap::<PersianTypographyIssueKind, (usize, usize, Option<String>)>::new();
     for issue in inspect_persian_typography(target) {
-        let entry = grouped
-            .entry(issue.kind)
-            .or_insert((0, issue.char_index, issue.suggestion.clone()));
+        let entry =
+            grouped
+                .entry(issue.kind)
+                .or_insert((0, issue.char_index, issue.suggestion.clone()));
         entry.0 += 1;
     }
 
