@@ -476,7 +476,7 @@ fn collect_paired_quotes(
             .enumerate()
             .filter_map(|(index, ch)| (*ch == open).then_some(index))
             .collect::<Vec<_>>();
-        for pair in positions.chunks_exact(2) {
+        for pair in positions.as_chunks::<2>().0 {
             let start = pair[0] + 1;
             let end = pair[1];
             if start <= end {
