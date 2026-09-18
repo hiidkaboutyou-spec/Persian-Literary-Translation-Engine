@@ -208,6 +208,7 @@ Approved boundary:
 - reads Cargo metadata plus the committed dependency graph to create CycloneDX JSON;
 - uses `SOURCE_DATE_EPOCH` from the repository commit timestamp for reproducible SBOM metadata;
 - target-specific release SBOMs are published beside CLI binaries;
+- deprecated slash-form license expressions present in historical transitive crate metadata are preserved as named-license warnings; Phase 23 intentionally does not rewrite third-party metadata or use `--license-strict` as an SBOM availability gate;
 - the tool is never a translation, review, desktop-runtime, or publishing dependency.
 
 A generated SBOM is component inventory evidence; it is not a vulnerability-free guarantee.
@@ -221,7 +222,8 @@ Integration: GitHub Actions `actions/attest@v4`.
 Approved boundary:
 
 - tagged public release artifacts only;
-- publish job receives narrowly scoped `id-token: write` and `attestations: write`;
+- `actions/attest` is pinned to reviewed commit `1e69f48acb82d1966a394da916b4c1698aa569d6` rather than a movable major tag;
+- publish job receives narrowly scoped `id-token: write`, `attestations: write`, and `artifact-metadata: write`;
 - provenance claims link release bytes to repository/workflow/commit/build context;
 - per-binary SBOM attestations link each CLI binary to its CycloneDX document;
 - routine PR validation artifacts are not treated as public trusted releases merely because CI built them.
