@@ -884,10 +884,7 @@ mod tests {
     fn post_quote_ask_object_is_removed_only_when_it_shares_the_subject_verb() {
         let result = attribute_speakers("p1", "\"Ready?\" Mina asked Reza.", &bible());
         assert_eq!(result[0].speaker.as_deref(), Some("Mina"));
-        assert_eq!(
-            result[0].method,
-            AttributionMethod::ExplicitNameSpeechVerb
-        );
+        assert_eq!(result[0].method, AttributionMethod::ExplicitNameSpeechVerb);
     }
 
     #[test]
