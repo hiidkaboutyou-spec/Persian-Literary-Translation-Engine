@@ -9,9 +9,53 @@ const state = {
   translationRunning: false,
   progressTimer: null,
   literaryEvidence: null,
+  currentView: "home",
+  theme: "system",
+  commandIndex: 0,
+  editorFocus: false,
 };
 
 const $ = (id) => document.getElementById(id);
+
+const VIEW_META = {
+  home: { title: "Project", subtitle: "Open or create a translation project.", eyebrow: "Workspace", shortcut: "⌘1", icon: "⌂" },
+  workflow: { title: "Workflow", subtitle: "Explicit analysis, translation and publication stages.", eyebrow: "Pipeline", shortcut: "⌘2", icon: "↝" },
+  editor: { title: "Translation Editor", subtitle: "Read source and Persian side by side, then save bounded revisions.", eyebrow: "Translation", shortcut: "⌘3", icon: "✎" },
+  review: { title: "Intelligence Review", subtitle: "Human decisions over extracted literary intelligence.", eyebrow: "Literary intelligence", shortcut: "⌘4", icon: "◇" },
+  canon: { title: "Canon", subtitle: "Character voice and terminology that guide long-form continuity.", eyebrow: "Literary intelligence", shortcut: "⌘5", icon: "☷" },
+  literary: { title: "Literary Review", subtitle: "Post-translation fidelity and Persian-naturalness evidence.", eyebrow: "Literary intelligence", shortcut: "⌘6", icon: "✦" },
+  history: { title: "History", subtitle: "Bounded audit history emitted by the application layer.", eyebrow: "System", shortcut: "⌘7", icon: "↺" },
+  provider: { title: "Provider", subtitle: "Session-only provider configuration; secrets are never stored in projects.", eyebrow: "System", shortcut: "⌘8", icon: "⌁" },
+};
+
+const THEME_META = {
+  system: { label: "System", subtitle: "Follow macOS appearance", icon: "◐" },
+  midnight: { label: "Midnight Ink", subtitle: "Deep plum editorial glass", icon: "●" },
+  paper: { label: "Rose Paper", subtitle: "Warm paper and dusty rose", icon: "◒" },
+  sage: { label: "Sage Manuscript", subtitle: "Soft green reading room", icon: "◓" },
+};
+
+const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function withViewTransition(update) {
+  if (!prefersReducedMotion() && typeof document.startViewTransition === "function") {
+    document.startViewTransition(update);
+  } else {
+    update();
+  }
+}
+
+function setTheme(theme) {
+  if (!THEME_META[theme]) return;
+  state.theme = theme;
+  document.body.dataset.theme = theme;
+  $("theme-name").textContent = THEME_META[theme].label;
+  document.querySelectorAll(".theme-swatch").forEach((button) => {
+    const active = button.dataset.themeValue === theme;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+}
 
 function showNotice(message, kind = "success") {
   const node = $("notice");
@@ -50,25 +94,24 @@ function textNode(tag, value, className) {
 }
 
 function setView(name) {
-  document.querySelectorAll(".nav-item").forEach((button) => {
-    button.classList.toggle("active", button.dataset.view === name);
+  const meta = VIEW_META[name] || VIEW_META.home;
+  state.currentView = name;
+  withViewTransition(() => {
+    document.querySelectorAll(".nav-item").forEach((button) => {
+      const active = button.dataset.view === name;
+      button.classList.toggle("active", active);
+      if (active) button.setAttribute("aria-current", "page");
+      else button.removeAttribute("aria-current");
+    });
+    document.querySelectorAll("[data-view-panel]").forEach((panel) => {
+      panel.classList.toggle("active", panel.dataset.viewPanel === name);
+    });
+    $("view-title").textContent = meta.title;
+    $("view-subtitle").textContent = meta.subtitle;
+    $("view-eyebrow").textContent = meta.eyebrow;
   });
-  document.querySelectorAll("[data-view-panel]").forEach((panel) => {
-    panel.classList.toggle("active", panel.dataset.viewPanel === name);
-  });
-  const titles = {
-    home: ["Project", "Open or create a translation project."],
-    workflow: ["Workflow", "Explicit analysis, translation and publication stages."],
-    review: ["Intelligence Review", "Human decisions over extracted literary intelligence."],
-    canon: ["Canon", "Character voice and terminology that guide long-form continuity."],
-    editor: ["Translation Editor", "Paragraph-level Persian revision with durable history."],
-    literary: ["Literary Review", "Post-translation fidelity and naturalness evidence."],
-    history: ["History", "Bounded audit history emitted by the application layer."],
-    provider: ["Provider", "Session-only provider configuration; secrets are never stored in projects."],
-  };
-  const [title, subtitle] = titles[name] || titles.home;
-  $("view-title").textContent = title;
-  $("view-subtitle").textContent = subtitle;
+  const activePanel = document.querySelector('[data-view-panel="' + name + '"]');
+  if (activePanel) activePanel.scrollIntoView({ block: "start", behavior: prefersReducedMotion() ? "auto" : "smooth" });
 }
 
 function setProjectEnabled(enabled) {
@@ -314,22 +357,45 @@ function renderChapter(chapter) {
   );
   const editor = $("paragraph-editor");
   editor.replaceChildren();
-  editor.className = "paragraph-editor";
+  editor.className = state.editorFocus ? "paragraph-editor focus-persian" : "paragraph-editor";
 
-  chapter.paragraphs.forEach((paragraph) => {
+  chapter.paragraphs.forEach((paragraph, index) => {
     const block = document.createElement("div");
     block.className = "paragraph";
-    block.append(textNode("div", paragraph.source, "source-text"));
+
+    const sourcePane = document.createElement("div");
+    sourcePane.className = "paragraph-pane source-pane";
+    const sourceKicker = document.createElement("div");
+    sourceKicker.className = "paragraph-kicker";
+    sourceKicker.append(textNode("span", "Source"), textNode("span", "#" + (index + 1)));
+    sourcePane.append(sourceKicker, textNode("div", paragraph.source, "source-text"));
+
+    const translationPane = document.createElement("div");
+    translationPane.className = "paragraph-pane translation-pane";
+    const translationKicker = document.createElement("div");
+    translationKicker.className = "paragraph-kicker";
+    translationKicker.append(textNode("span", "Persian revision"), textNode("span", "editable"));
+
     const textarea = document.createElement("textarea");
     textarea.className = "translation-text";
     textarea.dir = "rtl";
     textarea.value = paragraph.translated;
-    const save = textNode("button", "Save revision");
+    textarea.setAttribute("aria-label", "Persian translation paragraph " + (index + 1));
+
+    const saveRow = document.createElement("div");
+    saveRow.className = "save-row";
+    const save = textNode("button", "Saved");
+    save.disabled = true;
+
+    textarea.addEventListener("input", () => {
+      const dirty = textarea.value !== paragraph.translated;
+      block.classList.toggle("dirty", dirty);
+      save.disabled = !dirty;
+      save.textContent = dirty ? "Save revision" : "Saved";
+    });
+
     save.addEventListener("click", async () => {
-      if (textarea.value === paragraph.translated) {
-        showNotice("No text change to save.", "error");
-        return;
-      }
+      if (textarea.value === paragraph.translated) return;
       const chapterIndex = Number($("editor-chapter-index").value) - 1;
       await call("apply_manual_edit", {
         projectRoot: state.projectRoot,
@@ -339,9 +405,15 @@ function renderChapter(chapter) {
         reviewer: $("reviewer-name").value.trim() || "desktop-user",
       });
       paragraph.translated = textarea.value;
+      block.classList.remove("dirty");
+      save.disabled = true;
+      save.textContent = "Saved";
       showNotice("Manual revision saved; quality evidence is now stale until reviewed again.");
     });
-    block.append(textarea, save);
+
+    saveRow.append(save);
+    translationPane.append(translationKicker, textarea, saveRow);
+    block.append(sourcePane, translationPane);
     editor.append(block);
   });
 }
@@ -429,8 +501,227 @@ function renderHistory(items) {
   });
 }
 
+function commandDefinitions() {
+  const navigation = Object.entries(VIEW_META).map(([view, meta]) => ({
+    id: "nav-" + view,
+    title: meta.title,
+    subtitle: "Go to " + meta.eyebrow.toLowerCase(),
+    icon: meta.icon,
+    shortcut: meta.shortcut,
+    keywords: view + " " + meta.title + " " + meta.eyebrow,
+    run: () => setView(view),
+  }));
+
+  const actions = [
+    {
+      id: "open-project",
+      title: "Open project folder",
+      subtitle: "Choose an existing translation workspace",
+      icon: "⌂",
+      keywords: "open existing project folder",
+      run: () => $("pick-open-root").click(),
+    },
+    {
+      id: "create-project",
+      title: "Create new project",
+      subtitle: "Choose a folder and create a workspace",
+      icon: "+",
+      keywords: "new create project",
+      run: () => $("create-project").click(),
+    },
+    {
+      id: "import-source",
+      title: "Choose source book",
+      subtitle: "Import TXT, Markdown, DOCX, EPUB or text PDF",
+      icon: "↥",
+      keywords: "import source manuscript book",
+      available: () => Boolean(state.projectRoot) && !$("pick-import-source").disabled,
+      run: () => $("pick-import-source").click(),
+    },
+    {
+      id: "run-analysis",
+      title: "Run deterministic analysis",
+      subtitle: "Extract manuscript intelligence without provider calls",
+      icon: "◇",
+      keywords: "analysis intelligence offline deterministic",
+      available: () => Boolean(state.projectRoot) && !$("run-analysis").disabled,
+      run: () => $("run-analysis").click(),
+    },
+    {
+      id: "start-translation",
+      title: "Start translation",
+      subtitle: "Use the current translation configuration",
+      icon: "→",
+      keywords: "translate start run",
+      available: () => Boolean(state.projectRoot) && !$("start-translation").disabled,
+      run: () => $("start-translation").click(),
+    },
+    {
+      id: "literary-review",
+      title: "Run literary review",
+      subtitle: "Generate bounded fidelity and naturalness evidence",
+      icon: "✦",
+      keywords: "review literary fidelity naturalness",
+      available: () => Boolean(state.projectRoot) && !$("run-literary-review").disabled,
+      run: () => { setView("literary"); $("run-literary-review").click(); },
+    },
+    {
+      id: "export",
+      title: "Export publication",
+      subtitle: "Use the currently selected DOCX or EPUB format",
+      icon: "↗",
+      keywords: "export publish epub docx",
+      available: () => Boolean(state.projectRoot) && !$("export-project").disabled,
+      run: () => $("export-project").click(),
+    },
+    {
+      id: "focus-persian",
+      title: state.editorFocus ? "Show source + Persian" : "Focus Persian editor",
+      subtitle: "Toggle the source column in the translation editor",
+      icon: "◫",
+      keywords: "editor focus persian source split",
+      run: () => toggleEditorFocus(),
+    },
+  ];
+
+  const themes = Object.entries(THEME_META).map(([theme, meta]) => ({
+    id: "theme-" + theme,
+    title: "Theme: " + meta.label,
+    subtitle: meta.subtitle,
+    icon: meta.icon,
+    keywords: "theme appearance color " + theme + " " + meta.label,
+    run: () => setTheme(theme),
+  }));
+
+  return [...navigation, ...actions, ...themes];
+}
+
+let visibleCommands = [];
+
+function renderCommandResults(query = "") {
+  const normalized = query.trim().toLowerCase();
+  visibleCommands = commandDefinitions().filter((command) => {
+    const haystack = (command.title + " " + command.subtitle + " " + (command.keywords || "")).toLowerCase();
+    return !normalized || haystack.includes(normalized);
+  });
+  state.commandIndex = Math.max(0, Math.min(state.commandIndex, Math.max(0, visibleCommands.length - 1)));
+
+  const results = $("command-results");
+  results.replaceChildren();
+  if (!visibleCommands.length) {
+    results.append(textNode("div", "No matching command.", "palette-empty"));
+    return;
+  }
+
+  visibleCommands.forEach((command, index) => {
+    const available = !command.available || command.available();
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "command-item" + (index === state.commandIndex ? " active" : "");
+    button.setAttribute("role", "option");
+    button.setAttribute("aria-selected", String(index === state.commandIndex));
+    if (!available) button.disabled = true;
+
+    const icon = textNode("span", command.icon || "•", "command-icon");
+    const copy = document.createElement("span");
+    copy.className = "command-copy";
+    copy.append(
+      textNode("strong", command.title),
+      textNode("small", available ? command.subtitle : command.subtitle + " · unavailable until the project state allows it")
+    );
+    button.append(icon, copy, textNode("span", command.shortcut || "", "command-shortcut"));
+    button.addEventListener("mouseenter", () => {
+      state.commandIndex = index;
+      renderCommandResults($("command-search").value);
+    });
+    button.addEventListener("click", () => runPaletteCommand(command));
+    results.append(button);
+  });
+}
+
+function openCommandPalette() {
+  const dialog = $("command-palette");
+  state.commandIndex = 0;
+  $("command-search").value = "";
+  renderCommandResults("");
+  if (!dialog.open) dialog.showModal();
+  window.setTimeout(() => $("command-search").focus(), 0);
+}
+
+function closeCommandPalette() {
+  const dialog = $("command-palette");
+  if (dialog.open) dialog.close();
+}
+
+function runPaletteCommand(command) {
+  if (command.available && !command.available()) {
+    showNotice("That action is not available in the current project state.", "error");
+    return;
+  }
+  closeCommandPalette();
+  command.run();
+}
+
+function toggleEditorFocus() {
+  state.editorFocus = !state.editorFocus;
+  const editor = $("paragraph-editor");
+  editor.classList.toggle("focus-persian", state.editorFocus);
+  const button = $("editor-focus-toggle");
+  button.setAttribute("aria-pressed", String(state.editorFocus));
+  button.textContent = state.editorFocus ? "Show source + Persian" : "Focus Persian";
+  if (state.currentView !== "editor") setView("editor");
+}
+
 document.querySelectorAll(".nav-item").forEach((button) => {
   button.addEventListener("click", () => setView(button.dataset.view));
+});
+
+document.querySelectorAll(".theme-swatch").forEach((button) => {
+  button.addEventListener("click", () => setTheme(button.dataset.themeValue));
+});
+
+$("command-trigger").addEventListener("click", openCommandPalette);
+$("top-command-trigger").addEventListener("click", openCommandPalette);
+$("editor-focus-toggle").addEventListener("click", toggleEditorFocus);
+
+$("command-search").addEventListener("input", (event) => {
+  state.commandIndex = 0;
+  renderCommandResults(event.target.value);
+});
+
+$("command-palette").addEventListener("click", (event) => {
+  if (event.target === $("command-palette")) closeCommandPalette();
+});
+
+document.addEventListener("keydown", (event) => {
+  const modifier = event.metaKey || event.ctrlKey;
+  if (modifier && event.key.toLowerCase() === "k") {
+    event.preventDefault();
+    openCommandPalette();
+    return;
+  }
+
+  if (modifier && /^[1-8]$/.test(event.key)) {
+    const views = ["home", "workflow", "editor", "review", "canon", "literary", "history", "provider"];
+    event.preventDefault();
+    setView(views[Number(event.key) - 1]);
+    return;
+  }
+
+  if (!$("command-palette").open) return;
+  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+    event.preventDefault();
+    if (!visibleCommands.length) return;
+    const delta = event.key === "ArrowDown" ? 1 : -1;
+    state.commandIndex = (state.commandIndex + delta + visibleCommands.length) % visibleCommands.length;
+    renderCommandResults($("command-search").value);
+    const active = $("command-results").querySelector(".command-item.active");
+    if (active) active.scrollIntoView({ block: "nearest" });
+  } else if (event.key === "Enter") {
+    event.preventDefault();
+    const command = visibleCommands[state.commandIndex];
+    if (command) runPaletteCommand(command);
+  }
 });
 
 $("pick-open-root").addEventListener("click", async () => {
@@ -627,5 +918,7 @@ $("check-provider").addEventListener("click", async () => {
   showNotice("Local provider configuration is available.");
 });
 
+setTheme("system");
 setProjectEnabled(false);
 renderSnapshot(null);
+setView("home");
