@@ -84,6 +84,7 @@ struct ExplicitCandidate {
     mention: String,
     alias: bool,
     subject_pattern: bool,
+    distance: usize,
     evidence: String,
 }
 
@@ -223,6 +224,7 @@ fn attribute_one_quote(
                 mention: pattern.display.clone(),
                 alias: pattern.alias,
                 subject_pattern,
+                distance: side.distance,
                 evidence,
             });
         }
@@ -232,6 +234,9 @@ fn attribute_one_quote(
     // occur around the same quote (e.g. "Mina asked Reza, \"Ready?\"").
     if candidates.iter().any(|candidate| candidate.subject_pattern) {
         candidates.retain(|candidate| candidate.subject_pattern);
+    }
+    if let Some(min_distance) = candidates.iter().map(|candidate| candidate.distance).min() {
+        candidates.retain(|candidate| candidate.distance == min_distance);
     }
 
     let mut by_character = BTreeMap::<String, ExplicitCandidate>::new();
@@ -661,14 +666,27 @@ mod tests {
     }
 
     #[test]
-    fn ambiguous_explicit_candidates_fail_closed() {
-        let result =
-            attribute_speakers("p1", "Mina said, Reza said, \"Stay.\"", &bible());
+    fn equal_distance_alias_collision_fails_closed() {
+        let mut colliding = bible();
+        colliding.add_alias("Mina", "Reza");
+        let result = attribute_speakers("p1", "\"Stay,\" Reza said.", &colliding);
         assert!(result[0].speaker.is_none());
         assert_eq!(
             result[0].method,
             AttributionMethod::AmbiguousExplicitCandidates
         );
+    }
+
+    #[test]
+    fn nearest_explicit_tag_wins_across_multiple_quotes() {
+        let result = attribute_speakers(
+            "p1",
+            "\"Stay,\" Mina said. \"No,\" Reza replied.",
+            &bible(),
+        );
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].speaker.as_deref(), Some("Mina"));
+        assert_eq!(result[1].speaker.as_deref(), Some("Reza"));
     }
 
     #[test]
