@@ -39,10 +39,14 @@ const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: r
 
 function withViewTransition(update) {
   if (!prefersReducedMotion() && typeof document.startViewTransition === "function") {
-    document.startViewTransition(update);
-  } else {
-    update();
+    try {
+      document.startViewTransition(update);
+      return;
+    } catch (_) {
+      // A rapid second navigation can collide with an active transition.
+    }
   }
+  update();
 }
 
 function setTheme(theme) {
@@ -109,9 +113,8 @@ function setView(name) {
     $("view-title").textContent = meta.title;
     $("view-subtitle").textContent = meta.subtitle;
     $("view-eyebrow").textContent = meta.eyebrow;
+    window.scrollTo({ top: 0, behavior: prefersReducedMotion() ? "auto" : "smooth" });
   });
-  const activePanel = document.querySelector('[data-view-panel="' + name + '"]');
-  if (activePanel) activePanel.scrollIntoView({ block: "start", behavior: prefersReducedMotion() ? "auto" : "smooth" });
 }
 
 function setProjectEnabled(enabled) {
