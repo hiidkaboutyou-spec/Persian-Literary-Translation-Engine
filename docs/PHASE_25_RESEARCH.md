@@ -140,7 +140,7 @@ Guardrails:
 
 - names inside the quotation are not treated as the speaker (vocatives remain content);
 - before a quote, `verb + name` is not accepted because it is frequently an object, e.g. `Mina asked Reza, "Ready?"`;
-- subject-like `name + speech-verb` cues outrank `verb + name` when both are nearby;
+- the closest explicit cue is selected before grammatical tie-breaks so a farther subject-like tag cannot steal an earlier quotation; at equal distance, subject-like `name + speech-verb` cues outrank `verb + name`;
 - another quotation cannot sit between the explicit cue and the target quote;
 - a pre-quote speech tag is not reused across a hard sentence boundary;
 - conflicting local explicit character cues fail closed;
@@ -191,7 +191,8 @@ Challenge classes include:
 - curly single quotes (while straight apostrophes remain lexical, not quote delimiters);
 - guillemets;
 - leading-dash detection without guessing;
-- multiple quotations with quote-local cue isolation.
+- multiple quotations with quote-local cue isolation;
+- competing post-quote cues where the nearest explicit tag must win over a farther subject-like cue.
 
 The regression requires zero wrong resolved speaker labels on the committed corpus and proves both useful explicit coverage and intentional unresolved behavior.
 
