@@ -4,7 +4,7 @@ use project_engine::application::{
     AdvancedAnalysisSettings, ApplicationCapabilities, ApplicationError, ApplicationErrorPayload,
     ApplicationService, ArtifactState, DecisionAction, HistoryEvent, LiteraryReviewArtifactView,
     LiteraryReviewRunSummary, LiteraryReviewSettings, Project, ProjectSnapshot, ReviewItemSummary,
-    TranslationConfig, TranslationProgress, TranslationRevision, TranslatedChapter, VecEventSink,
+    TranslatedChapter, TranslationConfig, TranslationProgress, TranslationRevision, VecEventSink,
 };
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
@@ -181,16 +181,10 @@ pub fn create_project(
 ) -> CommandResult<ProjectSnapshot> {
     let source = source_path.as_deref().map(Path::new);
     let mut sink = VecEventSink::new();
-    let project = ApplicationService::create_project(
-        PathBuf::from(&project_root),
-        name,
-        source,
-        &mut sink,
-    )
-    .map_err(payload)?;
-    ApplicationService
-        .snapshot(&project)
-        .map_err(payload)
+    let project =
+        ApplicationService::create_project(PathBuf::from(&project_root), name, source, &mut sink)
+            .map_err(payload)?;
+    ApplicationService.snapshot(&project).map_err(payload)
 }
 
 #[tauri::command]
@@ -200,7 +194,10 @@ pub fn open_project(project_root: String) -> CommandResult<ProjectSnapshot> {
 }
 
 #[tauri::command]
-pub async fn import_book(project_root: String, source_path: String) -> CommandResult<ProjectSnapshot> {
+pub async fn import_book(
+    project_root: String,
+    source_path: String,
+) -> CommandResult<ProjectSnapshot> {
     blocking(move || {
         let service = ApplicationService;
         let project = load_project(project_root)?;
@@ -253,11 +250,7 @@ pub fn list_review_items(
 ) -> CommandResult<Vec<ReviewItemSummary>> {
     let project = load_project(project_root).map_err(payload)?;
     ApplicationService
-        .list_review_items(
-            &project,
-            kind_filter.as_deref(),
-            status_filter.as_deref(),
-        )
+        .list_review_items(&project, kind_filter.as_deref(), status_filter.as_deref())
         .map_err(payload)
 }
 
@@ -286,13 +279,7 @@ pub fn decide_review_item(
     let mut sink = VecEventSink::new();
     ApplicationService
         .decide_review_item(
-            &project,
-            &item_id,
-            action,
-            None,
-            &reviewer,
-            &reason,
-            &mut sink,
+            &project, &item_id, action, None, &reviewer, &reason, &mut sink,
         )
         .map_err(payload)
 }
@@ -300,7 +287,9 @@ pub fn decide_review_item(
 #[tauri::command]
 pub fn list_characters(project_root: String) -> CommandResult<Vec<CharacterProfile>> {
     let project = load_project(project_root).map_err(payload)?;
-    ApplicationService.list_characters(&project).map_err(payload)
+    ApplicationService
+        .list_characters(&project)
+        .map_err(payload)
 }
 
 #[tauri::command]
@@ -483,8 +472,14 @@ mod tests {
 
     #[test]
     fn desktop_review_actions_never_invent_edit_values() {
-        assert_eq!(parse_decision_action("approve").unwrap(), DecisionAction::Approve);
-        assert_eq!(parse_decision_action("reject").unwrap(), DecisionAction::Reject);
+        assert_eq!(
+            parse_decision_action("approve").unwrap(),
+            DecisionAction::Approve
+        );
+        assert_eq!(
+            parse_decision_action("reject").unwrap(),
+            DecisionAction::Reject
+        );
         assert!(parse_decision_action("edit").is_err());
         assert!(parse_decision_action("apply").is_err());
     }
