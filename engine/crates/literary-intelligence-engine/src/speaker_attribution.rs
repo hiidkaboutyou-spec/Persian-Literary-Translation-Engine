@@ -100,6 +100,7 @@ pub fn attribute_speakers(
 
     let tokens = lexical_tokens(text);
     let patterns = character_patterns(characters);
+    let all_quotes = quotes.clone();
     quotes
         .into_iter()
         .enumerate()
@@ -108,7 +109,7 @@ pub fn attribute_speakers(
                 paragraph_id,
                 index,
                 &quote,
-                &quotes_for_exclusion(text),
+                &all_quotes,
                 &tokens,
                 &patterns,
             )
@@ -247,8 +248,8 @@ fn attribute_one_quote(
     }
 
     if by_character.len() == 1 {
-        let candidate = by_character.into_values().next().expect("one candidate");
-        return SpeakerAttribution {
+        if let Some(candidate) = by_character.into_values().next() {
+            return SpeakerAttribution {
             quote_id: format!("{paragraph_id}:quote-{quote_index}"),
             paragraph_id: paragraph_id.to_string(),
             quote: quote.clone(),
@@ -259,8 +260,9 @@ fn attribute_one_quote(
             } else {
                 AttributionMethod::ExplicitNameSpeechVerb
             },
-            evidence: Some(candidate.evidence),
-        };
+                evidence: Some(candidate.evidence),
+            };
+        }
     }
 
     if by_character.len() > 1 {
@@ -444,10 +446,6 @@ fn detect_quotes(text: &str) -> Vec<QuoteSpan> {
     spans.sort_by_key(|span| (span.start_char, span.end_char));
     spans.dedup_by_key(|span| (span.start_char, span.end_char));
     spans
-}
-
-fn quotes_for_exclusion(text: &str) -> Vec<QuoteSpan> {
-    detect_quotes(text)
 }
 
 fn collect_paired_quotes(
