@@ -63,7 +63,6 @@ jobs:
           cargo cyclonedx \
             --manifest-path cli/Cargo.toml \
             --format json \
-            --describe binaries \
             --target "${{ matrix.target }}" \
             --override-filename "literary-engine-${{ matrix.target }}.cdx.json" \
             --license-strict \
