@@ -219,6 +219,29 @@ Research/dependency decisions remain: Virastar/`rezkam/persian` are references o
 
 Detailed research: `docs/PHASE_24_RESEARCH.md`.
 
+## Supporting Product-Surface Iteration — Editorial Motion UI — active branch
+
+Branch: `product-ui-editorial-motion-refresh`.
+
+This is intentionally **not Phase 25**. Phase 25 remains reserved for a rights-safe speaker/coreference benchmark if that work is later approved.
+
+Goal: turn the already-functional Tauri desktop shell into a distinctive macOS-quality literary translation workspace without changing runtime ownership or adding a frontend framework.
+
+Implemented on the branch:
+
+- MotionSites-inspired ambient depth translated into a book/editorial visual language rather than copied marketing visuals;
+- Linear-inspired hierarchy/density and Raycast-style keyboard navigation;
+- locally rendered editorial light/dark design system with no remote images, fonts, scripts or CSS;
+- true bilingual source/Persian editor layout with RTL target typography;
+- `Cmd/Ctrl+K` command palette and `Cmd/Ctrl+1…8` workspace shortcuts;
+- visible focus states, `aria-current`, keyboard palette navigation and reduced-motion support;
+- native macOS titlebar behavior intentionally retained after Tauri/macOS research;
+- permanent Phase 22 macOS desktop gate extended to `main` and this branch.
+
+No new runtime/frontend dependency is added. Existing ApplicationService, human approval, secrets, publication and CSP boundaries remain unchanged.
+
+Research and validation policy: `docs/PRODUCT_UI_REFRESH_RESEARCH.md`.
+
 ## Next Action Rule
 
 Always finish and verify the current numbered phase before starting the next numbered phase. Supporting tooling may be added only when it leaves runtime defaults intact and has an explicit owner/failure boundary. Do not treat branch-only work as merged. When a phase changes architecture, persistence, quality, or publishing contracts, update `IMPLEMENTATION_STATUS.md`, this roadmap, engineering decisions, external-integration notes, and project-memory notes together.

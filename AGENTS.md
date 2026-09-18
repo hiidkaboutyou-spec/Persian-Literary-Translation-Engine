@@ -174,3 +174,16 @@ For Phase 20 publishing changes, run the dedicated `Phase 20 EPUB Round Trip` wo
 - `rbook` is dev/CI-only independent EPUB evidence. Do not move it into normal document-engine dependencies or replace the pinned BookForge reconstruction boundary.
 - Do not add BookNLP, FastCoref, Hazm, DadmaTools or another model/NLP stack to defaults without a rights-safe benchmark proving a concrete gap plus license/security review.
 - Do not duplicate existing Context Packet v2 or relevant-only glossary/canon selection when adopting ideas from document-translation research.
+
+## Editorial desktop UI invariants
+
+- Keep `desktop/ui` local, static and framework-free unless a future benchmark proves the current architecture cannot meet a concrete product requirement.
+- No remote fonts, images, scripts, CSS, analytics or CDN assets.
+- No `innerHTML`, localStorage or sessionStorage.
+- Preserve native macOS window chrome unless an explicitly researched platform requirement justifies a change.
+- Respect `prefers-reduced-motion`; motion is enhancement, never state.
+- Preserve visible keyboard focus, command-palette keyboard operation and semantic navigation state.
+- UI keyboard shortcuts may navigate or trigger already-authorized UI controls, but may not bypass ApplicationService, review, canon or human-approval boundaries.
+- Persian translation editing stays RTL and should use local/system Persian-capable font fallbacks only.
+- Do not copy source code/assets from MotionSites, Linear, Raycast, GitButler or other design references.
+- Any desktop visual change must still pass the Apple Silicon Phase 22 product workflow and static UI security assertions.

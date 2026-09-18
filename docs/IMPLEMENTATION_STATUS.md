@@ -183,6 +183,25 @@ Detailed research and completion criteria: `docs/PHASE_24_RESEARCH.md`.
 
 No Phase 25 was pre-defined before Phase 24 completion. The next research target is the remaining fiction-intelligence gap: rights-safe character/coreference/quote-speaker evidence and benchmarking against the current explicit-name/alias character context. No heavy NLP/model dependency is approved merely by this handoff.
 
+## Current Supporting Branch — Editorial Motion UI Refresh
+
+Branch: `product-ui-editorial-motion-refresh`.
+
+Current product-surface work:
+
+- rebuilds the static Tauri frontend as an editorial English→Persian translation studio;
+- preserves the framework-free local HTML/CSS/JS architecture;
+- adds a MotionSites-inspired depth/motion system without copying proprietary assets or code;
+- adds Linear-style hierarchy and a Raycast-style local command palette;
+- adds keyboard workspace switching and accessible reduced-motion/focus behavior;
+- makes the translation editor a wide bilingual source/RTL-Persian desk;
+- keeps native macOS titlebar behavior rather than introducing a fragile custom window chrome path;
+- extends the permanent Apple Silicon desktop build gate to future `main` desktop changes.
+
+No translation, persistence, review, canon, provider, secret or publication contract changes are part of this branch.
+
+Research: `docs/PRODUCT_UI_REFRESH_RESEARCH.md`.
+
 ## CLI / Desktop
 
 The canonical CLI and desktop application remain operationally independent. Phase 23 adds release evidence around them; it does not move distribution tooling into runtime code.

@@ -3,29 +3,63 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
   <title>Persian Literary Translation Engine</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <div class="ambient ambient-a" aria-hidden="true"></div>
+  <div class="ambient ambient-b" aria-hidden="true"></div>
+
+  <div id="command-palette" class="command-palette" aria-hidden="true">
+    <button class="palette-backdrop" data-close-palette aria-label="Close command palette"></button>
+    <section class="palette-panel" role="dialog" aria-modal="true" aria-labelledby="palette-title">
+      <header class="palette-header">
+        <span class="palette-glyph" aria-hidden="true">⌘</span>
+        <div>
+          <strong id="palette-title">Go anywhere</strong>
+          <small>Navigate the translation workspace without leaving the keyboard.</small>
+        </div>
+        <kbd>Esc</kbd>
+      </header>
+      <label class="palette-search-wrap">
+        <span aria-hidden="true">⌕</span>
+        <input id="command-search" type="search" autocomplete="off" spellcheck="false" placeholder="Search workspace…">
+      </label>
+      <div id="command-results" class="command-results" role="listbox"></div>
+    </section>
+  </div>
+
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">
-        <span class="brand-mark">PL</span>
-        <div>
+        <span class="brand-mark" aria-hidden="true"><span>ل</span></span>
+        <div class="brand-copy">
           <strong>Literary Engine</strong>
-          <small>English → Persian</small>
+          <small>English <span>→</span> Persian</small>
         </div>
       </div>
-      <nav id="nav">
-        <button class="nav-item active" data-view="home">Project</button>
-        <button class="nav-item" data-view="workflow">Workflow</button>
-        <button class="nav-item" data-view="review">Intelligence Review</button>
-        <button class="nav-item" data-view="canon">Canon</button>
-        <button class="nav-item" data-view="editor">Translation Editor</button>
-        <button class="nav-item" data-view="literary">Literary Review</button>
-        <button class="nav-item" data-view="history">History</button>
-        <button class="nav-item" data-view="provider">Provider</button>
+
+      <div class="sidebar-kicker">Workspace</div>
+      <nav id="nav" aria-label="Workspace">
+        <button class="nav-item active" data-view="home"><span class="nav-icon" aria-hidden="true">⌂</span><span>Project</span><kbd>⌘1</kbd></button>
+        <button class="nav-item" data-view="workflow"><span class="nav-icon" aria-hidden="true">↝</span><span>Workflow</span><kbd>⌘2</kbd></button>
+        <button class="nav-item" data-view="review"><span class="nav-icon" aria-hidden="true">◇</span><span>Intelligence</span><kbd>⌘3</kbd></button>
+        <button class="nav-item" data-view="canon"><span class="nav-icon" aria-hidden="true">✦</span><span>Canon</span><kbd>⌘4</kbd></button>
+        <button class="nav-item" data-view="editor"><span class="nav-icon" aria-hidden="true">¶</span><span>Editor</span><kbd>⌘5</kbd></button>
+        <button class="nav-item" data-view="literary"><span class="nav-icon" aria-hidden="true">≈</span><span>Literary Review</span><kbd>⌘6</kbd></button>
+        <button class="nav-item" data-view="history"><span class="nav-icon" aria-hidden="true">↺</span><span>History</span><kbd>⌘7</kbd></button>
+        <button class="nav-item" data-view="provider"><span class="nav-icon" aria-hidden="true">⌁</span><span>Provider</span><kbd>⌘8</kbd></button>
       </nav>
+
+      <div class="sidebar-note">
+        <span class="sidebar-note-dot" aria-hidden="true"></span>
+        <div>
+          <strong>Human stays final.</strong>
+          <small>Models propose. Canon and revisions remain explicit.</small>
+        </div>
+      </div>
+
       <div class="project-chip">
         <small>Current project</small>
         <span id="current-project">None</span>
@@ -34,27 +68,50 @@
 
     <main>
       <header class="topbar">
-        <div>
+        <div class="title-cluster">
+          <span class="eyebrow">Literary translation studio</span>
           <h1 id="view-title">Project</h1>
           <p id="view-subtitle">Open or create a translation project.</p>
         </div>
-        <div id="status-pill" class="status-pill muted">No project</div>
+        <div class="topbar-actions">
+          <button id="open-palette" class="command-button" type="button" aria-label="Open command palette"><span>Quick switcher</span><kbd>⌘ K</kbd></button>
+          <div id="status-pill" class="status-pill muted"><span class="status-dot" aria-hidden="true"></span><span class="status-text">No project</span></div>
+        </div>
       </header>
 
-      <div id="notice" class="notice hidden" role="status"></div>
+      <div id="notice" class="notice hidden" role="status" aria-live="polite"></div>
 
       <section class="view active" data-view-panel="home">
+        <article class="card hero-card">
+          <div class="hero-copy">
+            <span class="section-label">Start here</span>
+            <h2>A quiet workspace for long-form translation.</h2>
+            <p>Bring in the book, build literary understanding, translate with durable context, review the Persian, and publish without losing the source structure.</p>
+          </div>
+          <div class="hero-motif" aria-hidden="true">
+            <span class="page page-back"></span>
+            <span class="page page-mid"></span>
+            <span class="page page-front"><i>EN</i><b>→</b><em>فا</em></span>
+          </div>
+        </article>
+
         <div class="grid two">
-          <article class="card">
-            <h2>Open project</h2>
+          <article class="card action-card">
+            <div class="card-heading">
+              <div><span class="section-label">Continue</span><h2>Open project</h2></div>
+              <span class="card-index">01</span>
+            </div>
             <p>Choose an existing project folder containing <code>project.json</code>.</p>
             <div class="button-row">
               <button id="pick-open-root" class="primary">Choose folder</button>
               <button id="refresh-project" disabled>Refresh</button>
             </div>
           </article>
-          <article class="card">
-            <h2>Create project</h2>
+          <article class="card action-card">
+            <div class="card-heading">
+              <div><span class="section-label">New work</span><h2>Create project</h2></div>
+              <span class="card-index">02</span>
+            </div>
             <label>Project name<input id="new-project-name" value="Untitled Translation"></label>
             <div class="button-row">
               <button id="create-project" class="primary">Choose folder & create</button>
@@ -62,30 +119,37 @@
           </article>
         </div>
 
-        <article class="card">
+        <article class="card snapshot-card">
           <div class="card-heading">
-            <div><h2>Project snapshot</h2><p>Derived from the application layer; no UI-side state guessing.</p></div>
+            <div><span class="section-label">State of the book</span><h2>Project snapshot</h2><p>Derived from the application layer; no UI-side state guessing.</p></div>
             <button id="verify-source" disabled>Verify source</button>
           </div>
           <div id="snapshot-grid" class="snapshot-grid empty-state">Open a project to see its state.</div>
           <div id="warnings" class="warnings"></div>
         </article>
 
-        <article class="card">
-          <h2>Source book</h2>
-          <div class="button-row">
+        <article class="card source-card">
+          <div>
+            <span class="section-label">Manuscript</span>
+            <h2>Source book</h2>
+            <p class="help">TXT, Markdown, DOCX, EPUB and text-based PDF are supported. The project keeps its own immutable source copy.</p>
+          </div>
+          <div class="button-row source-actions">
             <button id="pick-import-source" disabled>Choose source file</button>
             <span id="source-path" class="path-label">No file selected</span>
             <button id="import-source" class="primary" disabled>Import</button>
           </div>
-          <p class="help">TXT, Markdown, DOCX, EPUB and text-based PDF are supported. The project keeps its own immutable source copy.</p>
         </article>
       </section>
 
       <section class="view" data-view-panel="workflow">
+        <div class="workspace-intro">
+          <span class="section-label">Pipeline</span>
+          <p>Each stage stays explicit: understand first, translate second, review before publishing.</p>
+        </div>
         <div class="grid two">
           <article class="card">
-            <h2>Analysis</h2>
+            <div class="card-heading"><div><span class="section-label">01 · Understand</span><h2>Analysis</h2></div><span class="orb orb-sage" aria-hidden="true"></span></div>
             <div class="stack">
               <button id="run-analysis" class="primary" disabled>Run deterministic analysis</button>
               <div class="inline-fields">
@@ -100,7 +164,7 @@
           </article>
 
           <article class="card">
-            <h2>Translation</h2>
+            <div class="card-heading"><div><span class="section-label">02 · Translate</span><h2>Translation</h2></div><span class="orb orb-rose" aria-hidden="true"></span></div>
             <div class="inline-fields">
               <label>Provider
                 <select id="translation-provider"><option value="auto">Auto</option><option value="echo">Echo (offline)</option><option value="openai">OpenAI</option></select>
@@ -125,8 +189,8 @@
           </article>
         </div>
 
-        <article class="card">
-          <h2>Publication</h2>
+        <article class="card publication-card">
+          <div><span class="section-label">03 · Publish</span><h2>Publication</h2><p>Export only after the book, review state and publication structure are ready.</p></div>
           <div class="button-row">
             <select id="export-format"><option value="docx">DOCX</option><option value="epub">EPUB round trip</option></select>
             <button id="export-project" class="primary" disabled>Export</button>
@@ -138,21 +202,25 @@
       <section class="view" data-view-panel="review">
         <article class="card">
           <div class="card-heading">
-            <div><h2>Intelligence review</h2><p>Human decisions remain explicit; the desktop surface never auto-promotes proposals.</p></div>
+            <div><span class="section-label">Human boundary</span><h2>Intelligence review</h2><p>Human decisions remain explicit; the desktop surface never auto-promotes proposals.</p></div>
             <div class="button-row">
               <select id="review-status-filter"><option value="">All statuses</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="deferred">Deferred</option></select>
               <button id="refresh-review" disabled>Refresh</button>
             </div>
           </div>
-          <label>Reviewer<input id="reviewer-name" value="desktop-user"></label>
+          <label class="reviewer-field">Reviewer<input id="reviewer-name" value="desktop-user"></label>
           <div id="review-list" class="list empty-state">Open a project to load review items.</div>
         </article>
       </section>
 
       <section class="view" data-view-panel="canon">
+        <div class="workspace-intro">
+          <span class="section-label">Memory with authority</span>
+          <p>Character voice and terminology are durable only after explicit canon decisions.</p>
+        </div>
         <div class="grid two">
           <article class="card">
-            <div class="card-heading"><h2>Characters</h2><button id="refresh-characters" disabled>Refresh</button></div>
+            <div class="card-heading"><div><span class="section-label">People</span><h2>Characters</h2></div><button id="refresh-characters" disabled>Refresh</button></div>
             <div id="character-list" class="list compact"></div>
             <hr>
             <label>Name<input id="character-name"></label>
@@ -161,7 +229,7 @@
             <button id="save-character" class="primary" disabled>Save character</button>
           </article>
           <article class="card">
-            <div class="card-heading"><h2>Glossary</h2><button id="refresh-glossary" disabled>Refresh</button></div>
+            <div class="card-heading"><div><span class="section-label">Language</span><h2>Glossary</h2></div><button id="refresh-glossary" disabled>Refresh</button></div>
             <div id="glossary-list" class="list compact"></div>
             <hr>
             <label>Source term<input id="glossary-source"></label>
@@ -172,23 +240,26 @@
         </div>
       </section>
 
-      <section class="view" data-view-panel="editor">
-        <article class="card">
-          <div class="card-heading">
-            <div><h2>Translation editor</h2><p>Manual edits are persisted as revisions and mark quality evidence stale.</p></div>
+      <section class="view editor-view" data-view-panel="editor">
+        <article class="card editor-card">
+          <div class="card-heading editor-heading">
+            <div><span class="section-label">Bilingual desk</span><h2>Translation editor</h2><p>Manual edits are persisted as revisions and mark quality evidence stale.</p></div>
             <div class="button-row">
               <label class="inline-label">Chapter <input id="editor-chapter-index" type="number" min="1" value="1"></label>
               <button id="load-chapter" disabled>Load</button>
             </div>
           </div>
-          <div id="chapter-meta"></div>
+          <div id="chapter-meta" class="chapter-meta"></div>
           <div id="paragraph-editor" class="paragraph-editor empty-state">Load a translated chapter.</div>
         </article>
       </section>
 
       <section class="view" data-view-panel="literary">
         <article class="card">
-          <h2>Literary fidelity review</h2>
+          <div class="card-heading">
+            <div><span class="section-label">Fidelity desk</span><h2>Literary review</h2><p>Evidence stays separate from approval; suggested changes require a human action.</p></div>
+            <span class="orb orb-gold" aria-hidden="true"></span>
+          </div>
           <div class="inline-fields">
             <label>Provider
               <select id="literary-provider"><option value="none">None (native only)</option><option value="mock">Mock</option><option value="openai">OpenAI</option></select>
@@ -209,14 +280,14 @@
 
       <section class="view" data-view-panel="history">
         <article class="card">
-          <div class="card-heading"><h2>Project history</h2><button id="refresh-history" disabled>Refresh</button></div>
-          <div id="history-list" class="list empty-state">Open a project to load history.</div>
+          <div class="card-heading"><div><span class="section-label">Audit trail</span><h2>Project history</h2></div><button id="refresh-history" disabled>Refresh</button></div>
+          <div id="history-list" class="list timeline empty-state">Open a project to load history.</div>
         </article>
       </section>
 
       <section class="view" data-view-panel="provider">
-        <article class="card narrow">
-          <h2>Provider session</h2>
+        <article class="card narrow provider-card">
+          <div class="card-heading"><div><span class="section-label">Private by default</span><h2>Provider session</h2></div><span class="privacy-badge">Session only</span></div>
           <p>The API key is kept only in this app process for the current session. It is never written to the project or frontend storage.</p>
           <label>OpenAI API key<input id="openai-key" type="password" autocomplete="off" spellcheck="false"></label>
           <div class="button-row">
