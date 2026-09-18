@@ -1379,6 +1379,47 @@ main {
   }
 }
 
+/* Progressive fallback for older WKWebView builds that predate color-mix(). */
+@supports not (color: color-mix(in srgb, red 10%, white)) {
+  body {
+    background: var(--canvas);
+  }
+
+  .sidebar,
+  .card,
+  .status-pill,
+  .notice,
+  .project-chip,
+  .hero-tags span,
+  .floating-note {
+    background: var(--panel-solid);
+  }
+
+  button {
+    background: var(--panel-soft);
+  }
+
+  .atelier-hero,
+  .spotlight-card,
+  .snapshot-item,
+  .list-row,
+  .paragraph {
+    background: var(--panel-solid);
+  }
+
+  .warning {
+    background: var(--amber-soft);
+  }
+
+  .nav-item.active {
+    background: var(--panel-soft);
+  }
+
+  .progress-track {
+    background: var(--line-strong);
+  }
+}
+
 /* Motion accessibility */
 @media (prefers-reduced-motion: reduce) {
   *,
