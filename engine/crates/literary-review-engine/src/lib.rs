@@ -1,7 +1,10 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use text_normalization::{
+    contains_persian_letters, inspect_persian_typography, PersianTypographyIssueKind,
+};
 
 pub mod alignment;
 pub mod alignment_sidecar;
@@ -278,6 +281,74 @@ pub fn review_native(
     report
 }
 
+/// Adds deterministic Persian typography/orthography evidence to an existing
+/// literary review report.
+///
+/// This is intentionally a narrow naturalness signal. It does not claim to
+/// judge prose quality, voice, idiom, rhythm, or literary merit. It also never
+/// rewrites the target.
+pub fn attach_native_persian_typography(report: &mut LiteraryReviewReport, target: &str) {
+    if !contains_persian_letters(target) {
+        report.advisory_notes.push(
+            "Native Persian typography diagnostics were skipped because the target contains no Persian-script letters; Persian naturalness remains unevaluated by this evidence channel."
+                .into(),
+        );
+        return;
+    }
+
+    report.record_dimension(ReviewDimension::PersianNaturalness);
+    report.advisory_notes.push(
+        "Native Persian-naturalness evidence covers only deterministic typography/orthography surfaces. Literary fluency, idiom, voice, rhythm, and style still require provider/human review."
+            .into(),
+    );
+
+    let mut grouped =
+        BTreeMap::<PersianTypographyIssueKind, (usize, usize, Option<String>)>::new();
+    for issue in inspect_persian_typography(target) {
+        let entry = grouped
+            .entry(issue.kind)
+            .or_insert((0, issue.char_index, issue.suggestion.clone()));
+        entry.0 += 1;
+    }
+
+    for (kind, (count, first_char_index, suggestion)) in grouped {
+        let severity = match kind {
+            PersianTypographyIssueKind::SpaceBeforePunctuation
+            | PersianTypographyIssueKind::MultipleSpaces => ReviewSeverity::Advisory,
+            PersianTypographyIssueKind::ArabicLetterVariant
+            | PersianTypographyIssueKind::ArabicDigitVariant
+            | PersianTypographyIssueKind::Kashida
+            | PersianTypographyIssueKind::DuplicateZwnj
+            | PersianTypographyIssueKind::InvalidZwnj
+            | PersianTypographyIssueKind::PrefixSpacing => ReviewSeverity::Warning,
+        };
+        let mut finding = ReviewFinding::new(
+            &report.unit_id,
+            ReviewDimension::PersianNaturalness,
+            severity,
+            EvidenceSource::Native,
+            format!(
+                "Persian typography diagnostic: {count} occurrence(s) of {} (first at character {first_char_index})",
+                kind.as_str()
+            ),
+        );
+        let proposal = if let Some(suggestion) = suggestion {
+            if suggestion.is_empty() {
+                "remove only the flagged typography character after checking local context; do not rewrite surrounding literary prose".to_string()
+            } else {
+                format!(
+                    "review the flagged occurrence and, when context confirms, use the deterministic typography form {suggestion:?}; do not rewrite surrounding literary prose"
+                )
+            }
+        } else {
+            "review only the flagged typography surface; do not rewrite surrounding literary prose"
+                .to_string()
+        };
+        finding = finding.with_revision_proposal(proposal);
+        report.findings.push(finding);
+    }
+}
+
 fn paragraphs(text: &str) -> Vec<&str> {
     text.split("\n\n")
         .map(str::trim)
@@ -306,6 +377,44 @@ fn sha256_hex(bytes: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn native_persian_typography_marks_only_its_narrow_naturalness_surface() {
+        let mut report = review_native(
+            "chapter-fa",
+            "He did not go.",
+            "او نمي رود  ؟",
+            Default::default(),
+        );
+        attach_native_persian_typography(&mut report, "او نمي رود  ؟");
+
+        assert!(report.dimension_was_evaluated(ReviewDimension::PersianNaturalness));
+        assert!(report.findings.iter().any(|finding| {
+            finding.dimension == ReviewDimension::PersianNaturalness
+                && finding.severity == ReviewSeverity::Warning
+        }));
+        assert!(report
+            .advisory_notes
+            .iter()
+            .any(|note| note.contains("typography/orthography")));
+    }
+
+    #[test]
+    fn native_persian_typography_does_not_claim_english_target_naturalness() {
+        let mut report = review_native(
+            "chapter-en",
+            "He did not go.",
+            "He did not go.",
+            Default::default(),
+        );
+        attach_native_persian_typography(&mut report, "He did not go.");
+
+        assert!(!report.dimension_was_evaluated(ReviewDimension::PersianNaturalness));
+        assert!(report
+            .advisory_notes
+            .iter()
+            .any(|note| note.contains("contains no Persian-script letters")));
+    }
 
     #[test]
     fn native_review_flags_empty_translation_without_claiming_other_dimensions() {
