@@ -89,6 +89,15 @@ This project is independent from every other repository. Do not import assumptio
 - Public macOS distribution requires code signing/notarization. CI may prove an unsigned/ad-hoc app bundle, but never claim it is a notarized public release.
 - Phase 22 is not canonical without a committed independent desktop lockfile and `--locked` validation of its exact dependency graph.
 
+## Optional product-identity skill
+
+- The reviewed `ip-as-logo` Agent Skill is vendored at `tools/agent-skills/ip-as-logo/SKILL.md` from upstream commit `acb834c717bcd0a487c49732d08397ba280d690b`.
+- Use it only for an explicitly requested mascot, product-identity, app-icon exploration, or related visual-branding task. It is developer/design guidance, not application runtime behavior.
+- Before using it, read `tools/agent-skills/ip-as-logo/SOURCE.md` and the vendored `SKILL.md`. Do not auto-sync from upstream or run an installer.
+- The skill must never become a dependency of translation, review, project persistence, EPUB/DOCX publishing, CI core tests, or provider configuration.
+- Generated visual candidates are non-canonical until a human explicitly selects them. Do not silently replace the current app icon or product identity.
+- Updating the vendored skill requires a new pinned upstream commit plus provenance, license, and security review.
+
 ## Coding standards
 
 - Follow idiomatic stable Rust and the module patterns already present in `engine/`.
