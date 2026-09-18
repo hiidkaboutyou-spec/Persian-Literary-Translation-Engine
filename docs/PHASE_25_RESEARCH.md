@@ -66,6 +66,7 @@ Decision:
 - do not require private AppKit APIs;
 - create the distinctive identity entirely inside the webview content;
 - preserve the current `minimumSystemVersion: 12.0` bundle contract;
+- use progressive CSS fallbacks for older WKWebView builds that predate `color-mix()`; current WebKit gets the richer layered palette while older engines keep readable solid paper/panel surfaces;
 - validate the production app on the existing Apple Silicon/macOS workflow.
 
 ## Accessibility and motion contract
