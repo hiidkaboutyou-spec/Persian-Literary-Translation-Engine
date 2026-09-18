@@ -188,32 +188,36 @@ Delivered:
 
 Developer ID signing/notarization and production updater activation remain external credentialed release work and are not simulated.
 
-### Phase 24 — Literary Precision & Persian Polish — active branch/validation
+### Phase 24 — Literary Precision & Persian Polish — canonical
 
-Branch: `phase-24-literary-precision-persian-polish`.
-Draft PR: #104.
+PR #104; final reviewed head `e8a0420a57aa4a6663fda8d32bd4336069237421`; merge `2fa48dfd39437f79e6ac9db949f54e6595f2cc0a`.
 
-Goal: improve Persian last-mile precision and safely close the literary-review revision loop without adding a second translation architecture or hidden model runtime.
-
-Implemented so far:
+Delivered:
 
 - native Rust low-risk Persian Unicode polish plus conservative typography/orthography diagnostics;
-- native Persian evidence integrated into post-translation literary review while explicitly not claiming full fluency/voice/style evaluation;
-- human-gated, single-paragraph acceptance of concrete literary-review revision proposals with freshness/structure/native-verification checks and audit/staleness semantics;
+- native Persian evidence integrated into post-translation literary review without claiming full fluency/voice/style evaluation;
+- explicit human-gated, single-paragraph acceptance of concrete literary-review revision proposals with freshness/structure/native-verification checks, audit history and review staleness;
 - Tauri command/UI support for explicit proposal acceptance;
 - exact `rbook 0.7.10` dev-only dependency for independent strict EPUB reopen validation;
 - rights-safe differential EPUB regression preserving BookForge as the only runtime publication owner;
-- committed engine lockfile and Phase-24 `--locked` Linux/Apple Silicon validation workflow.
+- synchronized committed engine, desktop and literary-alignment lockfiles with permanent `--locked` validation.
 
-Research/dependency decisions:
+Final-head successful runs:
 
-- Virastar and `rezkam/persian` are design references; their small deterministic rules are implemented natively rather than adding JS/Python runtimes.
-- BookNLP and FastCoref remain benchmark candidates only; no heavy NLP model stack is installed without a demonstrated character/speaker gap.
-- DelTA/Loong/Prozetta/bilingual_book_maker are architecture references where relevant; Phase 18 Context Packet v2 and relevant-only glossary selection already satisfy major context-selection ideas, so no parallel memory system is added.
-- document-aware translation followed by bounded segment refinement motivates the human-gated proposal loop; no free-form chapter rewrite agent is added.
-- Hazm remains blocked and DadmaTools remains conditional under prior decisions.
+- Phase 24 Literary Precision `35354157358`;
+- Rust CI `35354157248`;
+- Security `35354157239`;
+- Phase 18 `35354157288`;
+- Phase 19 `35354157340`;
+- Phase 20 `35354157189`;
+- Phase 21 `35354157322`;
+- Phase 22 Desktop Product `35354157247`;
+- Phase 23 Trusted Release `35354157250`;
+- Project Memory Tooling `35354157261`.
 
-Exit criteria are recorded in `docs/PHASE_24_RESEARCH.md`. Phase 24 is not canonical until PR #104's final exact head is green, reviewed, merged, and completion evidence is recorded.
+Research/dependency decisions remain: Virastar/`rezkam/persian` are references only; BookNLP/FastCoref are benchmark candidates only; Hazm remains blocked; DadmaTools remains conditional; no second memory/context owner or free-form chapter-rewrite agent was added.
+
+Detailed research: `docs/PHASE_24_RESEARCH.md`.
 
 ## Next Action Rule
 
