@@ -91,7 +91,7 @@ Before adopting a GitHub repository/package/model/tool:
 - Prefer a wrong-speaker rate of zero on the committed regression corpus over artificially high coverage. Unsupported pronouns, implicit conversational alternation and unclear cases remain unresolved.
 - Treat names inside quoted speech as content/vocatives, not speaker identity.
 - Before a quote, reject `verb + name` as a generic speaker pattern because the name may be a speech verb's object/addressee.
-- Use nearest unique explicit attribution cues to isolate neighboring quotes. True ties/collisions fail closed.
+- Bound explicit attribution cues to the target quote. Do not reuse pre-quote tags across a hard sentence boundary or cross another quotation; conflicting local character cues fail closed.
 - Speaker-map context is Deterministic evidence. It may point to a Canonical character profile but does not itself gain Canonical authority.
 - Permanent Phase-25 CI uses a project-owned synthetic benchmark and requires no model/corpus download.
 - LitBank CC BY 4.0 is an optional future external/reference benchmark with attribution; PDNC/BookCoref/Maverick remain research-only under non-commercial terms.
