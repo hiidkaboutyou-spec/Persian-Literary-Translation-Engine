@@ -276,3 +276,18 @@ Updating this repository seed does **not** mean the user's local PMC/Obsidian va
 13. Phase-24 dependency commands must be `--locked` after the committed lockfile. Do not reintroduce a CI lockfile bootstrap on canonical main.
 14. No source manuscript, generated translation, reviewer private data or provider secret may be added to repository/project memory.
 15. **Next research target is speaker/coreference evidence** — the current character context is strong for canonical names/aliases but does not itself resolve pronouns or quotation speakers. Any Phase-25 work must begin with a rights-safe benchmark and must not install BookNLP/FastCoref or another model stack until it proves a measurable gain.
+
+## Durable Editorial Motion UI decisions
+
+1. The product UI refresh is a supporting iteration, not Phase 25. The next numbered-phase research target remains speaker/coreference evidence.
+2. MotionSites, Linear, Raycast, Craft/Ulysses-style writing products and GitButler are design/architecture references only; do not copy proprietary assets/code or add their frontend stacks.
+3. Keep the desktop frontend local and framework-free: HTML/CSS/JS in `desktop/ui`, no React/Vite/Tailwind/shadcn migration merely for polish.
+4. Keep native macOS titlebar/window behavior. Do not introduce custom/overlay chrome unless a future measured requirement outweighs Tauri's native-behavior caveats.
+5. Use system fonts only. Do not add remote font/CDN dependencies.
+6. Nonessential motion must obey `prefers-reduced-motion`; critical state must never depend on animation.
+7. Preserve RTL Persian editor behavior and human-review semantics. Visual changes must never mutate source/translation/canon data implicitly.
+8. `Cmd/Ctrl+K` and `Cmd/Ctrl+1…8` are navigation only; keyboard commands must not bypass ApplicationService or review/canon boundaries.
+9. No `innerHTML`, localStorage, sessionStorage, remote scripts/images/styles or weakened CSP are permitted in the UI.
+10. The permanent Phase 22 Apple Silicon desktop gate must run for future `main` desktop changes, not only the historical Phase 22 branch.
+11. Completion requires a real macOS arm64 `.app` build on the final PR head plus the existing security/static-UI checks.
+12. The canonical app icon/product identity is not automatically replaced by this refresh; the in-app editorial motif is presentation only.
