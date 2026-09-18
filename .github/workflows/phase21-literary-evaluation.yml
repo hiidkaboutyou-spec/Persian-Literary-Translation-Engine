@@ -3,6 +3,7 @@ name: Phase 21 Literary Evaluation
 on:
   push:
     branches:
+      - main
       - phase-21-literary-evaluation-benchmarking
     paths:
       - 'engine/crates/literary-evaluation-engine/**'
