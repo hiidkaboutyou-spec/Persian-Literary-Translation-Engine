@@ -89,7 +89,6 @@ jobs:
           cargo cyclonedx \
             --manifest-path cli/Cargo.toml \
             --format json \
-            --describe binaries \
             --override-filename phase23-cli-smoke.cdx.json \
             --license-strict \
             --spec-version 1.5
@@ -146,7 +145,6 @@ jobs:
           cargo cyclonedx \
             --manifest-path desktop/src-tauri/Cargo.toml \
             --format json \
-            --describe binaries \
             --target aarch64-apple-darwin \
             --override-filename phase23-desktop.cdx.json \
             --license-strict \
