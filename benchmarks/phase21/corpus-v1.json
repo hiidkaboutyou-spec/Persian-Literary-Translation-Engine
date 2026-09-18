@@ -1,0 +1,345 @@
+{
+  "schema_version": 1,
+  "corpus_id": "phase21-project-owned-en-fa-v1",
+  "title": "Phase 21 Project-Owned English to Persian Literary Challenge Set",
+  "source_language": "en",
+  "target_language": "fa",
+  "provenance": {
+    "owner": "Persian-Literary-Translation-Engine project",
+    "license": "project-owned synthetic benchmark fixture",
+    "rights_safe": true,
+    "creation_note": "All source passages, Persian references, and contrastive degradations were written specifically for this repository. No third-party literary, subtitle, tweet, or proprietary manuscript text is included."
+  },
+  "cases": [
+    {
+      "id": "negation-subtext",
+      "title": "Negation and restrained subtext",
+      "source": "“I said I didn’t mind,” Mina said, folding the note smaller and smaller. “It’s fine.”",
+      "reference": "«گفتم که برام مهم نیست.» مینا گفت و کاغذ را هی کوچک‌تر تا زد. «خوبه.»",
+      "context_before": null,
+      "context_after": null,
+      "dimensions": [
+        "semantic_fidelity",
+        "dialogue_subtext"
+      ],
+      "anchors": [
+        {
+          "id": "negation-preserved",
+          "dimension": "semantic_fidelity",
+          "mode": "any_present",
+          "values": [
+            "برام مهم نیست",
+            "مهم نیست"
+          ],
+          "rationale": "The speaker explicitly denies caring; polarity must not flip."
+        },
+        {
+          "id": "physical-subtext-preserved",
+          "dimension": "dialogue_subtext",
+          "mode": "all_present",
+          "values": [
+            "هی کوچک‌تر",
+            "تا زد"
+          ],
+          "rationale": "The repeated folding carries emotional subtext and must not disappear."
+        }
+      ],
+      "contrastive_variants": [
+        {
+          "id": "polarity-flip",
+          "translation": "«گفتم که برام مهمه.» مینا گفت و کاغذ را هی کوچک‌تر تا زد. «خوبه.»",
+          "degradation": "semantic_fidelity",
+          "description": "Negation is removed, reversing the explicit proposition."
+        }
+      ]
+    },
+    {
+      "id": "relationship-register",
+      "title": "Formal and intimate address in the same scene",
+      "source": "“You should sit down, Ms. Rahimi,” Dr. Mehr said. A minute later, Neda leaned in and whispered, “Sit down, Rey. You look awful.”",
+      "reference": "دکتر مهر گفت: «بهتره بنشینید، خانم رحیمی.» یک دقیقه بعد ندا نزدیک شد و زیر لب گفت: «بشین، ری. خیلی بد به نظر میای.»",
+      "context_before": null,
+      "context_after": null,
+      "dimensions": [
+        "relationship_register",
+        "character_voice"
+      ],
+      "anchors": [
+        {
+          "id": "formal-register",
+          "dimension": "relationship_register",
+          "mode": "all_present",
+          "values": [
+            "بنشینید",
+            "خانم رحیمی"
+          ],
+          "rationale": "The doctor uses formal respectful address."
+        },
+        {
+          "id": "intimate-register",
+          "dimension": "relationship_register",
+          "mode": "all_present",
+          "values": [
+            "بشین",
+            "ری"
+          ],
+          "rationale": "The friend uses intimate colloquial address."
+        }
+      ],
+      "contrastive_variants": [
+        {
+          "id": "flattened-formality",
+          "translation": "دکتر مهر گفت: «بهتره بنشینید، خانم رحیمی.» یک دقیقه بعد ندا نزدیک شد و گفت: «بنشینید، ری. خیلی بد به نظر می‌رسید.»",
+          "degradation": "relationship_register",
+          "description": "Both speakers are flattened into the same formal register."
+        }
+      ]
+    },
+    {
+      "id": "sarcastic-voice",
+      "title": "Sarcasm without explanatory overtranslation",
+      "source": "“Great. Because getting locked out at two in the morning was exactly how I wanted tonight to go.”",
+      "reference": "«عالیه. چون دقیقاً آرزوم این بود که ساعت دو نصفه‌شب پشت در بمونم.»",
+      "context_before": null,
+      "context_after": null,
+      "dimensions": [
+        "character_voice",
+        "dialogue_subtext",
+        "persian_naturalness"
+      ],
+      "anchors": [
+        {
+          "id": "sarcastic-opening",
+          "dimension": "character_voice",
+          "mode": "all_present",
+          "values": [
+            "عالیه"
+          ],
+          "rationale": "The dry sarcastic opening should remain terse and colloquial."
+        },
+        {
+          "id": "sarcastic-frame",
+          "dimension": "dialogue_subtext",
+          "mode": "any_present",
+          "values": [
+            "دقیقاً آرزوم این بود",
+            "دقیقاً چیزی بود که می‌خواستم"
+          ],
+          "rationale": "The ironic wish-frame carries the sarcasm."
+        }
+      ],
+      "contrastive_variants": [
+        {
+          "id": "explained-sarcasm",
+          "translation": "«خیلی بد شد. من اصلاً نمی‌خواستم ساعت دو صبح پشت در بمانم و واقعاً ناراحت شدم.»",
+          "degradation": "character_voice",
+          "description": "The sarcasm is explained away and the character voice is flattened."
+        }
+      ]
+    },
+    {
+      "id": "terminology-continuity",
+      "title": "Named-place terminology continuity",
+      "source": "They crossed the Glass Garden before dusk. When the bells rang, the Glass Garden was already empty.",
+      "reference": "پیش از غروب از باغ شیشه‌ای گذشتند. وقتی ناقوس‌ها به صدا درآمدند، باغ شیشه‌ای دیگر خالی شده بود.",
+      "context_before": "Earlier chapters established “Glass Garden” as the canonical place name «باغ شیشه‌ای».",
+      "context_after": null,
+      "dimensions": [
+        "terminology_continuity",
+        "long_context_continuity"
+      ],
+      "anchors": [
+        {
+          "id": "canonical-place-name",
+          "dimension": "terminology_continuity",
+          "mode": "all_present",
+          "values": [
+            "باغ شیشه‌ای"
+          ],
+          "rationale": "The approved place name must remain canonical."
+        },
+        {
+          "id": "forbidden-variants",
+          "dimension": "terminology_continuity",
+          "mode": "all_absent",
+          "values": [
+            "گلخانه شیشه‌ای",
+            "باغ بلورین"
+          ],
+          "rationale": "Unapproved variants create long-novel terminology drift."
+        }
+      ],
+      "contrastive_variants": [
+        {
+          "id": "term-drift",
+          "translation": "پیش از غروب از باغ شیشه‌ای گذشتند. وقتی ناقوس‌ها به صدا درآمدند، گلخانه شیشه‌ای دیگر خالی شده بود.",
+          "degradation": "terminology_continuity",
+          "description": "The same named place is translated two different ways."
+        }
+      ]
+    },
+    {
+      "id": "agency-sequence",
+      "title": "Agency and action sequence",
+      "source": "Nila hid the letter under the lamp, then handed Sara the key.",
+      "reference": "نیلا نامه را زیر چراغ پنهان کرد و بعد کلید را به سارا داد.",
+      "context_before": null,
+      "context_after": null,
+      "dimensions": [
+        "semantic_fidelity"
+      ],
+      "anchors": [
+        {
+          "id": "nila-hides-letter",
+          "dimension": "semantic_fidelity",
+          "mode": "all_present",
+          "values": [
+            "نیلا",
+            "نامه را زیر چراغ پنهان کرد"
+          ],
+          "rationale": "Nila, not Sara, performs the hiding action."
+        },
+        {
+          "id": "sara-receives-key",
+          "dimension": "semantic_fidelity",
+          "mode": "all_present",
+          "values": [
+            "کلید را به سارا داد"
+          ],
+          "rationale": "Sara is the recipient of the key."
+        }
+      ],
+      "contrastive_variants": [
+        {
+          "id": "agency-swap",
+          "translation": "سارا نامه را زیر چراغ پنهان کرد و بعد نیلا کلید را به او داد.",
+          "degradation": "semantic_fidelity",
+          "description": "The agents are swapped."
+        }
+      ]
+    },
+    {
+      "id": "detail-omission",
+      "title": "Concrete detail preservation",
+      "source": "He came in with a red umbrella, wet shoes, and the train ticket still folded in his coat pocket.",
+      "reference": "با یک چتر قرمز، کفش‌های خیس و بلیت قطاری که هنوز تاخورده توی جیب کتش بود وارد شد.",
+      "context_before": null,
+      "context_after": null,
+      "dimensions": [
+        "semantic_fidelity",
+        "readability"
+      ],
+      "anchors": [
+        {
+          "id": "red-umbrella",
+          "dimension": "semantic_fidelity",
+          "mode": "all_present",
+          "values": [
+            "چتر قرمز"
+          ],
+          "rationale": "Concrete visual detail should survive."
+        },
+        {
+          "id": "wet-shoes",
+          "dimension": "semantic_fidelity",
+          "mode": "all_present",
+          "values": [
+            "کفش‌های خیس"
+          ],
+          "rationale": "Concrete sensory detail should survive."
+        },
+        {
+          "id": "ticket-pocket",
+          "dimension": "semantic_fidelity",
+          "mode": "all_present",
+          "values": [
+            "بلیت",
+            "جیب کتش"
+          ],
+          "rationale": "The ticket and its location are part of the scene evidence."
+        }
+      ],
+      "contrastive_variants": [
+        {
+          "id": "ticket-omitted",
+          "translation": "با یک چتر قرمز و کفش‌های خیس وارد شد.",
+          "degradation": "semantic_fidelity",
+          "description": "The train ticket and coat-pocket detail are omitted."
+        }
+      ]
+    },
+    {
+      "id": "idiomatic-naturalness",
+      "title": "Idiomatic Persian instead of English-shaped wording",
+      "source": "He gave me a look that said, don’t even try it.",
+      "reference": "یه جوری نگام کرد که یعنی حتی فکرشم نکن.",
+      "context_before": null,
+      "context_after": null,
+      "dimensions": [
+        "persian_naturalness",
+        "dialogue_subtext"
+      ],
+      "anchors": [
+        {
+          "id": "idiomatic-warning",
+          "dimension": "persian_naturalness",
+          "mode": "any_present",
+          "values": [
+            "حتی فکرشم نکن",
+            "فکرشم نکن"
+          ],
+          "rationale": "The implied warning should sound like natural contemporary Persian."
+        },
+        {
+          "id": "avoid-calque",
+          "dimension": "persian_naturalness",
+          "mode": "all_absent",
+          "values": [
+            "نگاهی به من داد که می‌گفت"
+          ],
+          "rationale": "This literal English-shaped calque is intentionally disallowed in the challenge fixture."
+        }
+      ],
+      "contrastive_variants": [
+        {
+          "id": "literal-calque",
+          "translation": "او نگاهی به من داد که می‌گفت حتی تلاشش را هم نکن.",
+          "degradation": "persian_naturalness",
+          "description": "The sentence follows English syntax and wording mechanically."
+        }
+      ]
+    },
+    {
+      "id": "context-carryover",
+      "title": "Short-window long-context continuity",
+      "source": "The cat scratched once at the bedroom door. Laleh opened it without turning on the light.",
+      "reference": "آبان یک بار به در اتاق خواب چنگ زد. لاله بدون اینکه چراغ را روشن کند در را باز کرد.",
+      "context_before": "Two paragraphs earlier: Laleh’s cat is named Aban / «آبان».",
+      "context_after": "The next paragraph refers to Aban again by name.",
+      "dimensions": [
+        "long_context_continuity",
+        "terminology_continuity"
+      ],
+      "anchors": [
+        {
+          "id": "entity-name-carryover",
+          "dimension": "long_context_continuity",
+          "mode": "all_present",
+          "values": [
+            "آبان",
+            "لاله"
+          ],
+          "rationale": "The short context window identifies the cat by a stable name."
+        }
+      ],
+      "contrastive_variants": [
+        {
+          "id": "context-dropped",
+          "translation": "گربه یک بار به در اتاق خواب چنگ زد. لاله بدون روشن کردن چراغ در را باز کرد.",
+          "degradation": "long_context_continuity",
+          "description": "The established entity name is dropped despite nearby context."
+        }
+      ]
+    }
+  ]
+}
