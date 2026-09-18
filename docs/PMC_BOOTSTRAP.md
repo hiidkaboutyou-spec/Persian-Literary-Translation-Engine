@@ -203,6 +203,9 @@ Durable decisions:
 8. **No installer for a text-only skill** — vendor the reviewed `SKILL.md` + license directly rather than running a moving `npx skills@latest` supply-chain path.
 9. **Visual candidates require human selection** — mascot/app-icon outputs never replace canonical product identity automatically.
 10. **Upstream skill updates are review events** — no auto-sync; any revision requires new provenance/license/security review and recorded blob IDs.
+11. **Release actions are immutable references** — release-sensitive GitHub Actions use reviewed full-length commit SHAs, not movable major tags.
+12. **Attestation permissions are publish-only** — `id-token: write`, `attestations: write`, and `artifact-metadata: write` exist only on the tagged-release publish job, never as workflow-wide defaults.
+13. **Legacy SPDX separators are preserved as evidence** — do not rewrite transitive crate metadata such as `MIT/Apache-2.0` just to satisfy CycloneDX `--license-strict`; generate the complete SBOM with warnings visible instead.
 
 Detailed rationale: `docs/PHASE_23_RESEARCH.md`.
 
