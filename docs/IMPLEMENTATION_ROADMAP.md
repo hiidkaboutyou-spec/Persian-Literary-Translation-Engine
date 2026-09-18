@@ -230,7 +230,7 @@ Implemented:
 
 - native Rust quotation detection for straight double quotes, curly double quotes, curly single quotes, guillemets, and conservative leading-dash dialogue detection;
 - high-precision explicit name/approved-alias + speech-verb attribution with quote-local cue isolation;
-- fail-closed handling for pronoun-only, no-cue, ambiguous/collision, vocative, and `asked <object>` cases;
+- fail-closed handling for pronoun-only, no-cue, ambiguous/collision and vocative cases, plus same-verb `asked <object>` disambiguation without ranking unrelated conflicting speakers;
 - bounded deterministic `SPEAKER MAP` evidence injected into Context Packet v2 with Deterministic (not Canonical) authority;
 - project-owned synthetic Phase-25 benchmark requiring zero wrong resolved speaker labels while preserving unresolved examples;
 - permanent Linux + Apple Silicon Phase-25 workflow with locked dependency graph and no external model dependency.
