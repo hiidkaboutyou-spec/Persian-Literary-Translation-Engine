@@ -1,6 +1,6 @@
 use character_engine::CharacterBible;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use text_normalization::normalize_case_insensitive;
 
 const MAX_EXPLICIT_CUE_DISTANCE_CHARS: usize = 96;
