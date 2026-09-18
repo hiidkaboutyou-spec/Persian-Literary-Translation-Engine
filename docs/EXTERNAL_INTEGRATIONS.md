@@ -319,6 +319,20 @@ Software license: MIT; reviewed F-Coref/LingMess model cards advertise MIT.
 
 Decision: not installed. It may be an optional benchmark competitor for English coreference, but it does not itself solve quotation speaker attribution and cannot become canon/runtime without demonstrated benefit.
 
+## Product UI design references — research only
+
+The desktop editorial-motion refresh studies public design/product references including MotionSites, Linear, Raycast-style command navigation, writing/editorial apps, GitButler and official Apple/Tauri guidance.
+
+Boundary:
+
+- no reference repository/site is installed as a runtime or build dependency;
+- no proprietary visual asset, template, prompt pack or source code is vendored;
+- no frontend framework is adopted from a reference project;
+- implementation remains local static HTML/CSS/JS under the existing Tauri/WKWebView boundary;
+- official Tauri/macOS behavior and Apple accessibility guidance outrank aesthetic imitation.
+
+Research record: `docs/PRODUCT_UI_REFRESH_RESEARCH.md`.
+
 ## Supporting-tool candidates outside translation runtime
 
 ### OpenDataLoader PDF — ingestion benchmark candidate
