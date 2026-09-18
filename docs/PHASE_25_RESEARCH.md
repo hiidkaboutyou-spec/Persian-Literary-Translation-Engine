@@ -140,7 +140,7 @@ Guardrails:
 
 - names inside the quotation are not treated as the speaker (vocatives remain content);
 - before a quote, `verb + name` is not accepted because it is frequently an object, e.g. `Mina asked Reza, "Ready?"`;
-- the closest explicit cue is selected before grammatical tie-breaks so a farther subject-like tag cannot steal an earlier quotation; at equal distance, subject-like `name + speech-verb` cues outrank `verb + name`;
+- when `name + speech-verb` and `speech-verb + name` candidates share the exact same speech-verb token, the inverted candidate is treated as that verb's object/addressee; distinct local character cues remain conflicting and fail closed rather than being ranked by proximity;
 - another quotation cannot sit between the explicit cue and the target quote;
 - a pre-quote speech tag is not reused across a hard sentence boundary;
 - conflicting local explicit character cues fail closed;
@@ -192,7 +192,8 @@ Challenge classes include:
 - guillemets;
 - leading-dash detection without guessing;
 - multiple quotations with quote-local cue isolation;
-- competing post-quote cues where the nearest explicit tag must win over a farther subject-like cue.
+- competing post-quote cues from distinct speech verbs, which must remain unresolved rather than picking the nearest character;
+- post-quote `Mina asked Reza` object disambiguation, where both apparent cues share the same speech-verb token and only Mina remains a speaker candidate.
 
 The regression requires zero wrong resolved speaker labels on the committed corpus and proves both useful explicit coverage and intentional unresolved behavior.
 
