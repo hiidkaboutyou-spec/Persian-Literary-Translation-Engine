@@ -415,13 +415,7 @@ fn push_token(chars: &[char], start: usize, end: usize, tokens: &mut Vec<LexToke
 fn detect_quotes(text: &str) -> Vec<QuoteSpan> {
     let chars = text.chars().collect::<Vec<_>>();
     let mut spans = Vec::new();
-    collect_paired_quotes(
-        &chars,
-        '"',
-        '"',
-        QuoteStyle::StraightDouble,
-        &mut spans,
-    );
+    collect_paired_quotes(&chars, '"', '"', QuoteStyle::StraightDouble, &mut spans);
     collect_paired_quotes(&chars, '“', '”', QuoteStyle::CurlyDouble, &mut spans);
     collect_paired_quotes(&chars, '‘', '’', QuoteStyle::CurlySingle, &mut spans);
     collect_paired_quotes(&chars, '«', '»', QuoteStyle::Guillemets, &mut spans);
@@ -441,13 +435,12 @@ fn collect_leading_dash_quotes(chars: &[char], spans: &mut Vec<QuoteSpan>) {
             .map(|offset| line_start + offset)
             .unwrap_or(chars.len());
 
-        let first_non_space = (line_start..line_end)
-            .find(|index| !chars[*index].is_whitespace());
+        let first_non_space = (line_start..line_end).find(|index| !chars[*index].is_whitespace());
         let line_has_paired_quote = spans
             .iter()
             .any(|span| span.start_char >= line_start && span.end_char <= line_end);
-        if let Some(dash_index) = first_non_space
-            .filter(|index| chars[*index] == '—' && !line_has_paired_quote)
+        if let Some(dash_index) =
+            first_non_space.filter(|index| chars[*index] == '—' && !line_has_paired_quote)
         {
             let mut content_start = dash_index + 1;
             while content_start < line_end && chars[content_start].is_whitespace() {
@@ -597,7 +590,10 @@ fn extract_explicit_mention_cues(
                 format!(
                     "{} {}",
                     pattern.display,
-                    tokens.get(end).map(|token| token.raw.as_str()).unwrap_or("")
+                    tokens
+                        .get(end)
+                        .map(|token| token.raw.as_str())
+                        .unwrap_or("")
                 )
             });
             let verb_then_name_evidence = verb_then_name.then(|| {
@@ -765,10 +761,7 @@ mod tests {
         let result = attribute_speakers("p1", "\"Stay here,\" Mina said.", &bible());
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].speaker.as_deref(), Some("Mina"));
-        assert_eq!(
-            result[0].method,
-            AttributionMethod::ExplicitNameSpeechVerb
-        );
+        assert_eq!(result[0].method, AttributionMethod::ExplicitNameSpeechVerb);
     }
 
     #[test]
@@ -782,10 +775,7 @@ mod tests {
         let result = attribute_speakers("p1", "“Stay,” Min replied.", &bible());
         assert_eq!(result[0].speaker.as_deref(), Some("Mina"));
         assert_eq!(result[0].mention.as_deref(), Some("Min"));
-        assert_eq!(
-            result[0].method,
-            AttributionMethod::ExplicitAliasSpeechVerb
-        );
+        assert_eq!(result[0].method, AttributionMethod::ExplicitAliasSpeechVerb);
     }
 
     #[test]
@@ -824,11 +814,8 @@ mod tests {
 
     #[test]
     fn quote_local_boundaries_isolate_multiple_quotes() {
-        let result = attribute_speakers(
-            "p1",
-            "\"Stay,\" Mina said. \"No,\" Reza replied.",
-            &bible(),
-        );
+        let result =
+            attribute_speakers("p1", "\"Stay,\" Mina said. \"No,\" Reza replied.", &bible());
         assert_eq!(result.len(), 2);
         assert_eq!(result[0].speaker.as_deref(), Some("Mina"));
         assert_eq!(result[1].speaker.as_deref(), Some("Reza"));
@@ -836,11 +823,7 @@ mod tests {
 
     #[test]
     fn conflicting_local_explicit_speakers_fail_closed() {
-        let result = attribute_speakers(
-            "p1",
-            "Mina said, Reza said, \"Stay.\"",
-            &bible(),
-        );
+        let result = attribute_speakers("p1", "Mina said, Reza said, \"Stay.\"", &bible());
         assert!(result[0].speaker.is_none());
         assert_eq!(
             result[0].method,
@@ -850,11 +833,7 @@ mod tests {
 
     #[test]
     fn pre_quote_tag_across_sentence_boundary_is_not_reused() {
-        let result = attribute_speakers(
-            "p1",
-            "Mina said. \"No,\" Reza replied.",
-            &bible(),
-        );
+        let result = attribute_speakers("p1", "Mina said. \"No,\" Reza replied.", &bible());
         assert_eq!(result[0].speaker.as_deref(), Some("Reza"));
     }
 
@@ -868,11 +847,7 @@ mod tests {
 
     #[test]
     fn multiple_leading_dash_lines_are_detected_without_speaker_guessing() {
-        let result = attribute_speakers(
-            "p1",
-            "— Stay here.\n— I will.",
-            &bible(),
-        );
+        let result = attribute_speakers("p1", "— Stay here.\n— I will.", &bible());
         assert_eq!(result.len(), 2);
         assert!(result.iter().all(|item| item.speaker.is_none()));
         assert!(result
