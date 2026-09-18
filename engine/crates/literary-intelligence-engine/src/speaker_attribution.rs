@@ -248,19 +248,19 @@ fn attribute_one_quote(
     }
 
     if by_character.len() == 1 {
-        if let Some(candidate) = by_character.into_values().next() {
+        if let Some(candidate) = by_character.values().next() {
             return SpeakerAttribution {
-            quote_id: format!("{paragraph_id}:quote-{quote_index}"),
-            paragraph_id: paragraph_id.to_string(),
-            quote: quote.clone(),
-            speaker: Some(candidate.canonical),
-            mention: Some(candidate.mention),
-            method: if candidate.alias {
-                AttributionMethod::ExplicitAliasSpeechVerb
-            } else {
-                AttributionMethod::ExplicitNameSpeechVerb
-            },
-                evidence: Some(candidate.evidence),
+                quote_id: format!("{paragraph_id}:quote-{quote_index}"),
+                paragraph_id: paragraph_id.to_string(),
+                quote: quote.clone(),
+                speaker: Some(candidate.canonical.clone()),
+                mention: Some(candidate.mention.clone()),
+                method: if candidate.alias {
+                    AttributionMethod::ExplicitAliasSpeechVerb
+                } else {
+                    AttributionMethod::ExplicitNameSpeechVerb
+                },
+                evidence: Some(candidate.evidence.clone()),
             };
         }
     }
