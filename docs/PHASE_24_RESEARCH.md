@@ -203,3 +203,16 @@ Phase 24 is canonical only after:
 7. desktop commands/UI preserve the human acceptance gate and local-content security invariants;
 8. Rust CI, Security, Phase 18–23, Phase 22 Desktop, and Project Memory gates remain green on the final PR head;
 9. the final PR is reviewed/merged and exact completion SHAs/run IDs are recorded.
+
+## Canonical completion record
+
+Phase 24 became canonical through PR #104.
+
+- final reviewed head: `e8a0420a57aa4a6663fda8d32bd4336069237421`;
+- merge commit: `2fa48dfd39437f79e6ac9db949f54e6595f2cc0a`;
+- Phase 24 run `35354157358`: success;
+- Rust CI `35354157248`: success;
+- Security `35354157239`: success;
+- Phase 18 `35354157288`, Phase 19 `35354157340`, Phase 20 `35354157189`, Phase 21 `35354157322`, Phase 22 `35354157247`, Phase 23 `35354157250`, and Project Memory Tooling `35354157261`: success.
+
+During final validation, three independent lock snapshots had to be synchronized because the new internal `literary-review-engine -> text-normalization` path dependency is observed by the engine workspace, the isolated desktop workspace, and the isolated literary-alignment tool. The final engine lockfile was restored from the exact GitHub Actions-resolved artifact before merge rather than approximated manually.
