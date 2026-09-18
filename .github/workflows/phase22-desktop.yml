@@ -27,7 +27,7 @@ on:
       - '.github/workflows/phase22-desktop.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: phase22-desktop-${{ github.workflow }}-${{ github.ref }}
@@ -40,8 +40,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event_name == 'push' && github.ref_name || github.head_ref }}
 
       - name: Verify Apple Silicon
         shell: bash
@@ -52,28 +50,12 @@ jobs:
         with:
           components: rustfmt, clippy
 
-      - name: Bootstrap or verify desktop lockfile
+      - name: Verify committed desktop lockfile
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -f desktop/src-tauri/Cargo.lock ]]; then
-            cargo metadata --locked --manifest-path desktop/src-tauri/Cargo.toml --format-version 1 --no-deps > /dev/null
-          else
-            cargo generate-lockfile --manifest-path desktop/src-tauri/Cargo.toml
-          fi
-
-      - name: Commit validated desktop lockfile once
-        if: github.event_name == 'push' && github.ref == 'refs/heads/phase-22-product-surface-distribution'
-        shell: bash
-        run: |
-          set -euo pipefail
-          if ! git ls-files --error-unmatch desktop/src-tauri/Cargo.lock >/dev/null 2>&1; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add desktop/src-tauri/Cargo.lock
-            git commit -m "phase22: lock validated desktop dependency graph"
-            git push origin HEAD:phase-22-product-surface-distribution
-          fi
+          test -f desktop/src-tauri/Cargo.lock
+          cargo metadata --locked --manifest-path desktop/src-tauri/Cargo.toml --format-version 1 --no-deps > /dev/null
 
       - name: Format desktop and affected application code
         shell: bash
@@ -83,10 +65,10 @@ jobs:
           (cd engine && cargo fmt --all -- --check)
 
       - name: Clippy desktop
-        run: cargo clippy --manifest-path desktop/src-tauri/Cargo.toml --all-targets -- -D warnings
+        run: cargo clippy --locked --manifest-path desktop/src-tauri/Cargo.toml --all-targets -- -D warnings
 
       - name: Test desktop backend
-        run: cargo test --manifest-path desktop/src-tauri/Cargo.toml
+        run: cargo test --locked --manifest-path desktop/src-tauri/Cargo.toml
 
       - name: Test affected project engine
         working-directory: engine
@@ -116,7 +98,7 @@ jobs:
         working-directory: desktop/src-tauri
         env:
           APPLE_SIGNING_IDENTITY: '-'
-        run: cargo tauri build --bundles app
+        run: cargo tauri build --bundles app -- --locked
 
       - name: Verify app bundle
         shell: bash
