@@ -1,0 +1,147 @@
+name: Phase 21 Literary Evaluation
+
+on:
+  push:
+    branches:
+      - phase-21-literary-evaluation-benchmarking
+    paths:
+      - 'engine/crates/literary-evaluation-engine/**'
+      - 'engine/cli/**'
+      - 'engine/Cargo.toml'
+      - 'engine/Cargo.lock'
+      - 'benchmarks/phase21/**'
+      - 'tools/sacrebleu-evaluator/**'
+      - 'docs/PHASE_21_RESEARCH.md'
+      - 'docs/IMPLEMENTATION_ROADMAP.md'
+      - 'docs/IMPLEMENTATION_STATUS.md'
+      - 'docs/PMC_BOOTSTRAP.md'
+      - 'docs/EXTERNAL_INTEGRATIONS.md'
+      - 'AGENTS.md'
+      - '.github/workflows/phase21-literary-evaluation.yml'
+  pull_request:
+    paths:
+      - 'engine/crates/literary-evaluation-engine/**'
+      - 'engine/cli/**'
+      - 'engine/Cargo.toml'
+      - 'engine/Cargo.lock'
+      - 'benchmarks/phase21/**'
+      - 'tools/sacrebleu-evaluator/**'
+      - 'docs/PHASE_21_RESEARCH.md'
+      - 'docs/IMPLEMENTATION_ROADMAP.md'
+      - 'docs/IMPLEMENTATION_STATUS.md'
+      - 'docs/PMC_BOOTSTRAP.md'
+      - 'docs/EXTERNAL_INTEGRATIONS.md'
+      - 'AGENTS.md'
+      - '.github/workflows/phase21-literary-evaluation.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase21-literary-evaluation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Verify lockfile and formatting
+        working-directory: engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo metadata --locked --format-version 1 --no-deps > /dev/null
+          cargo fmt --all -- --check
+
+      - name: Clippy Phase 21 surfaces
+        working-directory: engine
+        run: cargo clippy --locked -p literary-evaluation-engine -p literary-engine --all-targets -- -D warnings
+
+      - name: Test Phase 21 surfaces
+        working-directory: engine
+        run: cargo test --locked -p literary-evaluation-engine -p literary-engine
+
+      - name: Exercise benchmark CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo run --locked --quiet --manifest-path engine/Cargo.toml -p literary-engine -- benchmark benchmarks/phase21/corpus-v1.json benchmarks/phase21/reference-submission.json --format json > /tmp/good.json
+          cargo run --locked --quiet --manifest-path engine/Cargo.toml -p literary-engine -- benchmark benchmarks/phase21/corpus-v1.json benchmarks/phase21/degraded-submission.json --format json > /tmp/bad.json
+          python3 - <<'PY'
+          import json
+          good = json.load(open('/tmp/good.json', encoding='utf-8'))
+          bad = json.load(open('/tmp/bad.json', encoding='utf-8'))
+          assert good['anchor_pass_rate'] == 1.0
+          assert bad['anchor_pass_rate'] < good['anchor_pass_rate']
+          assert good['anchor_total'] > 0
+          PY
+
+      - name: Audit Rust dependency graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo install cargo-audit --locked 2>/dev/null || true
+          cargo audit --file engine/Cargo.lock
+
+  reference-metric:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Validate SacreBLEU tool
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n tools/sacrebleu-evaluator/install.sh
+          python3 -m py_compile tools/sacrebleu-evaluator/evaluate.py
+          bash tools/sacrebleu-evaluator/install.sh
+          .venv/sacrebleu/bin/python -m pip install pip-audit
+          .venv/sacrebleu/bin/pip-audit -r tools/sacrebleu-evaluator/requirements.txt
+          printf '%s' '{"items":[{"id":"good","translation":"بهش اعتماد ندارم.","reference":"بهش اعتماد ندارم."},{"id":"bad","translation":"بهش اعتماد دارم.","reference":"بهش اعتماد ندارم."}]}' | .venv/sacrebleu/bin/python tools/sacrebleu-evaluator/evaluate.py > /tmp/chrf.json
+          python3 - <<'PY'
+          import json
+          data = json.load(open('/tmp/chrf.json', encoding='utf-8'))
+          assert data['tool'] == 'sacrebleu'
+          assert data['version'] == '2.6.0'
+          assert data['metric'] == 'chrF2++'
+          scores = {row['id']: row['chrf2pp'] for row in data['items']}
+          assert scores['good'] > scores['bad']
+          PY
+
+  macos-arm64:
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Verify Apple Silicon runner
+        shell: bash
+        run: test "$(uname -m)" = arm64
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Compile and test benchmark surfaces
+        working-directory: engine
+        run: |
+          cargo check --locked -p literary-evaluation-engine -p literary-engine
+          cargo test --locked -p literary-evaluation-engine
+
+      - name: Verify optional SacreBLEU install on Apple Silicon
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/sacrebleu-evaluator/install.sh
+          test "$(.venv/sacrebleu/bin/python -c 'import sacrebleu; print(sacrebleu.__version__)')" = "2.6.0"
