@@ -74,7 +74,25 @@
       "expected": [{"speaker":null,"method":"no_speaker_cue"}]
     },
     {
-      "id": "two-quotes-nearest-cues",
+      "id": "conflicting-local-speakers-unresolved",
+      "text": "Mina said, Reza said, \"Stay.\"",
+      "characters": [
+        {"name":"Mina","aliases":[]},
+        {"name":"Reza","aliases":[]}
+      ],
+      "expected": [{"speaker":null,"method":"ambiguous_explicit_candidates"}]
+    },
+    {
+      "id": "prior-sentence-tag-not-reused",
+      "text": "Mina said. \"No,\" Reza replied.",
+      "characters": [
+        {"name":"Mina","aliases":[]},
+        {"name":"Reza","aliases":[]}
+      ],
+      "expected": [{"speaker":"Reza","method":"explicit_name_speech_verb"}]
+    },
+    {
+      "id": "two-quotes-local-cues",
       "text": "\"Stay,\" Mina said. \"No,\" Reza replied.",
       "characters": [
         {"name":"Mina","aliases":[]},
