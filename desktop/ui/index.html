@@ -3,57 +3,105 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
   <title>Persian Literary Translation Engine</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <div class="ambient-canvas" aria-hidden="true">
+    <span class="ambient-orb ambient-orb-one"></span>
+    <span class="ambient-orb ambient-orb-two"></span>
+    <span class="ambient-grid"></span>
+  </div>
+
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">
-        <span class="brand-mark">PL</span>
-        <div>
+        <span class="brand-mark" aria-hidden="true"><span>A</span><span>ا</span></span>
+        <div class="brand-copy">
+          <small class="brand-kicker">Editorial workspace</small>
           <strong>Literary Engine</strong>
-          <small>English → Persian</small>
+          <small>English <span aria-hidden="true">↔</span> فارسی</small>
         </div>
       </div>
-      <nav id="nav">
-        <button class="nav-item active" data-view="home">Project</button>
-        <button class="nav-item" data-view="workflow">Workflow</button>
-        <button class="nav-item" data-view="review">Intelligence Review</button>
-        <button class="nav-item" data-view="canon">Canon</button>
-        <button class="nav-item" data-view="editor">Translation Editor</button>
-        <button class="nav-item" data-view="literary">Literary Review</button>
-        <button class="nav-item" data-view="history">History</button>
-        <button class="nav-item" data-view="provider">Provider</button>
+
+      <nav id="nav" aria-label="Workspace">
+        <div class="nav-group">
+          <span class="nav-group-label">Book</span>
+          <button class="nav-item active" data-view="home"><span class="nav-index">01</span><span>Project</span></button>
+          <button class="nav-item" data-view="workflow"><span class="nav-index">02</span><span>Workflow</span></button>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-label">Craft</span>
+          <button class="nav-item" data-view="review"><span class="nav-index">03</span><span>Intelligence Review</span></button>
+          <button class="nav-item" data-view="canon"><span class="nav-index">04</span><span>Canon</span></button>
+          <button class="nav-item" data-view="editor"><span class="nav-index">05</span><span>Translation Editor</span></button>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-label">Quality</span>
+          <button class="nav-item" data-view="literary"><span class="nav-index">06</span><span>Literary Review</span></button>
+          <button class="nav-item" data-view="history"><span class="nav-index">07</span><span>History</span></button>
+        </div>
+        <div class="nav-group">
+          <span class="nav-group-label">System</span>
+          <button class="nav-item" data-view="provider"><span class="nav-index">08</span><span>Provider</span></button>
+        </div>
       </nav>
+
+      <button id="command-launch" class="command-launch" type="button" aria-haspopup="dialog">
+        <span>Quick switcher</span><kbd>⌘K</kbd>
+      </button>
+
       <div class="project-chip">
-        <small>Current project</small>
-        <span id="current-project">None</span>
+        <span class="project-live-dot" aria-hidden="true"></span>
+        <div>
+          <small>Current project</small>
+          <span id="current-project">None</span>
+        </div>
       </div>
     </aside>
 
     <main>
       <header class="topbar">
-        <div>
+        <div class="topbar-copy">
+          <span class="eyebrow" id="view-eyebrow">BOOK / 01</span>
           <h1 id="view-title">Project</h1>
           <p id="view-subtitle">Open or create a translation project.</p>
         </div>
-        <div id="status-pill" class="status-pill muted">No project</div>
+        <div class="topbar-actions">
+          <span class="topbar-hint">⌘K to navigate</span>
+          <div id="status-pill" class="status-pill muted"><span class="status-dot" aria-hidden="true"></span><span>No project</span></div>
+        </div>
       </header>
 
-      <div id="notice" class="notice hidden" role="status"></div>
+      <div id="notice" class="notice hidden" role="status" aria-live="polite"></div>
 
       <section class="view active" data-view-panel="home">
+        <article class="hero-panel card">
+          <div class="hero-copy">
+            <span class="eyebrow">ENGLISH → PERSIAN · LONG-FORM LITERATURE</span>
+            <h2>Translate the book.<br><em>Keep the soul.</em></h2>
+            <p>A quiet workspace for context, canon, revision and publication—built around evidence instead of guesswork.</p>
+          </div>
+          <div class="hero-object" aria-hidden="true">
+            <div class="book-sheet sheet-back"><span>context</span></div>
+            <div class="book-sheet sheet-mid"><span>voice</span></div>
+            <div class="book-sheet sheet-front"><span>معنا</span><small>meaning, held across languages</small></div>
+          </div>
+        </article>
+
         <div class="grid two">
-          <article class="card">
+          <article class="card action-card">
+            <span class="card-number">A</span>
             <h2>Open project</h2>
-            <p>Choose an existing project folder containing <code>project.json</code>.</p>
+            <p>Return to an existing translation workspace containing <code>project.json</code>.</p>
             <div class="button-row">
               <button id="pick-open-root" class="primary">Choose folder</button>
               <button id="refresh-project" disabled>Refresh</button>
             </div>
           </article>
-          <article class="card">
+          <article class="card action-card">
+            <span class="card-number">B</span>
             <h2>Create project</h2>
             <label>Project name<input id="new-project-name" value="Untitled Translation"></label>
             <div class="button-row">
@@ -62,9 +110,9 @@
           </article>
         </div>
 
-        <article class="card">
+        <article class="card snapshot-card">
           <div class="card-heading">
-            <div><h2>Project snapshot</h2><p>Derived from the application layer; no UI-side state guessing.</p></div>
+            <div><span class="section-kicker">Live project state</span><h2>Project snapshot</h2><p>Derived from the application layer; no UI-side state guessing.</p></div>
             <button id="verify-source" disabled>Verify source</button>
           </div>
           <div id="snapshot-grid" class="snapshot-grid empty-state">Open a project to see its state.</div>
@@ -72,7 +120,10 @@
         </article>
 
         <article class="card">
-          <h2>Source book</h2>
+          <div class="card-heading">
+            <div><span class="section-kicker">Immutable input</span><h2>Source book</h2></div>
+            <span class="folio-mark">SOURCE / 00</span>
+          </div>
           <div class="button-row">
             <button id="pick-import-source" disabled>Choose source file</button>
             <span id="source-path" class="path-label">No file selected</span>
@@ -85,7 +136,7 @@
       <section class="view" data-view-panel="workflow">
         <div class="grid two">
           <article class="card">
-            <h2>Analysis</h2>
+            <div class="card-heading"><div><span class="section-kicker">Stage 01</span><h2>Analysis</h2></div><span class="folio-mark">UNDERSTAND</span></div>
             <div class="stack">
               <button id="run-analysis" class="primary" disabled>Run deterministic analysis</button>
               <div class="inline-fields">
@@ -100,7 +151,7 @@
           </article>
 
           <article class="card">
-            <h2>Translation</h2>
+            <div class="card-heading"><div><span class="section-kicker">Stage 02</span><h2>Translation</h2></div><span class="folio-mark">RENDER</span></div>
             <div class="inline-fields">
               <label>Provider
                 <select id="translation-provider"><option value="auto">Auto</option><option value="echo">Echo (offline)</option><option value="openai">OpenAI</option></select>
@@ -125,8 +176,12 @@
           </article>
         </div>
 
-        <article class="card">
-          <h2>Publication</h2>
+        <article class="card publication-card">
+          <div>
+            <span class="section-kicker">Stage 03</span>
+            <h2>Publication</h2>
+            <p>Ship the reviewed work without flattening the book around it.</p>
+          </div>
           <div class="button-row">
             <select id="export-format"><option value="docx">DOCX</option><option value="epub">EPUB round trip</option></select>
             <button id="export-project" class="primary" disabled>Export</button>
@@ -138,7 +193,7 @@
       <section class="view" data-view-panel="review">
         <article class="card">
           <div class="card-heading">
-            <div><h2>Intelligence review</h2><p>Human decisions remain explicit; the desktop surface never auto-promotes proposals.</p></div>
+            <div><span class="section-kicker">Human authority</span><h2>Intelligence review</h2><p>Human decisions remain explicit; the desktop surface never auto-promotes proposals.</p></div>
             <div class="button-row">
               <select id="review-status-filter"><option value="">All statuses</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="deferred">Deferred</option></select>
               <button id="refresh-review" disabled>Refresh</button>
@@ -152,7 +207,7 @@
       <section class="view" data-view-panel="canon">
         <div class="grid two">
           <article class="card">
-            <div class="card-heading"><h2>Characters</h2><button id="refresh-characters" disabled>Refresh</button></div>
+            <div class="card-heading"><div><span class="section-kicker">Voice ledger</span><h2>Characters</h2></div><button id="refresh-characters" disabled>Refresh</button></div>
             <div id="character-list" class="list compact"></div>
             <hr>
             <label>Name<input id="character-name"></label>
@@ -161,7 +216,7 @@
             <button id="save-character" class="primary" disabled>Save character</button>
           </article>
           <article class="card">
-            <div class="card-heading"><h2>Glossary</h2><button id="refresh-glossary" disabled>Refresh</button></div>
+            <div class="card-heading"><div><span class="section-kicker">Terminology ledger</span><h2>Glossary</h2></div><button id="refresh-glossary" disabled>Refresh</button></div>
             <div id="glossary-list" class="list compact"></div>
             <hr>
             <label>Source term<input id="glossary-source"></label>
@@ -173,9 +228,9 @@
       </section>
 
       <section class="view" data-view-panel="editor">
-        <article class="card">
+        <article class="card editor-card">
           <div class="card-heading">
-            <div><h2>Translation editor</h2><p>Manual edits are persisted as revisions and mark quality evidence stale.</p></div>
+            <div><span class="section-kicker">Parallel text</span><h2>Translation editor</h2><p>Manual edits are persisted as revisions and mark quality evidence stale.</p></div>
             <div class="button-row">
               <label class="inline-label">Chapter <input id="editor-chapter-index" type="number" min="1" value="1"></label>
               <button id="load-chapter" disabled>Load</button>
@@ -188,7 +243,7 @@
 
       <section class="view" data-view-panel="literary">
         <article class="card">
-          <h2>Literary fidelity review</h2>
+          <div class="card-heading"><div><span class="section-kicker">Evidence, not authority</span><h2>Literary fidelity review</h2></div><span class="folio-mark">QUALITY</span></div>
           <div class="inline-fields">
             <label>Provider
               <select id="literary-provider"><option value="none">None (native only)</option><option value="mock">Mock</option><option value="openai">OpenAI</option></select>
@@ -209,14 +264,14 @@
 
       <section class="view" data-view-panel="history">
         <article class="card">
-          <div class="card-heading"><h2>Project history</h2><button id="refresh-history" disabled>Refresh</button></div>
+          <div class="card-heading"><div><span class="section-kicker">Revision trail</span><h2>Project history</h2></div><button id="refresh-history" disabled>Refresh</button></div>
           <div id="history-list" class="list empty-state">Open a project to load history.</div>
         </article>
       </section>
 
       <section class="view" data-view-panel="provider">
         <article class="card narrow">
-          <h2>Provider session</h2>
+          <div class="card-heading"><div><span class="section-kicker">Ephemeral credentials</span><h2>Provider session</h2></div><span class="folio-mark">LOCAL</span></div>
           <p>The API key is kept only in this app process for the current session. It is never written to the project or frontend storage.</p>
           <label>OpenAI API key<input id="openai-key" type="password" autocomplete="off" spellcheck="false"></label>
           <div class="button-row">
@@ -238,6 +293,24 @@
       </section>
     </main>
   </div>
+
+  <div id="command-palette" class="command-palette hidden" role="dialog" aria-modal="true" aria-labelledby="command-title">
+    <button id="command-backdrop" class="command-backdrop" type="button" aria-label="Close quick switcher"></button>
+    <div class="command-panel">
+      <div class="command-header">
+        <div>
+          <span class="eyebrow">QUICK SWITCHER</span>
+          <h2 id="command-title">Where do you want to go?</h2>
+        </div>
+        <kbd>esc</kbd>
+      </div>
+      <label class="command-search-label" for="command-search">Search workspace</label>
+      <input id="command-search" class="command-search" autocomplete="off" spellcheck="false" placeholder="Type a view name…">
+      <div id="command-results" class="command-results" role="listbox"></div>
+      <div class="command-footer"><span>↑↓ move</span><span>↵ open</span><span>⌘1–8 direct</span></div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>
