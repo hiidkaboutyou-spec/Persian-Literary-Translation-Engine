@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "provenance": {
+    "owner": "Persian-Literary-Translation-Engine",
+    "license": "project-owned synthetic benchmark",
+    "synthetic": true,
+    "redistribution_allowed": true
+  },
+  "cases": [
+    {
+      "id": "post-quote-canonical",
+      "text": "\"Stay here,\" Mina said.",
+      "characters": [{"name":"Mina","aliases":[]}],
+      "expected": [{"speaker":"Mina","method":"explicit_name_speech_verb"}]
+    },
+    {
+      "id": "pre-quote-canonical",
+      "text": "Mina whispered, \"Stay here.\"",
+      "characters": [{"name":"Mina","aliases":[]}],
+      "expected": [{"speaker":"Mina","method":"explicit_name_speech_verb"}]
+    },
+    {
+      "id": "post-quote-alias",
+      "text": "“Stay,” Min replied.",
+      "characters": [{"name":"Mina","aliases":["Min"]}],
+      "expected": [{"speaker":"Mina","method":"explicit_alias_speech_verb"}]
+    },
+    {
+      "id": "verb-name-after-quote",
+      "text": "“Stay,” said Mina.",
+      "characters": [{"name":"Mina","aliases":[]}],
+      "expected": [{"speaker":"Mina","method":"explicit_name_speech_verb"}]
+    },
+    {
+      "id": "vocative-is-not-speaker",
+      "text": "\"Reza, stay,\" Mina said.",
+      "characters": [
+        {"name":"Mina","aliases":[]},
+        {"name":"Reza","aliases":[]}
+      ],
+      "expected": [{"speaker":"Mina","method":"explicit_name_speech_verb"}]
+    },
+    {
+      "id": "ask-object-is-not-speaker",
+      "text": "Mina asked Reza, \"Ready?\"",
+      "characters": [
+        {"name":"Mina","aliases":[]},
+        {"name":"Reza","aliases":[]}
+      ],
+      "expected": [{"speaker":"Mina","method":"explicit_name_speech_verb"}]
+    },
+    {
+      "id": "pronoun-remains-unresolved",
+      "text": "\"Stay,\" she said.",
+      "characters": [{"name":"Mina","aliases":[]}],
+      "expected": [{"speaker":null,"method":"pronoun_speech_verb_unresolved"}]
+    },
+    {
+      "id": "no-speech-cue-remains-unresolved",
+      "text": "\"Stay.\" Mina frowned.",
+      "characters": [{"name":"Mina","aliases":[]}],
+      "expected": [{"speaker":null,"method":"no_speaker_cue"}]
+    },
+    {
+      "id": "guillemets",
+      "text": "«Stay,» Mina said.",
+      "characters": [{"name":"Mina","aliases":[]}],
+      "expected": [{"speaker":"Mina","method":"explicit_name_speech_verb"}]
+    },
+    {
+      "id": "leading-dash-detected-not-guessed",
+      "text": "— Stay here.",
+      "characters": [{"name":"Mina","aliases":[]}],
+      "expected": [{"speaker":null,"method":"no_speaker_cue"}]
+    },
+    {
+      "id": "two-quotes-nearest-cues",
+      "text": "\"Stay,\" Mina said. \"No,\" Reza replied.",
+      "characters": [
+        {"name":"Mina","aliases":[]},
+        {"name":"Reza","aliases":[]}
+      ],
+      "expected": [
+        {"speaker":"Mina","method":"explicit_name_speech_verb"},
+        {"speaker":"Reza","method":"explicit_name_speech_verb"}
+      ]
+    }
+  ]
+}
