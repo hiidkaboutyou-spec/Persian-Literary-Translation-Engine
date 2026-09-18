@@ -199,7 +199,7 @@ fn attribute_one_quote(
         // Before a quote, "verb + name" is frequently an object ("asked
         // Reza, ..."), so only the subject-like "name + verb" pattern is
         // accepted. After a quote, both common literary tag orders are
-        // allowed, but subject-like candidates outrank inverted tags.
+        // collected; proximity and grammatical tie-breaks are applied below.
         let accepted = match side.position {
             MentionPosition::Before => {
                 cue.name_then_verb
@@ -235,7 +235,11 @@ fn attribute_one_quote(
     // Prefer the closest explicit cue before applying grammatical tie-breaks.
     // This avoids stealing an earlier quote for a farther character tag that
     // happens to use the subject-like name+verb order.
-    if let Some(min_distance) = candidates.iter().map(|candidate| candidate.distance).min() {
+    if let Some(min_distance) = candidates
+        .iter()
+        .map(|candidate| candidate.distance)
+        .min()
+    {
         candidates.retain(|candidate| candidate.distance == min_distance);
     }
 
