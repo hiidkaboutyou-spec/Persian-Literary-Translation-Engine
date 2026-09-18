@@ -340,6 +340,192 @@ fn mention_side(start: usize, end: usize, quote: &QuoteSpan) -> Option<MentionSi
     }
 }
 
+fn character_patterns(characters: &CharacterBible) -> Vec<NamePattern> {
+    let mut patterns = Vec::new();
+    for profile in characters.profiles() {
+        patterns.push(NamePattern {
+            canonical: profile.name.clone(),
+            display: profile.name.clone(),
+            tokens: normalized_name_tokens(&profile.name),
+            alias: false,
+        });
+    }
+    for alias in characters.aliases() {
+        patterns.push(NamePattern {
+            canonical: alias.canonical_name.clone(),
+            display: alias.alias.clone(),
+            tokens: normalized_name_tokens(&alias.alias),
+            alias: true,
+        });
+    }
+    patterns.sort_by(|left, right| {
+        right
+            .tokens
+            .len()
+            .cmp(&left.tokens.len())
+            .then_with(|| left.canonical.cmp(&right.canonical))
+            .then_with(|| left.display.cmp(&right.display))
+    });
+    patterns
+}
+
+fn normalized_name_tokens(value: &str) -> Vec<String> {
+    lexical_tokens(value)
+        .into_iter()
+        .map(|token| token.normalized)
+        .collect()
+}
+
+fn lexical_tokens(text: &str) -> Vec<LexToken> {
+    let chars = text.chars().collect::<Vec<_>>();
+    let mut tokens = Vec::new();
+    let mut start = None;
+
+    for (index, ch) in chars.iter().copied().enumerate() {
+        let lexical = ch.is_alphanumeric() || ch == '\'' || ch == '’' || ch == '-';
+        match (start, lexical) {
+            (None, true) => start = Some(index),
+            (Some(begin), false) => {
+                push_token(&chars, begin, index, &mut tokens);
+                start = None;
+            }
+            _ => {}
+        }
+    }
+    if let Some(begin) = start {
+        push_token(&chars, begin, chars.len(), &mut tokens);
+    }
+    tokens
+}
+
+fn push_token(chars: &[char], start: usize, end: usize, tokens: &mut Vec<LexToken>) {
+    let raw = chars[start..end].iter().collect::<String>();
+    let normalized = normalize_case_insensitive(&raw);
+    if !normalized.is_empty() {
+        tokens.push(LexToken {
+            raw,
+            normalized,
+            start_char: start,
+            end_char: end,
+        });
+    }
+}
+
+fn detect_quotes(text: &str) -> Vec<QuoteSpan> {
+    let chars = text.chars().collect::<Vec<_>>();
+    let mut spans = Vec::new();
+    collect_paired_quotes(
+        &chars,
+        '"',
+        '"',
+        QuoteStyle::StraightDouble,
+        &mut spans,
+    );
+    collect_paired_quotes(&chars, '“', '”', QuoteStyle::CurlyDouble, &mut spans);
+    collect_paired_quotes(&chars, '«', '»', QuoteStyle::Guillemets, &mut spans);
+
+    if spans.is_empty() {
+        if let Some(first_non_space) = chars.iter().position(|ch| !ch.is_whitespace()) {
+            if chars[first_non_space] == '—' && first_non_space + 1 < chars.len() {
+                spans.push(QuoteSpan {
+                    start_char: first_non_space + 1,
+                    end_char: chars.len(),
+                    text: chars[first_non_space + 1..].iter().collect(),
+                    style: QuoteStyle::LeadingDash,
+                });
+            }
+        }
+    }
+
+    spans.sort_by_key(|span| (span.start_char, span.end_char));
+    spans.dedup_by_key(|span| (span.start_char, span.end_char));
+    spans
+}
+
+fn collect_paired_quotes(
+    chars: &[char],
+    open: char,
+    close: char,
+    style: QuoteStyle,
+    spans: &mut Vec<QuoteSpan>,
+) {
+    if open == close {
+        let positions = chars
+            .iter()
+            .enumerate()
+            .filter_map(|(index, ch)| (*ch == open).then_some(index))
+            .collect::<Vec<_>>();
+        for pair in positions.chunks_exact(2) {
+            let start = pair[0] + 1;
+            let end = pair[1];
+            if start <= end {
+                spans.push(QuoteSpan {
+                    start_char: start,
+                    end_char: end,
+                    text: chars[start..end].iter().collect(),
+                    style,
+                });
+            }
+        }
+        return;
+    }
+
+    let mut open_position = None;
+    for (index, ch) in chars.iter().copied().enumerate() {
+        if ch == open && open_position.is_none() {
+            open_position = Some(index);
+        } else if ch == close {
+            if let Some(open_index) = open_position.take() {
+                let start = open_index + 1;
+                let end = index;
+                if start <= end {
+                    spans.push(QuoteSpan {
+                        start_char: start,
+                        end_char: end,
+                        text: chars[start..end].iter().collect(),
+                        style,
+                    });
+                }
+            }
+        }
+    }
+}
+
+fn span_inside_any_quote(start: usize, end: usize, quotes: &[QuoteSpan]) -> bool {
+    quotes
+        .iter()
+        .any(|quote| start >= quote.start_char && end <= quote.end_char)
+}
+
+fn has_intervening_quote(
+    mention_start: usize,
+    mention_end: usize,
+    quote: &QuoteSpan,
+    all_quotes: &[QuoteSpan],
+) -> bool {
+    all_quotes.iter().any(|other| {
+        if other.start_char == quote.start_char && other.end_char == quote.end_char {
+            return false;
+        }
+        if mention_end <= quote.start_char {
+            other.start_char >= mention_end && other.end_char <= quote.start_char
+        } else if mention_start >= quote.end_char {
+            other.start_char >= quote.end_char && other.end_char <= mention_start
+        } else {
+            false
+        }
+    })
+}
+
+fn contains_hard_sentence_boundary(chars: &[char], start: usize, end: usize) -> bool {
+    if start >= end || start >= chars.len() {
+        return false;
+    }
+    chars[start..end.min(chars.len())]
+        .iter()
+        .any(|ch| matches!(*ch, '.' | '!' | '?' | '؟'))
+}
+
 fn extract_explicit_mention_cues(
     tokens: &[LexToken],
     patterns: &[NamePattern],
