@@ -98,6 +98,22 @@ This project is independent from every other repository. Do not import assumptio
 - Generated visual candidates are non-canonical until a human explicitly selects them. Do not silently replace the current app icon or product identity.
 - Updating the vendored skill requires a new pinned upstream commit plus provenance, license, and security review.
 
+## Phase 25 visual-experience invariants
+
+- Keep the desktop frontend local/static HTML/CSS/JS. Do not add React, Vue, Svelte, Vite, remote pages, CDN assets, web fonts or a production localhost frontend server merely for visual polish.
+- The four canonical Phase-25 presentation themes are System, Midnight Ink, Rose Paper and Sage Manuscript. Theme changes are presentation-only and in-memory for the current session; frontend `localStorage`/`sessionStorage` remains forbidden.
+- Theme/UI code must not read/write project files or own translation/review/canon/publishing state. Route product actions through the existing Tauri/ApplicationService commands.
+- The command palette is a navigation/action adapter only. It may invoke the same bounded controls/commands already exposed in the product; it must not create a second orchestration path.
+- Preserve manuscript/provider/reviewer rendering through `textContent`, DOM node creation and textarea values. Never use `innerHTML`.
+- Preserve restrictive CSP and locally bundled assets.
+- Respect `prefers-reduced-motion`. View Transitions and ambient motion are progressive enhancements; every action must work without them.
+- Keep explicit keyboard focus styling and ARIA state for theme, navigation, dialog and editor-focus controls.
+- The Translation Editor remains source/Persian side-by-side with RTL Persian editing and an optional visual Focus Persian mode. Focus mode must not mutate/persist chapter content.
+- Do not adopt `window-vibrancy`, `macOSPrivateApi`, transparent native windows or macOS 26 Liquid Glass private/native hooks without a fresh release/distribution review.
+- The permanent Phase-25 UI contract supplements the canonical Phase-22 Apple Silicon app build; it never replaces real macOS bundle validation.
+- MotionSites/macOS-design/command-palette repositories are references, not a license to copy branding/assets or introduce their dependencies.
+- Speaker/coreference model benchmarking is deferred until after the visual phase; BookNLP/FastCoref remain uninstalled.
+
 ## Coding standards
 
 - Follow idiomatic stable Rust and the module patterns already present in `engine/`.
