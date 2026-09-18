@@ -47,10 +47,7 @@ pub fn run_benchmark(args: &[String], format: &OutputFormat) -> Result<()> {
                 report.anchor_pass_rate * 100.0
             );
             for (dimension, coverage) in &report.by_dimension {
-                println!(
-                    "  {:?}: {}/{}",
-                    dimension, coverage.passed, coverage.total
-                );
+                println!("  {:?}: {}/{}", dimension, coverage.passed, coverage.total);
             }
             for note in &report.advisory_notes {
                 println!("note: {note}");
