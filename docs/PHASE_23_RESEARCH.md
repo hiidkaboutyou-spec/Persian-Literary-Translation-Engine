@@ -82,6 +82,8 @@ Official project reference:
 
 Phase-23 use is CI/release tooling only. It is not a runtime dependency and is installed at the exact reviewed version with `--locked`.
 
+During validation, `--license-strict` was deliberately removed from SBOM generation. That option rejects the deprecated slash form used by historical transitive crate metadata (for example `MIT/Apache-2.0` and `Apache-2.0/MIT`). The generator otherwise preserves those values as named licenses and emits the inventory. Phase 23 does not rewrite or guess third-party license expressions merely to make CI green; license warnings remain visible evidence.
+
 ### 4. macOS public distribution still needs real Apple identity
 
 Apple documents Developer ID signing plus notarization as the direct-distribution path for Mac software downloaded outside the Mac App Store.
@@ -166,6 +168,7 @@ The skill itself recommends a top-tier image model and a three-direction/six-can
 - presence of pinned CycloneDX and GitHub attestation steps;
 - exact vendored ip-as-logo Git blobs and absence of executable files in its directory;
 - credential-free CLI SBOM generation;
+- exact Linux/macOS/Windows release-matrix builds plus target-specific SBOM generation;
 - committed desktop lockfile on Apple Silicon;
 - updater remains disabled/fail-closed;
 - desktop CycloneDX SBOM generation;
@@ -191,6 +194,7 @@ Phase 23 can become canonical when:
 - CLI SBOM generation works across the supported release target matrix;
 - tagged release configuration contains provenance and SBOM attestation steps with narrowly scoped permissions;
 - Phase-23 CLI SBOM smoke gate passes;
+- the exact Linux x86_64, macOS arm64, and Windows x86_64 CLI release matrix builds with committed locks and emits non-empty target SBOMs;
 - Phase-23 Apple Silicon desktop SBOM + locked app build + integrity-manifest gate passes;
 - existing Rust/Security/Phase 18–22/Project Memory gates remain green;
 - no Apple/Tauri private signing credential is committed;
