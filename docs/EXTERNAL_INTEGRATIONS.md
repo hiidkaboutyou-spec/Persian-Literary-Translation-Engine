@@ -195,6 +195,84 @@ Decision: **approved for Phase 22 product surface only**. Do not move literary l
 
 Research record: `docs/PHASE_22_RESEARCH.md`.
 
+## cargo-cyclonedx 0.5.9 — Phase 23 release SBOM tooling
+
+Upstream: `CycloneDX/cyclonedx-rust-cargo`.
+Selected tool/version: `cargo-cyclonedx 0.5.9`.
+License: Apache-2.0.
+
+Approved boundary:
+
+- CI/tagged-release tooling only;
+- installed with an exact version and `--locked`;
+- reads Cargo metadata plus the committed dependency graph to create CycloneDX JSON;
+- uses `SOURCE_DATE_EPOCH` from the repository commit timestamp for reproducible SBOM metadata;
+- target-specific release SBOMs are published beside CLI binaries;
+- the tool is never a translation, review, desktop-runtime, or publishing dependency.
+
+A generated SBOM is component inventory evidence; it is not a vulnerability-free guarantee.
+
+Research: `docs/PHASE_23_RESEARCH.md`.
+
+## GitHub Artifact Attestations — Phase 23 tagged-release provenance
+
+Integration: GitHub Actions `actions/attest@v4`.
+
+Approved boundary:
+
+- tagged public release artifacts only;
+- publish job receives narrowly scoped `id-token: write` and `attestations: write`;
+- provenance claims link release bytes to repository/workflow/commit/build context;
+- per-binary SBOM attestations link each CLI binary to its CycloneDX document;
+- routine PR validation artifacts are not treated as public trusted releases merely because CI built them.
+
+Attestation is provenance evidence, not a substitute for code review/security assessment.
+
+## Apple Developer ID / Notary Service — credentialed release boundary, not yet activated
+
+Apple Developer ID signing and notarization are required before calling the desktop application a normal public direct-download macOS release.
+
+Current status:
+
+- unsigned/ad-hoc Apple Silicon app build is validated;
+- no Developer ID certificate/private key is stored in the repository;
+- no App Store Connect/Notary API private key is stored in the repository;
+- notarization/stapling is not simulated;
+- activation requires real human-controlled credentials and a dedicated credentialed release validation.
+
+## Tauri updater — deliberately disabled pending trust root
+
+Tauri v2's updater requires signed update artifacts. Signature verification cannot be disabled.
+
+Current decision:
+
+- `tauri-plugin-updater` is not installed;
+- `createUpdaterArtifacts` is not enabled;
+- no production update endpoint is configured;
+- Phase-23 CI verifies this fail-closed state;
+- activation requires a real Tauri signing private key, committed public verification key, trusted HTTPS endpoint, recovery/storage policy, and end-to-end update verification.
+
+## ip-as-logo Agent Skill — optional developer/design integration
+
+Upstream: `s1dashu/ip-as-logo-skill`.
+Pinned upstream commit: `acb834c717bcd0a487c49732d08397ba280d690b`.
+License: MIT.
+Vendored path: `tools/agent-skills/ip-as-logo/`.
+
+Reviewed functional payload is instruction text, not executable runtime code.
+
+Approved boundary:
+
+- explicit mascot/product-identity/app-icon exploration only;
+- exact vendored `SKILL.md` and license, with upstream Git blob IDs checked in CI;
+- no npm/CLI installer required;
+- no automatic upstream sync;
+- no access to manuscript data unless a user explicitly provides a design brief that needs non-sensitive product context;
+- no dependency from Rust engine, desktop runtime, persistence, publication, or core CI;
+- generated visual outputs remain candidates until a human selects them.
+
+Research/provenance: `docs/PHASE_23_RESEARCH.md` and `tools/agent-skills/ip-as-logo/SOURCE.md`.
+
 ## Supporting-tool candidates outside translation runtime
 
 ### OpenDataLoader PDF — ingestion benchmark candidate
