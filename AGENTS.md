@@ -163,3 +163,14 @@ For Phase 20 publishing changes, run the dedicated `Phase 20 EPUB Round Trip` wo
 5. Review the diff for secret/manuscript exposure, persistence compatibility, provider coupling, external-dependency provenance, runtime-cost changes, licensing, and quality-gate regressions.
 6. Open a concise pull request describing behavior, contracts, and validation.
 7. Merge only after required CI and security checks pass and the change is safe; otherwise record the blocker and leave the pull request open.
+
+## Phase 24 literary-precision invariants
+
+- Preserve `text-normalization::normalize()` as the comparison/search normalization contract. Use separate publication-quality Persian APIs for typography work.
+- Never auto-rewrite literary punctuation, expressive repeated marks, register, slang or prose style under the label of normalization.
+- Native Persian typography diagnostics are evidence only; they cannot mark a translation human-approved.
+- A literary-review revision proposal is inert until an explicit human acceptance action. Reject stale, multi-target, structurally ambiguous or non-concrete proposals.
+- Accepted review patches must flow through the normal translation revision ledger and must stale old quality/review evidence.
+- `rbook` is dev/CI-only independent EPUB evidence. Do not move it into normal document-engine dependencies or replace the pinned BookForge reconstruction boundary.
+- Do not add BookNLP, FastCoref, Hazm, DadmaTools or another model/NLP stack to defaults without a rights-safe benchmark proving a concrete gap plus license/security review.
+- Do not duplicate existing Context Packet v2 or relevant-only glossary/canon selection when adopting ideas from document-translation research.

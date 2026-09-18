@@ -30,6 +30,7 @@ pub fn run() {
             commands::apply_manual_edit,
             commands::run_literary_review,
             commands::get_literary_review,
+            commands::accept_literary_review_revision,
             commands::export_project,
             commands::project_history,
         ])

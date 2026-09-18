@@ -22,3 +22,4 @@ bookforge-epub = { git = "https://github.com/JunjoSick/bookforge", rev = "23f8c9
 
 [dev-dependencies]
 tempfile = "3"
+rbook = "=0.7.10"

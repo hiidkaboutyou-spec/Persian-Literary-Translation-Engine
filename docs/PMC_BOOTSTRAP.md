@@ -259,3 +259,20 @@ Before adding any GitHub repository/package/tool:
 When a local PMC vault is actually available, promote stable material into focused notes rather than copying this file wholesale: Project Home, Current State, Decisions, Constraints, Plans, and Handoff.
 
 Updating this repository seed does **not** mean the user's local PMC/Obsidian vault or local Mac configuration was modified. Never claim that without direct local access and verification.
+
+## Durable Phase 24 decisions
+
+1. Phase 23 is canonical via PR #103, final reviewed head `bdf3e563380f5f169a9ecf48847c100baf904c67`, merge `adc2ab2294feec6ff190b4e4d11c3fa6407ca7f2`.
+2. Phase 24 branch is `phase-24-literary-precision-persian-polish`; draft PR #104. Do not call it canonical until the final exact head is green and merged.
+3. Do not change the established comparison semantics of `text-normalization::normalize()` merely to improve publication typography. Publication-quality Persian polish is a separate API.
+4. Automatic Persian cleanup is restricted to low-risk Unicode surfaces. Literary punctuation, expressive marks, register and prose style remain advisory/human-controlled.
+5. Native Persian typography findings are evidence only. Recording `PersianNaturalness` for that channel means the typography/orthography surface was evaluated, not that literary fluency/voice/style was approved.
+6. `rbook = 0.7.10` is pinned as a `document-engine` dev/CI dependency only. BookForge remains the runtime EPUB owner and EPUBCheck remains the standards-conformance gate.
+7. Literary review proposals remain non-mutating until explicit human acceptance. Acceptance is fail-closed for stale, ambiguous/multi-target or non-concrete proposals and must use the normal revision ledger.
+8. Applying an accepted proposal stales prior quality/review evidence. Re-review is required; an accepted model suggestion is never human approval of the resulting chapter.
+9. BookNLP and FastCoref are not installed product dependencies. Evaluate them only as isolated rights-safe character/coreference/speaker benchmarks if a measured gap appears.
+10. Virastar and `rezkam/persian` are design references only; do not add JS/Python runtimes for deterministic rules already owned natively.
+11. DelTA/Loong/Prozetta/bilingual_book_maker do not justify parallel memory/context systems. Reuse Context Packet v2, approved canon and relevant-only glossary selection unless a benchmark proves a concrete gap.
+12. Hazm remains blocked under the existing security decision; DadmaTools remains conditional.
+13. Phase-24 dependency commands must be `--locked` after the committed lockfile. Do not reintroduce a CI lockfile bootstrap on canonical main.
+14. No source manuscript, generated translation, reviewer private data or provider secret may be added to repository/project memory.

@@ -53,6 +53,8 @@ pub enum ApplicationError {
     ProviderAuthenticationFailed(String),
     #[error("review conflict: {0}")]
     ReviewConflict(String),
+    #[error("review revision unavailable: {0}")]
+    ReviewRevisionUnavailable(String),
     #[error("promotion blocked: {0}")]
     PromotionBlocked(String),
     #[error("invalid translation configuration: {0}")]
@@ -86,6 +88,7 @@ impl ApplicationError {
             Self::ProviderNotConfigured(_) => "provider_not_configured",
             Self::ProviderAuthenticationFailed(_) => "provider_authentication_failed",
             Self::ReviewConflict(_) => "review_conflict",
+            Self::ReviewRevisionUnavailable(_) => "review_revision_unavailable",
             Self::PromotionBlocked(_) => "promotion_blocked",
             Self::InvalidTranslationConfig(_) => "invalid_translation_config",
             Self::TranslationAlreadyRunning => "translation_already_running",
@@ -108,9 +111,9 @@ impl ApplicationError {
             Self::AnalysisFailed(_) | Self::AdvancedAnalysisFailed(_) => {
                 RecoveryHint::RunAnalysisFirst
             }
-            Self::ReviewConflict(_) | Self::PromotionBlocked(_) => {
-                RecoveryHint::ResolveReviewConflict
-            }
+            Self::ReviewConflict(_)
+            | Self::ReviewRevisionUnavailable(_)
+            | Self::PromotionBlocked(_) => RecoveryHint::ResolveReviewConflict,
             Self::NoCheckpoint | Self::ResumeIncompatible(_) => RecoveryHint::ResumeExistingRun,
             Self::ProjectLocked => RecoveryHint::UnlockProject,
             Self::ProjectNotFound(_) => RecoveryHint::None,

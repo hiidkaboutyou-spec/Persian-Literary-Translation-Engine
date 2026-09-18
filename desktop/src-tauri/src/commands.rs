@@ -430,6 +430,20 @@ pub fn get_literary_review(
 }
 
 #[tauri::command]
+pub fn accept_literary_review_revision(
+    project_root: String,
+    chapter_index: usize,
+    finding_id: String,
+    reviewer: String,
+) -> CommandResult<TranslationRevision> {
+    let project = load_project(project_root).map_err(payload)?;
+    let mut sink = VecEventSink::new();
+    ApplicationService
+        .accept_literary_review_revision(&project, chapter_index, &finding_id, &reviewer, &mut sink)
+        .map_err(payload)
+}
+
+#[tauri::command]
 pub async fn export_project(
     project_root: String,
     format: String,

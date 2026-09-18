@@ -275,6 +275,50 @@ Approved boundary:
 
 Research/provenance: `docs/PHASE_23_RESEARCH.md` and `tools/agent-skills/ip-as-logo/SOURCE.md`.
 
+## rbook 0.7.10 — Phase 24 independent EPUB validation
+
+Upstream: `DevinSterling/rbook`.
+Selected exact crate: `rbook = 0.7.10`.
+License: Apache-2.0.
+
+Approved boundary:
+
+- `document-engine` dev dependency only;
+- CI/test-time independent EPUB parsing and spine/resource reading;
+- strict reopen of project-owned generated fixtures and translated Persian EPUB output;
+- no project persistence types, no translation/review ownership, no application dependency and no normal runtime requirement;
+- BookForge remains the canonical ingestion/source-aware reconstruction dependency;
+- EPUBCheck remains the standards conformance validator.
+
+Purpose: reduce common-mode validation risk. A BookForge-generated EPUB that can only be reopened by BookForge does not provide the same independent structural evidence as a second parser.
+
+## Persian text-cleaner references — native implementation only
+
+Reviewed references:
+
+- `brothersincode/virastar` — MIT;
+- `rezkam/persian` — MIT.
+
+Decision: no JS/Python runtime dependency. Phase 24 implements the small deterministic Unicode/typography subset natively in Rust, with aggressive/literary-style transformations left advisory or excluded.
+
+## Fiction character/coreference candidates — benchmark only
+
+### BookNLP
+
+Upstream: `booknlp/booknlp`.
+Source license: MIT.
+
+Potential evidence: character clustering, pronoun/coreference chains and quotation speaker attribution.
+
+Decision: not installed. The model stack is heavy (Torch/TensorFlow/spaCy/Transformers), the original package/repository has older runtime assumptions, and code-license review alone is insufficient to promote model/training provenance into the product. Any future evaluation must be isolated, rights-safe and benchmarked against existing literary intelligence.
+
+### FastCoref
+
+Upstream: `shon-otmazgin/fastcoref`.
+Software license: MIT; reviewed F-Coref/LingMess model cards advertise MIT.
+
+Decision: not installed. It may be an optional benchmark competitor for English coreference, but it does not itself solve quotation speaker attribution and cannot become canon/runtime without demonstrated benefit.
+
 ## Supporting-tool candidates outside translation runtime
 
 ### OpenDataLoader PDF — ingestion benchmark candidate

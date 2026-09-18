@@ -8,6 +8,7 @@ const state = {
   snapshot: null,
   translationRunning: false,
   progressTimer: null,
+  literaryEvidence: null,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -345,6 +346,70 @@ function renderChapter(chapter) {
   });
 }
 
+function renderLiteraryEvidence(evidence) {
+  state.literaryEvidence = evidence;
+  const output = $("literary-output");
+  output.replaceChildren();
+  output.className = "list";
+
+  if (!evidence || !evidence.artifact) {
+    output.className = "list empty-state";
+    output.textContent = "No review loaded.";
+    return;
+  }
+
+  const artifact = evidence.artifact;
+  output.append(
+    textNode("strong", artifact.title || ("Chapter " + (artifact.chapter_index + 1))),
+    textNode(
+      "div",
+      evidence.stale
+        ? "This review is stale. Re-run literary review before accepting any proposal."
+        : "Evidence is current. Suggested revisions still require an explicit human action.",
+      evidence.stale ? "warning" : "meta"
+    )
+  );
+
+  const findings = artifact.report?.findings || [];
+  if (!findings.length) {
+    output.append(textNode("div", "No findings in this review.", "empty-state"));
+    return;
+  }
+
+  findings.forEach((finding) => {
+    const row = document.createElement("div");
+    row.className = "list-row";
+    row.append(
+      textNode("strong", finding.dimension + " · " + finding.severity),
+      textNode("div", finding.summary, "meta")
+    );
+
+    const suggested = finding.revision_proposal?.suggested_text;
+    const targetIndices = finding.target_indices || [];
+    if (!evidence.stale && suggested && targetIndices.length === 1) {
+      row.append(textNode("div", "Suggested replacement: " + suggested, "meta"));
+      const accept = textNode("button", "Accept suggested revision");
+      accept.addEventListener("click", async () => {
+        const chapterIndex = Number(artifact.chapter_index);
+        await call("accept_literary_review_revision", {
+          projectRoot: state.projectRoot,
+          chapterIndex,
+          findingId: finding.id,
+          reviewer: $("reviewer-name").value.trim() || "desktop-user",
+        });
+        showNotice("Suggested paragraph revision accepted. The old review is now stale; re-run review to verify it.");
+        const refreshed = await call("get_literary_review", {
+          projectRoot: state.projectRoot,
+          chapterIndex,
+        });
+        renderLiteraryEvidence(refreshed);
+      });
+      row.append(accept);
+    }
+    output.append(row);
+  });
+}
+
 function renderHistory(items) {
   const list = $("history-list");
   list.replaceChildren();
@@ -520,7 +585,11 @@ $("run-literary-review").addEventListener("click", async () => {
       maxChapters: numberOrNull("literary-max"),
     },
   });
-  $("literary-output").textContent = JSON.stringify(summary, null, 2);
+  $("literary-output").className = "list";
+  $("literary-output").replaceChildren(
+    textNode("strong", "Literary review completed"),
+    textNode("div", summary.reviewed_chapters + " chapter(s) reviewed · " + summary.findings + " finding(s)", "meta")
+  );
   showNotice("Literary review completed.");
 });
 
@@ -530,7 +599,7 @@ $("load-literary-review").addEventListener("click", async () => {
     projectRoot: state.projectRoot,
     chapterIndex,
   });
-  $("literary-output").textContent = JSON.stringify(evidence, null, 2);
+  renderLiteraryEvidence(evidence);
 });
 
 $("refresh-history").addEventListener("click", async () => {
