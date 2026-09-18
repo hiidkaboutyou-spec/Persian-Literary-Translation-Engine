@@ -446,16 +446,19 @@ pub fn evaluate_submission(
     let mut case_results = Vec::with_capacity(corpus.cases.len());
 
     for case in &corpus.cases {
-        let translation = outputs.get(case.id.as_str()).ok_or_else(|| {
-            EvaluationError(format!("submission is missing case '{}'", case.id))
-        })?;
+        let translation = outputs
+            .get(case.id.as_str())
+            .ok_or_else(|| EvaluationError(format!("submission is missing case '{}'", case.id)))?;
         let result = evaluate_case(case, translation);
         anchor_passed += result.anchor_passed;
         anchor_total += result.anchor_total;
         for outcome in &result.outcomes {
             let coverage = by_dimension
                 .entry(outcome.dimension)
-                .or_insert(DimensionCoverage { passed: 0, total: 0 });
+                .or_insert(DimensionCoverage {
+                    passed: 0,
+                    total: 0,
+                });
             coverage.total += 1;
             if outcome.passed {
                 coverage.passed += 1;
@@ -510,9 +513,7 @@ pub fn evaluate_case(case: &EvaluationCase, translation: &str) -> CaseEvaluation
     }
 }
 
-pub fn contrastive_sanity_check(
-    corpus: &LiteraryEvaluationCorpus,
-) -> Result<(), EvaluationError> {
+pub fn contrastive_sanity_check(corpus: &LiteraryEvaluationCorpus) -> Result<(), EvaluationError> {
     corpus.validate()?;
     for case in &corpus.cases {
         let reference = evaluate_case(case, &case.reference);
