@@ -64,7 +64,10 @@ function textNode(tag, value, className) {
 
 function setView(name) {
   document.querySelectorAll(".nav-item").forEach((button) => {
-    button.classList.toggle("active", button.dataset.view === name);
+    const active = button.dataset.view === name;
+    button.classList.toggle("active", active);
+    if (active) button.setAttribute("aria-current", "page");
+    else button.removeAttribute("aria-current");
   });
   document.querySelectorAll("[data-view-panel]").forEach((panel) => {
     panel.classList.toggle("active", panel.dataset.viewPanel === name);
@@ -488,7 +491,11 @@ function renderCommandResults() {
 
     button.addEventListener("mouseenter", () => {
       state.activeCommandIndex = index;
-      renderCommandResults();
+      results.querySelectorAll(".command-result").forEach((candidate, candidateIndex) => {
+        const selected = candidateIndex === state.activeCommandIndex;
+        candidate.classList.toggle("selected", selected);
+        candidate.setAttribute("aria-selected", selected ? "true" : "false");
+      });
     });
     button.addEventListener("click", () => setView(command.view));
     results.append(button);
