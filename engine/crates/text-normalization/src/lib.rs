@@ -43,7 +43,6 @@ pub fn normalize_case_insensitive(text: &str) -> String {
     normalize(text).to_lowercase()
 }
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum PersianTypographyIssueKind {
     ArabicLetterVariant,
@@ -209,7 +208,10 @@ pub fn inspect_persian_typography(text: &str) -> Vec<PersianTypographyIssue> {
                     suggestion: Some(String::new()),
                 });
             }
-            if chars.get(index + 1).is_some_and(|next| is_spacing_punctuation(*next)) {
+            if chars
+                .get(index + 1)
+                .is_some_and(|next| is_spacing_punctuation(*next))
+            {
                 issues.push(PersianTypographyIssue {
                     kind: PersianTypographyIssueKind::SpaceBeforePunctuation,
                     char_index: index,
@@ -270,9 +272,11 @@ fn is_persian_script_letter(ch: char) -> bool {
 }
 
 fn is_spacing_punctuation(ch: char) -> bool {
-    matches!(ch, '،' | '؛' | '؟' | '!' | '?' | ',' | ';' | ':' | '.' | '…')
+    matches!(
+        ch,
+        '،' | '؛' | '؟' | '!' | '?' | ',' | ';' | ':' | '.' | '…'
+    )
 }
-
 
 /// Returns `true` when the normalized text contains negation markers.
 ///
