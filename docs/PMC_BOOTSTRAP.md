@@ -148,9 +148,11 @@ These are not current runtime dependencies and must not interrupt the numbered r
 - **MemoryWiki** relevant ideas but current maturity/provenance do not justify dependency.
 - **automatic transcript/session memory systems** not selected; raw chat capture is the wrong abstraction and increases privacy/secret-retention risk.
 
-## Phase 21 Branch State — Not Canonical Until Merged
+## Phase 21 Canonical State
 
-Branch: `phase-21-literary-evaluation-benchmarking`; PR #100.
+PR #100 merged to `main` at `0e4b8ebf1bdb4dd7c931e3ba44cc64f23358d4b1`. Final reviewed head: `d543b0448bdb8c886e58c69b719183daf07a66bc`.
+
+Final Phase 21 gates were green: dedicated Phase 21 benchmark workflow, Rust CI, Security/cargo-audit, Phase 18, Phase 19, Phase 20 regression, Project Memory Tooling, and Apple Silicon arm64.
 
 Durable Phase 21 decisions:
 
@@ -170,8 +172,8 @@ Detailed rationale: `docs/PHASE_21_RESEARCH.md`.
 - Phase 18 — Context Packet v2 & Selective Long-Novel Retrieval — canonical/merged.
 - Phase 19 — Literary Fidelity & Persian Naturalness Review Stack — canonical/merged.
 - Phase 20 — Publication-Grade EPUB Round Trip — canonical/merged (PR #98; `1611cd731160c122baa68c9e80c1d4faeb7dfcfc`).
-- Phase 21 — Literary Evaluation Corpus & Benchmarking — active branch/PR #100; not canonical until merge/post-merge verification.
-- Phase 22 — Product Surface & Distribution Hardening.
+- Phase 21 — Literary Evaluation Corpus & Benchmarking — canonical/merged (PR #100; `0e4b8ebf1bdb4dd7c931e3ba44cc64f23358d4b1`).
+- Phase 22 — Product Surface & Distribution Hardening — next/current numbered phase.
 
 Always finish/verify the current numbered phase before starting the next numbered phase. Supporting tooling may land between phases only when runtime defaults remain intact, ownership/failure boundaries are explicit, and validation passes.
 
