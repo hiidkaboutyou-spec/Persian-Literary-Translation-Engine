@@ -188,6 +188,7 @@ Challenge classes include:
 - `ask` object-vs-subject disambiguation;
 - pronoun fail-closed behavior;
 - no-speech-cue fail-closed behavior;
+- curly single quotes (while straight apostrophes remain lexical, not quote delimiters);
 - guillemets;
 - leading-dash detection without guessing;
 - multiple quotations with quote-local cue isolation.
