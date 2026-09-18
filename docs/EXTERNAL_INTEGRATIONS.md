@@ -319,6 +319,41 @@ Software license: MIT; reviewed F-Coref/LingMess model cards advertise MIT.
 
 Decision: not installed. It may be an optional benchmark competitor for English coreference, but it does not itself solve quotation speaker attribution and cannot become canon/runtime without demonstrated benefit.
 
+## Phase 25 visual-design references — no runtime adoption
+
+### MotionSites AI
+
+Reference: `https://motionsites.ai`.
+
+Use: visual/motion inspiration only for expressive hierarchy, layered depth, ambient motion and transitions.
+
+Boundary: no code, asset, image, font, script or branding copied into the product.
+
+### ceorkm/macos-design-skill
+
+Repository: `ceorkm/macos-design-skill`.
+README-declared license: MIT.
+
+Use: reference for macOS layout, keyboard-first navigation, command palette, separate light/dark treatment, blur, layered shadows and compact productivity spacing.
+
+Boundary: not installed or vendored.
+
+### julianmateu/light-cmd-palette
+
+License: MIT.
+
+Use: confirms a vanilla JS/CSS command palette is sufficient for a multi-view productivity surface.
+
+Boundary: no package/vendor dependency; Phase 25 owns a smaller local implementation tied to existing application actions.
+
+### tauri-apps/window-vibrancy 0.8.0
+
+License: `Apache-2.0 OR MIT`.
+
+Current capability includes macOS 26 `apply_liquid_glass`. The documented Tauri WebView path requires window transparency and `macOSPrivateApi: true`.
+
+Decision: not adopted. Phase 25 uses CSS glass so visual polish does not expand the native/private-API or distribution boundary. Reconsider only under a dedicated macOS release review.
+
 ## Supporting-tool candidates outside translation runtime
 
 ### OpenDataLoader PDF — ingestion benchmark candidate

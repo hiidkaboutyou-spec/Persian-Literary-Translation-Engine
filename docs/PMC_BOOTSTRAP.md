@@ -216,6 +216,7 @@ Detailed rationale: `docs/PHASE_23_RESEARCH.md`.
 - Phase 22 — Product Surface & Distribution Hardening — canonical/merged (PR #102; `dc2bf1eee2f5d2dedc7c97d0164c3c26b8ac979b`).
 - Phase 23 — Trusted Release & Supply-Chain Hardening — canonical/merged (PR #103; `adc2ab2294feec6ff190b4e4d11c3fa6407ca7f2`).
 - Phase 24 — Literary Precision & Persian Polish — canonical/merged (PR #104; `2fa48dfd39437f79e6ac9db949f54e6595f2cc0a`).
+- Phase 25 — Visual Experience & Theme System — active branch `phase-25-visual-experience-theme-system`; validation pending.
 
 Always finish/verify the current numbered phase before starting the next numbered phase. Supporting tooling may land between phases only when runtime defaults remain intact, ownership/failure boundaries are explicit, and validation passes.
 
@@ -242,7 +243,8 @@ Before adding any GitHub repository/package/tool:
 - `AGENTS.md` — engineering/agent constraints
 - `docs/IMPLEMENTATION_STATUS.md` — implemented capabilities/current branch state
 - `docs/IMPLEMENTATION_ROADMAP.md` — roadmap
-- `docs/PHASE_23_RESEARCH.md` — current trusted-release/supply-chain/branding-tool research
+- `docs/PHASE_25_RESEARCH.md` — current visual-experience/theme/macOS UX research
+- `docs/PHASE_23_RESEARCH.md` — canonical trusted-release/supply-chain/branding-tool research
 - `docs/PHASE_22_RESEARCH.md` — canonical product/distribution research/decisions
 - `docs/PHASE_21_RESEARCH.md` — benchmark/evaluation research/decisions
 - `docs/PHASE_20_RESEARCH.md` — publication research/decisions
@@ -275,4 +277,24 @@ Updating this repository seed does **not** mean the user's local PMC/Obsidian va
 12. Hazm remains blocked under the existing security decision; DadmaTools remains conditional.
 13. Phase-24 dependency commands must be `--locked` after the committed lockfile. Do not reintroduce a CI lockfile bootstrap on canonical main.
 14. No source manuscript, generated translation, reviewer private data or provider secret may be added to repository/project memory.
-15. **Next research target is speaker/coreference evidence** — the current character context is strong for canonical names/aliases but does not itself resolve pronouns or quotation speakers. Any Phase-25 work must begin with a rights-safe benchmark and must not install BookNLP/FastCoref or another model stack until it proves a measurable gain.
+15. **Speaker/coreference target deferred by explicit product reprioritization** — the character-context gap remains valid, but on 2026-09-18 the user explicitly made visual identity, theme quality and macOS usability the next numbered priority. Speaker/coreference remains the next research candidate after Phase 25 and still requires a rights-safe benchmark before any model adoption.
+
+## Durable Phase 25 decisions
+
+1. **Product priority is explicit** — Phase 25 owns visual experience/theme/usability before the deferred speaker/coreference benchmark.
+2. **Static frontend remains the architecture** — no React/Vue/Svelte/Vite or npm runtime is justified for the current UI. Keep local HTML/CSS/JS.
+3. **Themes are real design systems** — System, Midnight Ink, Rose Paper and Sage Manuscript have independently designed surface/text/accent/state tokens; do not implement theme variants as simple color inversion.
+4. **Theme state is presentation-only and session-only** — do not use `localStorage` or `sessionStorage`. System/macOS appearance is the launch default.
+5. **No visual feature may gain domain authority** — command palette, navigation, editor focus and theme controls may invoke existing bounded UI/application actions only.
+6. **No remote UI supply chain** — no CDN, remote page/script/font/image or remote theme asset.
+7. **Manuscript/provider/reviewer content remains DOM-safe** — continue `textContent`/textarea rendering; never introduce `innerHTML`.
+8. **Motion is optional feedback** — View Transitions are progressive enhancement, not a requirement; reduced-motion users get near-instant state changes and ambient animation is removed.
+9. **macOS native glass private APIs are deferred** — `window-vibrancy 0.8.0` is research-only in this phase because documented Tauri integration requires transparency plus `macOSPrivateApi: true`. Do not enable it without a new distribution/private-API review.
+10. **Apple Silicon proof remains real** — Phase-25 static checks supplement, not replace, the Phase-22 macOS arm64 `.app` build.
+11. **No dependency for a small interaction** — command palette and two-column editor are implemented natively; do not install Light Command Palette, Split.js or another UI library unless a measured need exceeds the owned implementation.
+12. **Accessibility is part of visual quality** — preserve keyboard navigation, focus-visible states, explicit ARIA state, readable contrast hierarchy and `prefers-reduced-motion`.
+13. **Persian editor readability is a first-class theme surface** — retain RTL direction, Persian/system font fallback, generous line height and Focus Persian mode.
+14. **Visual references are inspiration, not copied product identity** — MotionSites/macOS-design references do not authorize copying third-party branding/assets.
+15. **Deferred research remains deferred** — BookNLP/FastCoref stay uninstalled until the later rights-safe speaker/coreference benchmark proves a measurable gap.
+
+Detailed rationale: `docs/PHASE_25_RESEARCH.md`.

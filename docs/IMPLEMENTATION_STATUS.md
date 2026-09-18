@@ -179,14 +179,37 @@ Every required final-head gate was green: Phase 18–24, Rust CI, Security, Phas
 
 Detailed research and completion criteria: `docs/PHASE_24_RESEARCH.md`.
 
-## Current Research Handoff
+## Current Branch — Phase 25 Visual Experience & Theme System
 
-No Phase 25 was pre-defined before Phase 24 completion. The next research target is the remaining fiction-intelligence gap: rights-safe character/coreference/quote-speaker evidence and benchmarking against the current explicit-name/alias character context. No heavy NLP/model dependency is approved merely by this handoff.
+Branch: `phase-25-visual-experience-theme-system`.
+
+The user explicitly promoted visual quality/theme usability ahead of the previously proposed speaker/coreference benchmark. That benchmark remains deferred research; it is not discarded.
+
+Implemented:
+
+- four distinct local theme systems with System/macOS appearance default;
+- layered editorial-glass desktop identity with local book/folio motif and no remote visual assets;
+- grouped sidebar information architecture plus `⌘1`…`⌘8` navigation;
+- dependency-free `⌘K` command palette with keyboard selection and state-aware actions;
+- side-by-side source/Persian paragraph editor with Focus Persian mode and dirty-state Save behavior;
+- progressive motion with reduced-motion contract and WebView fallbacks;
+- richer toast, list, card, form, progress, empty and focus states;
+- no `innerHTML`, frontend storage, CDN/font/script, framework or new Rust dependency;
+- dedicated Phase-25 UI contract workflow; the canonical Phase-22 workflow remains the real Apple Silicon app-bundle proof.
+
+Not adopted:
+
+- native `window-vibrancy`/macOS private API path;
+- persisted theme preference;
+- draggable split-pane library;
+- any new frontend framework/package manager.
+
+Detailed research: `docs/PHASE_25_RESEARCH.md`.
 
 ## CLI / Desktop
 
-The canonical CLI and desktop application remain operationally independent. Phase 23 adds release evidence around them; it does not move distribution tooling into runtime code.
+The canonical CLI remains independent from the desktop UI. Phase 25 changes only locally bundled presentation/interaction code; all translation, review, canon, persistence, filesystem, provider and publication authority remains in `ApplicationService`/Rust.
 
 ## Current Handoff
 
-Finish Phase-23 branch validation, review any CI failures, confirm release/SBOM workflow syntax across supported targets, then open/merge the Phase-23 PR only when the exact final head is green. Do not enable updater or claim a notarized desktop release without real external credentials.
+Validate Phase 25 on the exact PR head. Required evidence includes the dedicated UI contract, canonical Phase-22 Apple Silicon app build, existing static UI security/CSP checks, and affected regression gates. Do not merge merely because the interface looks correct; visual changes are complete only when the real macOS app bundle and keyboard/security contracts are green.
