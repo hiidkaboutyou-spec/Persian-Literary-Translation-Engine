@@ -49,7 +49,10 @@ fn phase25_project_owned_speaker_corpus_is_rights_safe_and_detects_regressions()
     let corpus: Corpus = serde_json::from_str(&raw).expect("valid phase25 corpus");
 
     assert_eq!(corpus.schema_version, 1);
-    assert_eq!(corpus.provenance.owner, "Persian-Literary-Translation-Engine");
+    assert_eq!(
+        corpus.provenance.owner,
+        "Persian-Literary-Translation-Engine"
+    );
     assert_eq!(
         corpus.provenance.license,
         "project-owned synthetic benchmark"
