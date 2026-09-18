@@ -156,7 +156,6 @@ fn mock_provider_evidence_is_recorded_without_becoming_human_approval() {
     assert_eq!(service.snapshot(&project).unwrap().review, review_before);
 }
 
-
 #[test]
 fn suggested_review_revision_requires_explicit_acceptance_and_invalidates_old_evidence() {
     let service = ApplicationService;
@@ -206,19 +205,17 @@ fn suggested_review_revision_requires_explicit_acceptance_and_invalidates_old_ev
 
     // Merely storing a model/provider suggestion is non-mutating.
     assert_eq!(
-        service.get_translated_chapter(&project, 0).unwrap().paragraphs[0].translated,
+        service
+            .get_translated_chapter(&project, 0)
+            .unwrap()
+            .paragraphs[0]
+            .translated,
         first.translated
     );
 
     let mut sink = silent_sink();
     let revision = service
-        .accept_literary_review_revision(
-            &project,
-            0,
-            finding_id,
-            "human-reviewer",
-            &mut sink,
-        )
+        .accept_literary_review_revision(&project, 0, finding_id, "human-reviewer", &mut sink)
         .expect("explicit human acceptance should apply one bounded paragraph");
     assert_eq!(revision.previous, first.translated);
     assert_eq!(revision.new, "شیرین وارد باغ شد.");
@@ -232,13 +229,7 @@ fn suggested_review_revision_requires_explicit_acceptance_and_invalidates_old_ev
     assert!(stale.stale);
 
     let second = service
-        .accept_literary_review_revision(
-            &project,
-            0,
-            finding_id,
-            "human-reviewer",
-            &mut sink,
-        )
+        .accept_literary_review_revision(&project, 0, finding_id, "human-reviewer", &mut sink)
         .unwrap_err();
     assert!(matches!(
         second,
