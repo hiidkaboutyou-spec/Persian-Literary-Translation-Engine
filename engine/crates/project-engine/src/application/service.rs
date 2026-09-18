@@ -379,6 +379,30 @@ impl ApplicationService {
         literary_review_ops::get_literary_review(&project.layout, chapter_index)
     }
 
+    pub fn accept_literary_review_revision(
+        &self,
+        project: &Project,
+        chapter_index: usize,
+        finding_id: &str,
+        reviewer: &str,
+        sink: &mut dyn ProjectEventSink,
+    ) -> Result<TranslationRevision, ApplicationError> {
+        let _lock = ProjectLock::acquire(&project.layout, "literary-review-revision")?;
+        let manifest = load_manifest(&project.layout)?;
+        let project_id = manifest.project_id.clone();
+        let mut sink = HistoryForwardingSink {
+            history: HistorySink::new(&project.layout, &project_id),
+            inner: sink,
+        };
+        literary_review_ops::accept_literary_review_revision(
+            &project.layout,
+            chapter_index,
+            finding_id,
+            reviewer,
+            &mut sink,
+        )
+    }
+
     // ------------------------------------------------------------------
     // Translation lifecycle
     // ------------------------------------------------------------------
