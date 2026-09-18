@@ -120,20 +120,37 @@ Detailed research and completion record: `docs/PHASE_20_RESEARCH.md`.
 
 ## Forward Roadmap
 
-### Phase 21 — Literary Evaluation Corpus & Benchmarking
+### Phase 21 — Literary Evaluation Corpus & Benchmarking — active branch/validation
+
+Branch: `phase-21-literary-evaluation-benchmarking`.
+PR: #100.
 
 Goal: measure whether changes improve actual Persian literary translation quality rather than only passing unit tests.
 
-Planned work:
+Implemented on the branch:
 
-- curated rights-safe/project-owned EN -> FA literary evaluation fixtures;
-- expected terminology, voice, relationship, omission, subtext, and continuity assertions;
-- deterministic regression suite plus optional COMET/XCOMET evidence;
-- evaluate SacreBLEU/chrF++ only when a suitable reference corpus exists; reference metrics remain evidence, not the literary judge;
-- human-review scorecards for naturalness, voice, fidelity, subtext, readability, and profile-specific fidelity where appropriate;
-- compare model/provider/prompt/runtime changes without turning one metric into approval.
+- project-owned/rights-safe EN -> FA literary challenge corpus with eight focused cases;
+- strict provenance schema that refuses committed corpora not explicitly marked rights-safe;
+- deterministic terminology/voice/register/fidelity/subtext/continuity challenge anchors;
+- contrastive degraded variants that CI must prove are detected in their declared failure dimension;
+- native Rust `literary-evaluation-engine` and CLI benchmark runner;
+- bounded human-review scorecards with evaluator expertise and 1–5 focused dimension ratings;
+- reuse of optional COMET/XCOMET evidence;
+- isolated pinned SacreBLEU 2.6.0 chrF2++ sidecar as reference-overlap evidence only;
+- no Mizan/iPerUDT/Degarbayan/FarSSiM data vendored into the project.
 
-Phase 21 is now the next numbered phase. Start with corpus rights/provenance and benchmark design before adopting any new Persian NLP runtime dependency.
+Exit criteria:
+
+- final Phase 21 workflow green on Linux and Apple Silicon;
+- Rust fmt/Clippy/tests/security green on the final PR head;
+- committed corpus passes rights/provenance and contrastive-sanity checks;
+- reference sanity submission passes all deterministic anchors and deliberately degraded submission scores lower;
+- SacreBLEU 2.6.0 install/protocol/audit checks green without external corpus downloads;
+- Phase 18/19/20 regressions remain green;
+- PR merge to `main`, post-merge gate verification, and canonical status/PMC record;
+- only then advance to Phase 22.
+
+Detailed research: `docs/PHASE_21_RESEARCH.md`.
 
 ### Phase 22 — Product Surface & Distribution Hardening
 
