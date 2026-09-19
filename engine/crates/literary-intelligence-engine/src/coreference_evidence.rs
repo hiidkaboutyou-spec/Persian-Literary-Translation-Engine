@@ -426,14 +426,39 @@ fn validate_request(
             "source has {source_chars} characters; limit is {max_source_chars}"
         )));
     }
+    let expected_fingerprint = coreference_source_fingerprint(&request.unit_id, &request.text);
+    if request.source_fingerprint != expected_fingerprint {
+        return Err(CoreferenceError::InvalidRequest(
+            "source_fingerprint does not match unit_id + source text".into(),
+        ));
+    }
     Ok(())
 }
 
 pub fn validate_response(
+    unit_id: &str,
     source_text: &str,
     response: &CoreferenceResponse,
     max_clusters: usize,
     max_mentions_per_cluster: usize,
+) -> Result<(), CoreferenceError> {
+    validate_response_with_limits(
+        unit_id,
+        source_text,
+        response,
+        max_clusters,
+        max_mentions_per_cluster,
+        DEFAULT_MAX_TOTAL_MENTIONS,
+    )
+}
+
+fn validate_response_with_limits(
+    unit_id: &str,
+    source_text: &str,
+    response: &CoreferenceResponse,
+    max_clusters: usize,
+    max_mentions_per_cluster: usize,
+    max_total_mentions: usize,
 ) -> Result<(), CoreferenceError> {
     if response.schema_version != COREFERENCE_PROTOCOL_VERSION {
         return Err(CoreferenceError::Protocol(format!(
@@ -441,11 +466,16 @@ pub fn validate_response(
             response.schema_version, COREFERENCE_PROTOCOL_VERSION
         )));
     }
-    if response.model.trim().is_empty() {
+
+    let expected_fingerprint = coreference_source_fingerprint(unit_id, source_text);
+    if response.source_fingerprint != expected_fingerprint {
         return Err(CoreferenceError::Protocol(
-            "response model must not be empty".into(),
+            "response source_fingerprint does not match the requested source unit".into(),
         ));
     }
+
+    validate_protocol_identifier("model", &response.model, 160)?;
+
     if response.clusters.len() > max_clusters {
         return Err(CoreferenceError::Protocol(format!(
             "response returned {} clusters; limit is {max_clusters}",
@@ -457,11 +487,13 @@ pub fn validate_response(
     let mut cluster_ids = HashSet::new();
     let mut mention_ids = HashSet::new();
     let mut spans = HashSet::new();
+    let mut total_mentions = 0usize;
 
     for cluster in &response.clusters {
-        if cluster.id.trim().is_empty() || !cluster_ids.insert(cluster.id.as_str()) {
+        validate_protocol_identifier("cluster id", &cluster.id, 160)?;
+        if !cluster_ids.insert(cluster.id.as_str()) {
             return Err(CoreferenceError::Protocol(
-                "cluster IDs must be non-empty and unique".into(),
+                "cluster IDs must be globally unique".into(),
             ));
         }
         if cluster.mentions.is_empty() || cluster.mentions.len() > max_mentions_per_cluster {
@@ -471,10 +503,20 @@ pub fn validate_response(
             )));
         }
 
+        total_mentions = total_mentions
+            .checked_add(cluster.mentions.len())
+            .ok_or_else(|| CoreferenceError::Protocol("total mention count overflowed".into()))?;
+        if total_mentions > max_total_mentions {
+            return Err(CoreferenceError::Protocol(format!(
+                "response returned more than {max_total_mentions} total mentions"
+            )));
+        }
+
         for mention in &cluster.mentions {
-            if mention.id.trim().is_empty() || !mention_ids.insert(mention.id.as_str()) {
+            validate_protocol_identifier("mention id", &mention.id, 160)?;
+            if !mention_ids.insert(mention.id.as_str()) {
                 return Err(CoreferenceError::Protocol(
-                    "mention IDs must be non-empty and globally unique".into(),
+                    "mention IDs must be globally unique".into(),
                 ));
             }
             if mention.start_char >= mention.end_char || mention.end_char > source_chars.len() {
@@ -499,6 +541,24 @@ pub fn validate_response(
                 )));
             }
         }
+    }
+    Ok(())
+}
+
+fn validate_protocol_identifier(
+    label: &str,
+    value: &str,
+    max_chars: usize,
+) -> Result<(), CoreferenceError> {
+    if value.is_empty()
+        || value.chars().count() > max_chars
+        || !value.chars().all(|ch| {
+            ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_' | '.' | '/' | ':' | '@')
+        })
+    {
+        return Err(CoreferenceError::Protocol(format!(
+            "{label} must be a non-empty bounded ASCII identifier"
+        )));
     }
     Ok(())
 }
