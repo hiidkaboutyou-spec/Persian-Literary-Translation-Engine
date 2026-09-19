@@ -13,6 +13,7 @@ const state = {
   theme: "system",
   commandIndex: 0,
   editorFocus: false,
+  paletteReturnFocus: null,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -649,6 +650,9 @@ function renderCommandResults(query = "") {
 
 function openCommandPalette() {
   const dialog = $("command-palette");
+  if (document.activeElement instanceof HTMLElement && !dialog.contains(document.activeElement)) {
+    state.paletteReturnFocus = document.activeElement;
+  }
   state.commandIndex = 0;
   $("command-search").value = "";
   renderCommandResults("");
@@ -664,6 +668,11 @@ function closeCommandPalette() {
   if (!dialog.open) return;
   if (typeof dialog.close === "function") dialog.close();
   else dialog.removeAttribute("open");
+  const returnFocus = state.paletteReturnFocus;
+  state.paletteReturnFocus = null;
+  if (returnFocus && returnFocus.isConnected) {
+    window.setTimeout(() => returnFocus.focus(), 0);
+  }
 }
 
 function runPaletteCommand(command) {
