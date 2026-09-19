@@ -218,7 +218,7 @@ pub fn build_chapter_context_packet_with_semantic_and_coreference(
     coreference_response: &CoreferenceResponse,
 ) -> Result<ChapterContextPacketBuild, CoreferenceError> {
     let coreference_candidate =
-        model_coreference_context(input.source_text, input.characters, coreference_response)?
+        model_coreference_context(input.chapter_id, input.source_text, input.characters, coreference_response)?
             .map(|text| {
                 ContextCandidate::new(
                     stable_evidence_id(
@@ -475,8 +475,9 @@ fn list_line(label: &str, values: &[String]) -> String {
 mod tests {
     use super::*;
     use crate::{
-        AnalysisCanon, CoreferenceCluster, CoreferenceMention, CoreferenceResponse,
-        DeterministicManuscriptAnalyzer, ManuscriptAnalyzer, COREFERENCE_PROTOCOL_VERSION,
+        coreference_source_fingerprint, AnalysisCanon, CoreferenceCluster, CoreferenceMention,
+        CoreferenceResponse, DeterministicManuscriptAnalyzer, ManuscriptAnalyzer,
+        COREFERENCE_PROTOCOL_VERSION,
     };
     use character_engine::{CharacterProfile, RelationshipProfile};
     use document_engine::{Book, Chapter, DocumentFormat, Manuscript, SourceLocation};
@@ -595,6 +596,7 @@ mod tests {
         let chapter_id = intelligence.chapter_maps[0].chapter_id.clone();
         let response = CoreferenceResponse {
             schema_version: COREFERENCE_PROTOCOL_VERSION,
+            source_fingerprint: coreference_source_fingerprint(&chapter_id, source),
             model: "synthetic-phase26".into(),
             clusters: vec![CoreferenceCluster {
                 id: "c1".into(),
