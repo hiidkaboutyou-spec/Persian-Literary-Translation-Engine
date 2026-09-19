@@ -6,6 +6,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use character_engine::CharacterBible;
+use memory_engine::stable_evidence_id;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -13,6 +14,9 @@ pub const COREFERENCE_PROTOCOL_VERSION: u32 = 1;
 const DEFAULT_MAX_SOURCE_CHARS: usize = 500_000;
 const DEFAULT_MAX_CLUSTERS: usize = 4_096;
 const DEFAULT_MAX_MENTIONS_PER_CLUSTER: usize = 2_048;
+const DEFAULT_MAX_TOTAL_MENTIONS: usize = 32_768;
+const DEFAULT_MAX_STDOUT_BYTES: usize = 8 * 1024 * 1024;
+const DEFAULT_MAX_STDERR_BYTES: usize = 256 * 1024;
 const MAX_CONTEXT_LINKS: usize = 24;
 const MAX_CONTEXT_MENTION_CHARS: usize = 96;
 
@@ -21,15 +25,20 @@ const MAX_CONTEXT_MENTION_CHARS: usize = 96;
 pub struct CoreferenceRequest {
     pub schema_version: u32,
     pub unit_id: String,
+    pub source_fingerprint: String,
     pub text: String,
 }
 
 impl CoreferenceRequest {
     pub fn new(unit_id: impl Into<String>, text: impl Into<String>) -> Self {
+        let unit_id = unit_id.into();
+        let text = text.into();
+        let source_fingerprint = coreference_source_fingerprint(&unit_id, &text);
         Self {
             schema_version: COREFERENCE_PROTOCOL_VERSION,
-            unit_id: unit_id.into(),
-            text: text.into(),
+            unit_id,
+            source_fingerprint,
+            text,
         }
     }
 }
@@ -54,6 +63,7 @@ pub struct CoreferenceCluster {
 #[serde(deny_unknown_fields)]
 pub struct CoreferenceResponse {
     pub schema_version: u32,
+    pub source_fingerprint: String,
     pub model: String,
     pub clusters: Vec<CoreferenceCluster>,
 }
@@ -76,8 +86,40 @@ pub enum CoreferenceError {
     Timeout { timeout_ms: u64 },
     #[error("coreference sidecar failed with status {status:?}: {stderr}")]
     SidecarFailed { status: Option<i32>, stderr: String },
+    #[error("coreference sidecar {stream} exceeded {limit_bytes} bytes")]
+    OutputTooLarge {
+        stream: &'static str,
+        limit_bytes: usize,
+    },
     #[error("coreference protocol error: {0}")]
     Protocol(String),
+}
+
+#[derive(Debug)]
+struct BoundedOutput {
+    bytes: Vec<u8>,
+    exceeded: bool,
+}
+
+pub fn coreference_source_fingerprint(unit_id: &str, source_text: &str) -> String {
+    stable_evidence_id("coreference-source", &[unit_id, source_text])
+}
+
+fn read_bounded(
+    mut reader: impl Read,
+    max_bytes: usize,
+) -> Result<BoundedOutput, std::io::Error> {
+    let mut bytes = Vec::with_capacity(max_bytes.min(64 * 1024));
+    let limit = max_bytes.saturating_add(1);
+    reader
+        .by_ref()
+        .take(limit as u64)
+        .read_to_end(&mut bytes)?;
+    let exceeded = bytes.len() > max_bytes;
+    if exceeded {
+        bytes.truncate(max_bytes);
+    }
+    Ok(BoundedOutput { bytes, exceeded })
 }
 
 #[derive(Debug, Clone)]
@@ -87,6 +129,9 @@ pub struct CoreferenceSidecar {
     max_source_chars: usize,
     max_clusters: usize,
     max_mentions_per_cluster: usize,
+    max_total_mentions: usize,
+    max_stdout_bytes: usize,
+    max_stderr_bytes: usize,
 }
 
 impl CoreferenceSidecar {
@@ -97,6 +142,9 @@ impl CoreferenceSidecar {
             max_source_chars: DEFAULT_MAX_SOURCE_CHARS,
             max_clusters: DEFAULT_MAX_CLUSTERS,
             max_mentions_per_cluster: DEFAULT_MAX_MENTIONS_PER_CLUSTER,
+            max_total_mentions: DEFAULT_MAX_TOTAL_MENTIONS,
+            max_stdout_bytes: DEFAULT_MAX_STDOUT_BYTES,
+            max_stderr_bytes: DEFAULT_MAX_STDERR_BYTES,
         }
     }
 
@@ -113,6 +161,17 @@ impl CoreferenceSidecar {
     pub fn with_limits(mut self, max_clusters: usize, max_mentions_per_cluster: usize) -> Self {
         self.max_clusters = max_clusters.max(1);
         self.max_mentions_per_cluster = max_mentions_per_cluster.max(1);
+        self
+    }
+
+    pub fn with_total_mention_limit(mut self, max_total_mentions: usize) -> Self {
+        self.max_total_mentions = max_total_mentions.max(1);
+        self
+    }
+
+    pub fn with_output_limits(mut self, max_stdout_bytes: usize, max_stderr_bytes: usize) -> Self {
+        self.max_stdout_bytes = max_stdout_bytes.max(1);
+        self.max_stderr_bytes = max_stderr_bytes.max(1);
         self
     }
 
