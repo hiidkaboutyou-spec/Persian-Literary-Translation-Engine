@@ -6,7 +6,7 @@ A production-grade English-to-Persian literary translation engine with a Rust co
 
 ## Canonical Main State
 
-`main` is verified through Phase 24.
+`main` is canonical through Phase 25; Phase 26 is the active product-surface branch.
 
 Phase 21 implementation merged through PR #100 at:
 
@@ -179,26 +179,49 @@ Every required final-head gate was green: Phase 18–24, Rust CI, Security, Phas
 
 Detailed research and completion criteria: `docs/PHASE_24_RESEARCH.md`.
 
-## Current Branch — Phase 25 Narrative Speaker & Coreference Intelligence
+## Phase 25 — Narrative Speaker & Coreference Intelligence — canonical
 
-Branch: `phase-25-narrative-speaker-intelligence`; draft PR #106.
+PR #106 merged at `e39a46dd652aaea6fd8d990d70a32fba2d96b0d4`; final reviewed head `9037f569cffb2618b915248db2c60015764d034c`.
 
-Implemented:
+Delivered:
 
 - native high-precision quotation speaker attribution inside `literary-intelligence-engine`;
 - canonical character/alias identity reused from `CharacterBible`; no new canon owner;
-- explicit quote-speaker mappings added to Context Packet v2 as deterministic evidence;
+- explicit quote-speaker mappings added to Context Packet v2 as Deterministic evidence;
 - pronoun-only and implicit conversational cases remain unresolved rather than guessed;
 - project-owned synthetic regression corpus covers explicit names, aliases, vocatives, pre/post-quote ask-object disambiguation, conflicting local cues, guillemets, dash dialogue and multi-quote locality;
 - dedicated Linux/Apple Silicon Phase-25 validation;
 - zero new external runtime/model dependencies.
 
-External model adoption remains gated by exact code/model/data licensing and a measurable rights-safe benchmark gain. Detailed research: `docs/PHASE_25_RESEARCH.md`.
+Final reviewed-head Phase 25, Rust CI, Security, Phases 18–24, Phase 22 Desktop, Phase 23 Trusted Release and Project Memory Tooling checks were green. External model adoption remains gated by exact code/model/data licensing and a measurable rights-safe benchmark gain.
+
+Detailed research: `docs/PHASE_25_RESEARCH.md`.
+
+## Current Branch — Phase 26 Editorial Workspace UX & Accessibility
+
+Branch: `phase-26-editorial-workspace-accessibility`.
+
+Implemented on the branch:
+
+- locally bundled static editorial UI; no framework/package-manager/runtime dependency added;
+- System, Midnight Ink, Rose Paper and Sage Manuscript in-session themes;
+- keyboard-first command palette and `⌘1`…`⌘8` workspace shortcuts;
+- grouped workspace/literary/system navigation;
+- side-by-side source/Persian paragraph editor with presentation-only Focus Persian mode;
+- progressive View Transition support with fallback;
+- reduced-motion behavior and explicit visible focus;
+- polite atomic live-region notices, `aria-current`, `aria-keyshortcuts`, dialog/search semantics and focus return;
+- no `innerHTML`, remote asset, `localStorage`, `sessionStorage`, or new frontend/Rust dependency;
+- dedicated Phase-26 static UI/accessibility and Apple Silicon locked desktop compile validation.
+
+The ApplicationService/Tauri command boundary, project schemas, provider/session secret ownership, human approval, publication behavior and Phase-25 literary intelligence remain unchanged.
+
+Detailed research: `docs/PHASE_26_RESEARCH.md`.
 
 ## CLI / Desktop
 
-The canonical CLI and desktop application remain operationally independent. Phase 23 adds release evidence around them; it does not move distribution tooling into runtime code.
+The canonical CLI and desktop application remain operationally independent. Phase 26 changes only the local presentation/interaction layer over the existing bounded Tauri/ApplicationService surface.
 
 ## Current Handoff
 
-Finish Phase-25 exact-head validation, review any remaining CI failures, and merge PR #106 only when the dedicated Phase-25 gate plus Rust CI, Security, Phases 18–24, Phase 22 Desktop, Phase 23 Trusted Release, and Project Memory Tooling are green. After merge, record the exact final head, merge SHA, successful run IDs, and the next research handoff before starting another numbered phase.
+Finish Phase-26 exact-head validation. Required evidence includes the dedicated Phase-26 UI/accessibility workflow, the canonical Phase-22 Apple Silicon app-bundle gate, Security, Rust/core regression checks, and no regression in Phase 24/25 behavior. Merge only after the exact final head is green, then record the Phase-26 merge SHA and post-merge main evidence before starting the next numbered phase.
