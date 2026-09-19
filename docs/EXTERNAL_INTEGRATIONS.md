@@ -409,3 +409,51 @@ Boundary: eligible for a future attributed external/reference benchmark. Permane
 Project Dialogism Novel Corpus; CC BY-NC 4.0.
 
 Boundary: research reference only; not a product benchmark dependency or committed corpus.
+
+## Phase 26 coreference candidates
+
+### LitBank
+
+Upstream: `dbamman/litbank`; dataset license CC BY 4.0.
+
+Use: attributed external/reference evaluation for literary entities, coreference and quotation linkage. Permanent CI remains project-owned/network-free.
+
+### BOOKCOREF
+
+Upstream: `SapienzaNLP/bookcoref`; ACL 2025 book-scale benchmark.
+
+Reviewed terms: data/software CC BY-NC-SA 4.0.
+
+Boundary: research/reference only. Do not vendor, train on, or make it a product benchmark/runtime dependency.
+
+### xCoRe
+
+Upstream: `SapienzaNLP/xcore`; EMNLP 2025 cross-context coreference system.
+
+Research value: long-document and cross-context cluster merging, including a LitBank model.
+
+Reviewed terms: CC BY-NC-SA 4.0.
+
+Boundary: research/reference only; no product/runtime integration under current terms.
+
+### FastCoref
+
+Upstream: `shon-otmazgin/fastcoref`; software MIT.
+
+Boundary: optional future benchmark candidate only. Exact checkpoint/model license, dependency/security/resource profile and literary long-span gain must be reviewed separately before any integration.
+
+### CorPipe 2026
+
+Upstream: `ufal/crac2026-corpipe`; software MPL-2.0.
+
+Boundary: current multilingual coreference engineering reference. No Phase-26 runtime adoption because literary/book-scale suitability remains unproven for this project.
+
+### NovelCR
+
+Upstream: `tongmeihan1995/NovelCR`; ACL Findings 2025 long-span novel coreference benchmark.
+
+Boundary: research reference only until exact dataset-level licensing/redistribution terms are explicitly verified. Public availability is not treated as permission to vendor data.
+
+### Phase-26 process boundary
+
+The project-owned Rust protocol accepts model output only as optional evidence. A future adapter must preserve exact source offsets/text, bounded execution, fail-closed validation, canonical-anchor mapping and normal-translation fallback. No candidate listed above is installed by Phase 26.
