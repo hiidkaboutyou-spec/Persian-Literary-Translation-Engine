@@ -219,32 +219,56 @@ Research/dependency decisions remain: Virastar/`rezkam/persian` are references o
 
 Detailed research: `docs/PHASE_24_RESEARCH.md`.
 
-### Phase 25 — Narrative Speaker & Coreference Intelligence — active branch/validation
+### Phase 25 — Narrative Speaker & Coreference Intelligence — canonical
 
-Branch: `phase-25-narrative-speaker-intelligence`.
-Draft PR: #106.
+PR #106; final reviewed head `9037f569cffb2618b915248db2c60015764d034c`; merge `e39a46dd652aaea6fd8d990d70a32fba2d96b0d4`.
 
 Goal: make quote-speaker identity explicit enough to preserve character voice in literary translation without guessing pronouns/turn-taking or adding a hidden model runtime.
 
-Implemented:
+Delivered:
 
-- native Rust quotation detection for straight double quotes, curly double quotes, curly single quotes, guillemets, and conservative leading-dash dialogue detection;
-- high-precision explicit name/approved-alias + speech-verb attribution with quote-local cue isolation;
-- fail-closed handling for pronoun-only, no-cue, ambiguous/collision and vocative cases, plus same-verb `asked <object>` disambiguation without ranking unrelated conflicting speakers;
-- bounded deterministic `SPEAKER MAP` evidence injected into Context Packet v2 with Deterministic (not Canonical) authority;
+- native Rust quotation detection for straight/curly double quotes, curly single quotes, guillemets, and conservative leading-dash dialogue;
+- high-precision canonical-name/approved-alias + speech-verb attribution with quote-local cue isolation;
+- fail-closed handling for pronoun-only, no-cue, ambiguous/collision and vocative cases;
+- explicit same-verb `asked <object>` disambiguation without ranking unrelated conflicting speakers;
+- bounded deterministic `SPEAKER MAP` evidence in Context Packet v2 with Deterministic rather than Canonical authority;
 - project-owned synthetic Phase-25 benchmark requiring zero wrong resolved speaker labels while preserving unresolved examples;
-- permanent Linux + Apple Silicon Phase-25 workflow with locked dependency graph and no external model dependency.
+- permanent Linux + Apple Silicon Phase-25 validation with no external model dependency.
 
-Research decisions:
+Final reviewed-head checks were green for Phase 25, Rust CI, Security, Phase 18, Phase 19, Phase 20, Phase 21, Phase 22 Desktop, Phase 23 Trusted Release, Phase 24 Literary Precision and Project Memory Tooling.
+
+Research decisions remain:
 
 - LitBank is CC BY 4.0 and may be used later as an attributed external/reference benchmark; permanent CI remains project-owned/network-free.
-- PDNC and BookCoref are non-commercially licensed and remain research references only.
-- Renard is GPL-3.0-only and Torch/Transformers-heavy; architecture reference only.
-- ModernBookNLP reports strong 2026 quotation-attribution results but its heavy model stack and separate checkpoint-provenance boundary do not justify product integration before a measured benchmark gain.
-- BookNLP and FastCoref remain optional future benchmark candidates only; Maverick remains blocked from product integration by non-commercial terms.
-- no Torch, Transformers, spaCy, BookNLP, FastCoref, Maverick, BookCoref, or Renard dependency is installed.
+- PDNC, BookCoref and Maverick remain research-only/non-commercial.
+- Renard remains GPL-heavy reference only.
+- ModernBookNLP/BookNLP/FastCoref remain optional benchmark candidates only and are not installed.
+- no Torch, Transformers, spaCy, BookNLP, FastCoref, Maverick, BookCoref or Renard dependency is installed.
 
-Exit criteria: `docs/PHASE_25_RESEARCH.md`.
+Detailed research: `docs/PHASE_25_RESEARCH.md`.
+
+### Phase 26 — Editorial Workspace UX & Accessibility — active
+
+Branch: `phase-26-editorial-workspace-accessibility`.
+
+Goal: make the stable Phase-22 desktop application faster and calmer for long-form English→Persian editorial work without moving any application/domain authority into JavaScript.
+
+Scope:
+
+- four session-only themes: System, Midnight Ink, Rose Paper and Sage Manuscript;
+- local dependency-free command palette with `⌘K`/Ctrl+K;
+- `⌘1`…`⌘8`/Ctrl equivalents for workspace navigation;
+- grouped editorial information architecture;
+- side-by-side source/Persian editor plus presentation-only Focus Persian mode;
+- progressive View Transitions with direct fallback;
+- `prefers-reduced-motion` support and visible keyboard focus;
+- explicit `aria-live`, `aria-current`, `aria-keyshortcuts`, dialog/search semantics and command-palette focus return;
+- no remote assets/frameworks/frontend storage/new Rust dependency;
+- permanent Linux static UI contract and Apple Silicon locked desktop compile validation.
+
+The desktop continues to use the canonical Tauri 2.11.5 / tauri-cli 2.11.4 stack; Phase 26 does not mix UX work with dependency migration.
+
+Detailed research and exit criteria: `docs/PHASE_26_RESEARCH.md`.
 
 ## Next Action Rule
 
