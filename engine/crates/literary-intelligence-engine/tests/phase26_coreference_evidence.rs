@@ -95,7 +95,11 @@ fn phase26_project_owned_coreference_corpus_is_rights_safe_and_fail_closed() {
 
         let mut expected = case.expected;
         expected.sort();
-        assert_eq!(actual, expected, "coreference mapping changed for {}", case.id);
+        assert_eq!(
+            actual, expected,
+            "coreference mapping changed for {}",
+            case.id
+        );
 
         if actual.is_empty() {
             fail_closed_cases += 1;
