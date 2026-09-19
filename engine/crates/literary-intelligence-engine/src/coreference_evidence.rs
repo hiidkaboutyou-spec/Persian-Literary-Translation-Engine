@@ -512,10 +512,7 @@ mod tests {
             model: "synthetic".into(),
             clusters: vec![CoreferenceCluster {
                 id: "c1".into(),
-                mentions: vec![
-                    mention("m1", 0, 4, "Mina"),
-                    mention("m1", 11, 14, "She"),
-                ],
+                mentions: vec![mention("m1", 0, 4, "Mina"), mention("m1", 11, 14, "She")],
             }],
         };
         assert!(matches!(
