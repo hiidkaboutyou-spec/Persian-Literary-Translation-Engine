@@ -190,3 +190,22 @@ For Phase 20 publishing changes, run the dedicated `Phase 20 EPUB Round Trip` wo
 - Any future speaker/coreference sidecar is optional evidence only and must fail without breaking normal translation.
 
 For Phase 25 changes, run the dedicated `Phase 25 Narrative Speaker Intelligence` workflow. It must cover native speaker attribution, project-owned benchmark provenance, zero incorrect resolved labels on the committed corpus, Context Packet integration, locked Linux validation and Apple Silicon compilation/tests.
+
+
+## Phase 26 editorial-workspace invariants
+
+- Phase 26 changes only the local desktop presentation/interaction layer. The Rust `ApplicationService` remains the sole application orchestration boundary.
+- Keep the frontend static and locally bundled. Do not add React/Vue/Svelte/Vite/Tailwind/npm dependencies, remote pages, scripts, fonts, images or CDNs.
+- Keep Tauri at the already-reviewed 2.11.5 core / 2.11.4 CLI line for this phase. Do not combine UX work with a dependency migration.
+- Theme selection is in-memory presentation state only. Do not use `localStorage`, `sessionStorage`, project files, PMC or projectmem to persist theme choice.
+- The command palette must route to existing UI/application actions only. It must not become an alternate domain-logic or filesystem owner.
+- Preserve keyboard access: Meta/Ctrl+K command palette, Meta/Ctrl+1…8 workspace navigation, visible `:focus-visible` treatment and focus return after closing the palette.
+- Preserve accessibility semantics: active navigation exposes `aria-current`, shortcut-bearing controls expose `aria-keyshortcuts`, notices use a polite atomic live region, and the palette exposes modal/search/result semantics.
+- View Transitions are progressive enhancement only. Direct state updates remain the fallback and nonessential animation must honor `prefers-reduced-motion`.
+- Focus Persian is presentation-only. Hiding the source pane must not alter source text, chapter structure, revisions, canon, checkpoints or export state.
+- Continue forbidding `innerHTML`, general frontend filesystem access and frontend credential/persistence storage.
+- Do not enable `window-vibrancy`, `macOSPrivateApi` or other private/native visual APIs solely for decoration.
+- Phase 22 remains the authoritative Apple Silicon real-app-bundle gate; Phase 26 adds UI/accessibility contract checks and a locked Apple Silicon desktop compile check.
+- The pre-Phase-25 visual PRs #107–#109 are design references only. Do not merge them directly or let them overwrite canonical Phase-25 speaker/coreference history.
+
+For Phase 26 changes, run the dedicated `Phase 26 Editorial Workspace` workflow and the canonical `Phase 22 Desktop Product` workflow on the exact final head. Security/Rust/core regression checks must remain green before merge.
