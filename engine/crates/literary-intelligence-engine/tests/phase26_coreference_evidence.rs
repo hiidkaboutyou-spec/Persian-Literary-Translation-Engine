@@ -80,7 +80,7 @@ fn phase26_project_owned_coreference_corpus_is_rights_safe_and_fail_closed() {
             }
         }
 
-        let links = canonical_coreference_links(&case.text, &bible, &case.response)
+        let links = canonical_coreference_links(&case.id, &case.text, &bible, &case.response)
             .unwrap_or_else(|error| panic!("{} failed protocol validation: {error}", case.id));
         let mut actual = links
             .iter()
