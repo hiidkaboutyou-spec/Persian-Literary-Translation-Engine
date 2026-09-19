@@ -119,12 +119,14 @@ Decision: research reference only until dataset-level licensing/provenance is ex
 
 - schema version;
 - source unit ID;
+- deterministic SHA-256-backed source fingerprint derived from unit ID + exact source text;
 - exact source text.
 
 `CoreferenceResponse`:
 
 - schema version;
-- model identifier;
+- exact echoed source fingerprint binding the response to the requested unit/text;
+- bounded safe model identifier;
 - clusters;
 - mentions with globally unique IDs;
 - character-offset spans;
@@ -134,14 +136,27 @@ The Rust boundary rejects:
 
 - unsupported schema versions;
 - empty model IDs;
-- too many clusters/mentions;
-- empty/duplicate cluster IDs;
-- empty/duplicate mention IDs;
+- too many clusters, per-cluster mentions, or total mentions;
+- empty/duplicate/unsafe cluster IDs;
+- empty/duplicate/unsafe mention IDs;
+- unsafe/unbounded model identifiers that could inject control text into Context Packet rendering;
+- stale/mismatched source fingerprints;
 - invalid/out-of-range offsets;
 - duplicate spans across clusters;
 - mention text that does not exactly equal the source slice at its declared offsets.
 
 A malformed sidecar response is an error, never a silent pass.
+
+The process boundary is also resource-bounded **before** JSON parsing:
+
+- stdout is capped at 8 MiB by default;
+- stderr is capped at 256 KiB by default;
+- total mentions are capped at 32,768 by default;
+- stdin/stdout/stderr are handled concurrently so a sidecar cannot deadlock the host by filling an OS pipe before reading input;
+- timeout kills the child and joins the I/O workers;
+- oversized output fails explicitly rather than being read unbounded into memory.
+
+Mapped clusters/mentions are canonicalized into source-position order before Context Packet rendering so model response ordering cannot nondeterministically change which bounded evidence lines are emitted first.
 
 ### Canonical anchoring rule
 
@@ -250,14 +265,16 @@ No new model/runtime package is required by the Phase-26 native protocol.
 Phase 26 becomes canonical only when:
 
 1. strict request/response protocol validation passes;
-2. exact source offsets/text are enforced;
-3. duplicate/invented spans/IDs fail closed;
-4. canonical anchoring cannot create or choose conflicting character canon;
-5. project-owned benchmark proves both useful mappings and intentional fail-closed cases;
-6. Context Packet integration is opt-in and authority is Inferred;
-7. existing non-coreference context APIs preserve prior behavior;
-8. no external model/runtime dependency is introduced;
-9. bounded timeout/failure behavior is tested;
-10. Linux and Apple Silicon Phase-26 gates are green;
-11. Rust CI, Security, Phases 18–25, Desktop, Trusted Release and Project Memory remain green;
-12. final merge SHA/run IDs are recorded.
+2. exact source identity fingerprint plus source offsets/text are enforced;
+3. duplicate/invented spans/IDs and unsafe protocol identifiers fail closed;
+4. subprocess stdout/stderr and aggregate mention counts are bounded before/while parsing;
+5. canonical anchoring cannot create or choose conflicting character canon;
+6. project-owned benchmark proves both useful mappings and intentional fail-closed cases;
+7. mapped evidence order is deterministic from source offsets rather than model-return order;
+8. Context Packet integration is opt-in and authority is Inferred;
+9. existing non-coreference context APIs preserve prior behavior;
+10. no external model/runtime dependency is introduced;
+11. bounded timeout, oversized-output and failure behavior are tested;
+12. Linux and Apple Silicon Phase-26 gates are green;
+13. Rust CI, Security, Phases 18–25, Desktop, Trusted Release and Project Memory remain green;
+14. final merge SHA/run IDs are recorded.
