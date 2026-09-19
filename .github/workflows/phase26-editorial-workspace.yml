@@ -13,6 +13,8 @@ on:
       - 'docs/IMPLEMENTATION_STATUS.md'
       - 'docs/IMPLEMENTATION_ROADMAP.md'
       - 'docs/PMC_BOOTSTRAP.md'
+      - 'docs/PROJECT_MEMORY.md'
+      - 'docs/PROJECT_MEMORY.md'
       - 'docs/ENGINEERING_DECISIONS.md'
       - 'AGENTS.md'
   pull_request:
