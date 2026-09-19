@@ -13,6 +13,7 @@
       "characters": [{"name":"Mina","aliases":[]}],
       "response": {
         "schema_version": 1,
+        "source_fingerprint": "coreference-source-e77af310cc90e4658cb4589a2cfb3c671dfd67a1ed0bd00edb750a09d9bcafbc",
         "model": "synthetic-phase26",
         "clusters": [{
           "id": "c1",
@@ -30,6 +31,7 @@
       "characters": [{"name":"Mina","aliases":["Min"]}],
       "response": {
         "schema_version": 1,
+        "source_fingerprint": "coreference-source-3c9dccb2e8d979a57c6258226423fe8100d862696631cb6848086304d0288c18",
         "model": "synthetic-phase26",
         "clusters": [{
           "id": "c1",
@@ -47,6 +49,7 @@
       "characters": [{"name":"Mina","aliases":[]}],
       "response": {
         "schema_version": 1,
+        "source_fingerprint": "coreference-source-93faf01c88a8e8efeee08ea1f70434e915b863444dea7cc159794a0b78acf993",
         "model": "synthetic-phase26",
         "clusters": [{
           "id": "c1",
@@ -68,6 +71,7 @@
       "characters": [{"name":"Mina","aliases":[]}],
       "response": {
         "schema_version": 1,
+        "source_fingerprint": "coreference-source-4e6898c1737e592f86d2b88eebbc0385a79a45e362a0f40b24faeafda2b6bf95",
         "model": "synthetic-phase26",
         "clusters": [{
           "id": "c1",
@@ -88,6 +92,7 @@
       ],
       "response": {
         "schema_version": 1,
+        "source_fingerprint": "coreference-source-f231eca87e54222076c1e7071664252bb3616eb38ff14f34b65f68b5936ee327",
         "model": "synthetic-phase26",
         "clusters": [{
           "id": "c1",
@@ -106,6 +111,7 @@
       "characters": [{"name":"Mina","aliases":[]}],
       "response": {
         "schema_version": 1,
+        "source_fingerprint": "coreference-source-31990eb6889dc2a5a84ee0755cd4fe8f5c4de13790bc3e7bdbdfdde7a1db8a58",
         "model": "synthetic-phase26",
         "clusters": [{
           "id": "c1",
