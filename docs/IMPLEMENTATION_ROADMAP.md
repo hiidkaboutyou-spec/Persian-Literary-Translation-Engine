@@ -219,32 +219,25 @@ Research/dependency decisions remain: Virastar/`rezkam/persian` are references o
 
 Detailed research: `docs/PHASE_24_RESEARCH.md`.
 
-### Phase 25 — Narrative Speaker & Coreference Intelligence — active branch/validation
+### Phase 25 — Narrative Speaker & Coreference Intelligence — canonical
 
-Branch: `phase-25-narrative-speaker-intelligence`.
-Draft PR: #106.
+PR #106; final reviewed head `9037f569cffb2618b915248db2c60015764d034c`; merge `e39a46dd652aaea6fd8d990d70a32fba2d96b0d4`.
 
-Goal: make quote-speaker identity explicit enough to preserve character voice in literary translation without guessing pronouns/turn-taking or adding a hidden model runtime.
+Canonical Phase 25 provides a native high-precision explicit quotation-speaker baseline, project-owned regression coverage, bounded deterministic Context Packet speaker evidence, and fail-closed ambiguity/pronoun handling without adding BookNLP/FastCoref/Torch/Transformers/spaCy or another model runtime.
 
-Implemented:
+### Phase 26 — Long-Span Literary Coreference — research target
 
-- native Rust quotation detection for straight double quotes, curly double quotes, curly single quotes, guillemets, and conservative leading-dash dialogue detection;
-- high-precision explicit name/approved-alias + speech-verb attribution with quote-local cue isolation;
-- fail-closed handling for pronoun-only, no-cue, ambiguous/collision and vocative cases, plus same-verb `asked <object>` disambiguation without ranking unrelated conflicting speakers;
-- bounded deterministic `SPEAKER MAP` evidence injected into Context Packet v2 with Deterministic (not Canonical) authority;
-- project-owned synthetic Phase-25 benchmark requiring zero wrong resolved speaker labels while preserving unresolved examples;
-- permanent Linux + Apple Silicon Phase-25 workflow with locked dependency graph and no external model dependency.
+Goal: measure and improve pronoun/nominal/cross-context identity resolution that Phase 25 deliberately leaves unresolved, while preserving canonical character ownership and optional-model failure isolation.
 
-Research decisions:
+Research constraints:
 
-- LitBank is CC BY 4.0 and may be used later as an attributed external/reference benchmark; permanent CI remains project-owned/network-free.
-- PDNC and BookCoref are non-commercially licensed and remain research references only.
-- Renard is GPL-3.0-only and Torch/Transformers-heavy; architecture reference only.
-- ModernBookNLP reports strong 2026 quotation-attribution results but its heavy model stack and separate checkpoint-provenance boundary do not justify product integration before a measured benchmark gain.
-- BookNLP and FastCoref remain optional future benchmark candidates only; Maverick remains blocked from product integration by non-commercial terms.
-- no Torch, Transformers, spaCy, BookNLP, FastCoref, Maverick, BookCoref, or Renard dependency is installed.
-
-Exit criteria: `docs/PHASE_25_RESEARCH.md`.
+- build project-owned synthetic long-span coreference cases first and optionally evaluate against attributed LitBank CC BY 4.0 examples;
+- measure false merges and false links separately from coverage/recall;
+- do not treat a coreference cluster as canon or silently rewrite manuscript text;
+- any model runs behind a provider-neutral optional process boundary and normal translation remains usable without it;
+- BookCoref/xCoRe/Maverick are non-commercial research references under reviewed licensing and are not approved product dependencies;
+- FastCoref remains a candidate only after exact checkpoint/dependency/license/security review and measured gain;
+- validate Linux and Apple Silicon before any optional sidecar is admitted.
 
 ## Next Action Rule
 

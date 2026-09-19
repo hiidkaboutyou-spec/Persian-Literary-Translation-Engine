@@ -6,7 +6,7 @@ A production-grade English-to-Persian literary translation engine with a Rust co
 
 ## Canonical Main State
 
-`main` is verified through Phase 24.
+`main` is verified through Phase 25.
 
 Phase 21 implementation merged through PR #100 at:
 
@@ -179,21 +179,26 @@ Every required final-head gate was green: Phase 18–24, Rust CI, Security, Phas
 
 Detailed research and completion criteria: `docs/PHASE_24_RESEARCH.md`.
 
-## Current Branch — Phase 25 Narrative Speaker & Coreference Intelligence
+## Phase 25 — Narrative Speaker & Coreference Intelligence — canonical
 
-Branch: `phase-25-narrative-speaker-intelligence`; draft PR #106.
+PR #106; final reviewed head `9037f569cffb2618b915248db2c60015764d034c`; merge commit `e39a46dd652aaea6fd8d990d70a32fba2d96b0d4`.
 
-Implemented:
+Delivered:
 
 - native high-precision quotation speaker attribution inside `literary-intelligence-engine`;
-- canonical character/alias identity reused from `CharacterBible`; no new canon owner;
-- explicit quote-speaker mappings added to Context Packet v2 as deterministic evidence;
-- pronoun-only and implicit conversational cases remain unresolved rather than guessed;
-- project-owned synthetic regression corpus covers explicit names, aliases, vocatives, pre/post-quote ask-object disambiguation, conflicting local cues, guillemets, dash dialogue and multi-quote locality;
-- dedicated Linux/Apple Silicon Phase-25 validation;
-- zero new external runtime/model dependencies.
+- canonical name/approved-alias resolution through the existing `CharacterBible`, with no second canon owner;
+- quote-local subject/object and vocative guards, ambiguous/conflicting-cue fail-closed behavior, and no gender inference;
+- deterministic bounded `SPEAKER MAP` evidence in Context Packet v2 with Deterministic rather than Canonical authority;
+- a project-owned synthetic speaker benchmark requiring zero incorrect resolved labels while preserving intentionally unresolved pronoun/no-cue cases;
+- permanent Linux + Apple Silicon Phase-25 validation with zero new model/runtime dependencies.
 
-External model adoption remains gated by exact code/model/data licensing and a measurable rights-safe benchmark gain. Detailed research: `docs/PHASE_25_RESEARCH.md`.
+Final-head successful runs: Phase 25 `35394490546`, Rust CI `35394490505`, Security `35394490514`, Phase 18 `35394490532`, Phase 19 `35394490605`, Phase 20 `35394490515`, Phase 21 `35394490502`, Phase 22 `35394490517`, Phase 23 `35394490508`, Phase 24 `35394490548`, Project Memory Tooling `35394490562`.
+
+Detailed research and completion record: `docs/PHASE_25_RESEARCH.md`.
+
+## Current Research Handoff
+
+The next measured gap is long-span literary coreference: pronouns, nominal mentions and cross-scene/chapter identity links that Phase 25 deliberately leaves unresolved. Phase 26 research must begin with rights-safe evaluation and an optional evidence-only adapter boundary. LitBank (CC BY 4.0) is eligible for attributed reference evaluation; BookCoref, xCoRe and Maverick remain non-commercial research references under their reviewed terms. No heavy coreference model is approved merely by this handoff.
 
 ## CLI / Desktop
 

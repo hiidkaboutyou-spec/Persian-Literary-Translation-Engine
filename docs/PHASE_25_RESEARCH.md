@@ -245,3 +245,18 @@ Phase 25 is canonical only when:
 9. Linux and Apple Silicon Phase-25 validation is green;
 10. Rust CI, Security, Phases 18–24, Phase 22 Desktop, Phase 23 Trusted Release and Project Memory remain green on the final head;
 11. PR merge and exact final SHA/run IDs are recorded.
+
+## Canonical completion record
+
+Phase 25 became canonical through PR #106.
+
+- final reviewed head: `9037f569cffb2618b915248db2c60015764d034c`;
+- merge commit: `e39a46dd652aaea6fd8d990d70a32fba2d96b0d4`;
+- Phase 25 run `35394490546`: success;
+- Rust CI `35394490505`: success;
+- Security `35394490514`: success;
+- Phase 18 `35394490532`, Phase 19 `35394490605`, Phase 20 `35394490515`, Phase 21 `35394490502`, Phase 22 `35394490517`, Phase 23 `35394490508`, Phase 24 `35394490548`, and Project Memory Tooling `35394490562`: success.
+
+The final Phase-25 review also hardened two failure modes before merge: Rust 1.98 Clippy compatibility for paired-quote iteration, and same-verb subject/object disambiguation so post-quote constructions such as `"..." Mina asked Reza` cannot silently attribute the quote to the addressee. Distinct competing local speaker cues continue to fail closed.
+
+The next research target is long-span literary coreference evidence. Start with a rights-safe benchmark/protocol and keep any model sidecar optional: LitBank is CC BY 4.0 and suitable for attributed reference evaluation, while BookCoref/xCoRe/Maverick remain non-commercial research references under their reviewed terms. No coreference model is approved as a runtime dependency by this handoff.
