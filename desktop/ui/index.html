@@ -20,28 +20,28 @@
         </div>
       </div>
 
-      <button id="command-trigger" class="command-trigger" type="button" aria-label="Open command palette">
+      <button id="command-trigger" class="command-trigger" type="button" aria-label="Open command palette" aria-keyshortcuts="Meta+K Control+K">
         <span class="command-trigger-label"><span class="search-glyph" aria-hidden="true">⌕</span> Search commands</span>
         <kbd>⌘K</kbd>
       </button>
 
-      <nav id="nav">
+      <nav id="nav" aria-label="Workspace sections">
         <div class="nav-group">
           <span class="nav-group-label">Workspace</span>
-          <button class="nav-item active" data-view="home" data-icon="⌂"><span>Project</span><kbd>⌘1</kbd></button>
-          <button class="nav-item" data-view="workflow" data-icon="↝"><span>Workflow</span><kbd>⌘2</kbd></button>
-          <button class="nav-item" data-view="editor" data-icon="✎"><span>Translation Editor</span><kbd>⌘3</kbd></button>
+          <button class="nav-item active" data-view="home" data-icon="⌂" aria-current="page" aria-keyshortcuts="Meta+1 Control+1"><span>Project</span><kbd>⌘1</kbd></button>
+          <button class="nav-item" data-view="workflow" data-icon="↝" aria-keyshortcuts="Meta+2 Control+2"><span>Workflow</span><kbd>⌘2</kbd></button>
+          <button class="nav-item" data-view="editor" data-icon="✎" aria-keyshortcuts="Meta+3 Control+3"><span>Translation Editor</span><kbd>⌘3</kbd></button>
         </div>
         <div class="nav-group">
           <span class="nav-group-label">Literary intelligence</span>
-          <button class="nav-item" data-view="review" data-icon="◇"><span>Intelligence Review</span><kbd>⌘4</kbd></button>
-          <button class="nav-item" data-view="canon" data-icon="☷"><span>Canon</span><kbd>⌘5</kbd></button>
-          <button class="nav-item" data-view="literary" data-icon="✦"><span>Literary Review</span><kbd>⌘6</kbd></button>
+          <button class="nav-item" data-view="review" data-icon="◇" aria-keyshortcuts="Meta+4 Control+4"><span>Intelligence Review</span><kbd>⌘4</kbd></button>
+          <button class="nav-item" data-view="canon" data-icon="☷" aria-keyshortcuts="Meta+5 Control+5"><span>Canon</span><kbd>⌘5</kbd></button>
+          <button class="nav-item" data-view="literary" data-icon="✦" aria-keyshortcuts="Meta+6 Control+6"><span>Literary Review</span><kbd>⌘6</kbd></button>
         </div>
         <div class="nav-group">
           <span class="nav-group-label">System</span>
-          <button class="nav-item" data-view="history" data-icon="↺"><span>History</span><kbd>⌘7</kbd></button>
-          <button class="nav-item" data-view="provider" data-icon="⌁"><span>Provider</span><kbd>⌘8</kbd></button>
+          <button class="nav-item" data-view="history" data-icon="↺" aria-keyshortcuts="Meta+7 Control+7"><span>History</span><kbd>⌘7</kbd></button>
+          <button class="nav-item" data-view="provider" data-icon="⌁" aria-keyshortcuts="Meta+8 Control+8"><span>Provider</span><kbd>⌘8</kbd></button>
         </div>
       </nav>
 
@@ -72,12 +72,12 @@
           <p id="view-subtitle">Open or create a translation project.</p>
         </div>
         <div class="topbar-actions">
-          <button id="top-command-trigger" class="top-command-trigger" type="button"><span aria-hidden="true">⌕</span><span>Commands</span><kbd>⌘K</kbd></button>
+          <button id="top-command-trigger" class="top-command-trigger" type="button" aria-label="Open command palette" aria-keyshortcuts="Meta+K Control+K"><span aria-hidden="true">⌕</span><span>Commands</span><kbd>⌘K</kbd></button>
           <div id="status-pill" class="status-pill muted">No project</div>
         </div>
       </header>
 
-      <div id="notice" class="notice hidden" role="status"></div>
+      <div id="notice" class="notice hidden" role="status" aria-live="polite" aria-atomic="true"></div>
 
       <section class="view active" data-view-panel="home">
         <article class="workspace-hero">
@@ -293,11 +293,11 @@
       </section>
     </main>
   </div>
-  <dialog id="command-palette" class="command-palette" aria-label="Command palette">
+  <dialog id="command-palette" class="command-palette" aria-label="Command palette" aria-modal="true">
     <div class="palette-shell">
       <div class="palette-search-row">
         <span class="palette-search-icon" aria-hidden="true">⌕</span>
-        <input id="command-search" type="search" placeholder="Search workspace actions…" autocomplete="off" spellcheck="false" aria-label="Search commands">
+        <input id="command-search" type="search" placeholder="Search workspace actions…" autocomplete="off" spellcheck="false" aria-label="Search commands" aria-controls="command-results">
         <kbd>esc</kbd>
       </div>
       <div id="command-results" class="command-results" role="listbox" aria-label="Commands"></div>
