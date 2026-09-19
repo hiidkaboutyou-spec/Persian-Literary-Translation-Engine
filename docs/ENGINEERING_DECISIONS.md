@@ -97,3 +97,19 @@ Before adopting a GitHub repository/package/model/tool:
 - LitBank CC BY 4.0 is an optional future external/reference benchmark with attribution; PDNC/BookCoref/Maverick remain research-only under non-commercial terms.
 - ModernBookNLP, BookNLP and FastCoref are not installed in Phase 25. Any future sidecar requires separate code/checkpoint/data licensing, resource/privacy review and benchmark-proven gain.
 - No new external runtime dependency is justified for the native Phase-25 baseline.
+
+## Phase 26 — Editorial Workspace UX & Accessibility
+
+- Phase 26 is a product-surface phase over the existing Tauri/ApplicationService boundary; JavaScript must not become a second application orchestrator.
+- Keep the frontend dependency-free and locally bundled. Do not add React, Vue, Svelte, Vite, Tailwind, npm runtime dependencies, remote fonts, scripts, images, or pages.
+- Keep Tauri on the audited 2.11.5 core / 2.11.4 CLI line for this phase. Dependency upgrades require their own review and validation.
+- Four themes are allowed only as in-memory presentation state: System, Midnight Ink, Rose Paper and Sage Manuscript. Do not persist them in frontend storage or project files.
+- Keyboard access is part of product correctness: local command palette, Meta/Ctrl+K, Meta/Ctrl+1…8 navigation, visible focus and focus return are required.
+- Accessibility semantics are contractual: navigation exposes `aria-current`, shortcuts expose `aria-keyshortcuts`, notices use a polite atomic live region, and the command palette exposes modal/search/result semantics.
+- View Transitions are progressive enhancement only. Navigation must work without them and nonessential motion must honor `prefers-reduced-motion`.
+- Focus Persian is presentation-only; it hides the source pane but never changes manuscript, chapter, revision or canon state.
+- Do not use `innerHTML`, `localStorage`, `sessionStorage` or general JavaScript filesystem authority.
+- Do not adopt `window-vibrancy`, `macOSPrivateApi` or another private/native decoration path merely for visual polish.
+- Phase-22 Apple Silicon app-bundle validation remains authoritative for actual desktop bundling; Phase 26 adds static UI/accessibility and locked WebView/backend compile checks.
+- PRs #107–#109 are non-canonical design experiments from before Phase 25 merged. Their useful ideas may be selectively ported, but they must not redefine Phase 25 history.
+
