@@ -45,6 +45,24 @@ The frontend is static, locally bundled HTML/CSS/JS. There is no Node/Vite/runti
 - Application errors cross IPC through the existing typed `ApplicationErrorPayload`.
 - Human review decisions remain explicit and automated evidence never becomes approval.
 
+## Phase 26 editorial workspace
+
+The desktop presentation layer now provides a dependency-free editorial workspace over the same bounded Rust application surface:
+
+- four in-session themes: System, Midnight Ink, Rose Paper and Sage Manuscript;
+- local command palette on Meta/Ctrl+K;
+- Meta/Ctrl+1…8 workspace navigation;
+- grouped Workspace / Literary intelligence / System navigation;
+- side-by-side English/Persian paragraph editing;
+- presentation-only Focus Persian mode;
+- progressive View Transitions with direct fallback;
+- `prefers-reduced-motion` handling and explicit focus-visible states;
+- polite atomic live-region notices, current-page semantics, shortcut metadata and palette focus return.
+
+Theme selection is intentionally not persisted. The frontend still uses no remote assets, frontend storage, package manager or general filesystem API. All translation/review/canon/persistence/export authority remains in `ApplicationService`.
+
+Detailed product and accessibility rationale lives in `docs/PHASE_26_RESEARCH.md`.
+
 ## Development
 
 From `desktop/src-tauri`:
