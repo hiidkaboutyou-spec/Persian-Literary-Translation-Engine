@@ -6,7 +6,10 @@ use memory_engine::{
     SemanticRetrievalStatus, SemanticSidecar, TranslationMemory,
 };
 
-use crate::{deterministic_speaker_context, ManuscriptIntelligence};
+use crate::{
+    deterministic_speaker_context, model_coreference_context, CoreferenceError,
+    CoreferenceResponse, ManuscriptIntelligence,
+};
 
 const NEIGHBOR_EXCERPT_CHARS: usize = 900;
 
@@ -41,10 +44,11 @@ pub struct ChapterContextPacketBuild {
 /// Shared context assembly for CLI and ApplicationService. The function only
 /// consumes canon/evidence owned by existing engines and emits a bounded packet;
 /// it does not promote inferred data or mutate any source of truth.
-pub fn build_chapter_context_packet_with_semantic(
+fn build_chapter_context_packet_internal(
     input: ChapterContextPacketInput<'_>,
     config: &ContextPacketConfig,
     semantic_sidecar: Option<&SemanticSidecar>,
+    coreference_candidate: Option<ContextCandidate>,
 ) -> ChapterContextPacketBuild {
     let mut candidates = Vec::new();
 
@@ -87,6 +91,10 @@ pub fn build_chapter_context_packet_with_semantic(
             )
             .with_evidence_ids([input.chapter_id.to_string()]),
         );
+    }
+
+    if let Some(candidate) = coreference_candidate {
+        candidates.push(candidate);
     }
 
     for relationship in input.characters.relevant_relationships(input.source_text) {
@@ -188,6 +196,50 @@ pub fn build_chapter_context_packet_with_semantic(
         packet: build_context_packet_v2(input.chapter_id, input.source_text, &candidates, config),
         semantic,
     }
+}
+
+/// Shared context assembly with the already-approved optional semantic retrieval sidecar.
+/// Coreference evidence is absent unless callers opt into the dedicated Phase-26 API.
+pub fn build_chapter_context_packet_with_semantic(
+    input: ChapterContextPacketInput<'_>,
+    config: &ContextPacketConfig,
+    semantic_sidecar: Option<&SemanticSidecar>,
+) -> ChapterContextPacketBuild {
+    build_chapter_context_packet_internal(input, config, semantic_sidecar, None)
+}
+
+/// Opt-in Phase-26 context assembly. External/model coreference remains Inferred evidence:
+/// it is accepted only after strict protocol validation and only when a cluster has one
+/// unambiguous canonical name/approved-alias anchor from CharacterBible.
+pub fn build_chapter_context_packet_with_semantic_and_coreference(
+    input: ChapterContextPacketInput<'_>,
+    config: &ContextPacketConfig,
+    semantic_sidecar: Option<&SemanticSidecar>,
+    coreference_response: &CoreferenceResponse,
+) -> Result<ChapterContextPacketBuild, CoreferenceError> {
+    let coreference_candidate =
+        model_coreference_context(input.chapter_id, input.source_text, input.characters, coreference_response)?
+            .map(|text| {
+                ContextCandidate::new(
+                    stable_evidence_id(
+                        "coreference-map",
+                        &[input.chapter_id, coreference_response.model.as_str(), &text],
+                    ),
+                    ContextKind::Character,
+                    ContextAuthority::Inferred,
+                    text,
+                    "optional coreference-model evidence anchored to exactly one canonical character; never canon",
+                    0.76,
+                )
+                .with_evidence_ids([input.chapter_id.to_string()])
+            });
+
+    Ok(build_chapter_context_packet_internal(
+        input,
+        config,
+        semantic_sidecar,
+        coreference_candidate,
+    ))
 }
 
 /// Deterministic compatibility wrapper. Existing callers keep exactly the old
@@ -422,7 +474,11 @@ fn list_line(label: &str, values: &[String]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{AnalysisCanon, DeterministicManuscriptAnalyzer, ManuscriptAnalyzer};
+    use crate::{
+        coreference_source_fingerprint, AnalysisCanon, CoreferenceCluster, CoreferenceMention,
+        CoreferenceResponse, DeterministicManuscriptAnalyzer, ManuscriptAnalyzer,
+        COREFERENCE_PROTOCOL_VERSION,
+    };
     use character_engine::{CharacterProfile, RelationshipProfile};
     use document_engine::{Book, Chapter, DocumentFormat, Manuscript, SourceLocation};
     use memory_engine::glossary::{Glossary, GlossaryEntry};
@@ -514,6 +570,82 @@ mod tests {
             .any(|item| item.text.contains("SPEAKER MAP")));
         assert!(packet.rendered_context.contains("Mina"));
         assert!(!packet.rendered_context.contains("she →"));
+    }
+
+    #[test]
+    fn opted_in_coreference_evidence_is_inferred_and_canon_anchored() {
+        let source = "Mina closed the door. She sighed.";
+        let document = test_manuscript(source);
+        let mut characters = CharacterBible::new();
+        characters.add(CharacterProfile {
+            name: "Mina".into(),
+            voice_notes: "quiet and precise".into(),
+            personality_notes: "guarded".into(),
+        });
+        let glossary = Glossary::default();
+        let translation_memory = TranslationMemory::new();
+        let intelligence = DeterministicManuscriptAnalyzer::default()
+            .analyze(
+                &document,
+                AnalysisCanon {
+                    characters: &characters,
+                    glossary: &glossary,
+                },
+            )
+            .unwrap();
+        let chapter_id = intelligence.chapter_maps[0].chapter_id.clone();
+        let response = CoreferenceResponse {
+            schema_version: COREFERENCE_PROTOCOL_VERSION,
+            source_fingerprint: coreference_source_fingerprint(&chapter_id, source),
+            model: "synthetic-phase26".into(),
+            clusters: vec![CoreferenceCluster {
+                id: "c1".into(),
+                mentions: vec![
+                    CoreferenceMention {
+                        id: "m1".into(),
+                        start_char: 0,
+                        end_char: 4,
+                        text: "Mina".into(),
+                    },
+                    CoreferenceMention {
+                        id: "m2".into(),
+                        start_char: 22,
+                        end_char: 25,
+                        text: "She".into(),
+                    },
+                ],
+            }],
+        };
+
+        let build = build_chapter_context_packet_with_semantic_and_coreference(
+            ChapterContextPacketInput {
+                document_title: "Test",
+                chapter_id: &chapter_id,
+                chapter_title: "Chapter 1",
+                source_text: source,
+                previous: None,
+                next: None,
+                characters: &characters,
+                glossary: &glossary,
+                translation_memory: &translation_memory,
+                intelligence: &intelligence,
+                reviewed_literary_lines: &[],
+            },
+            &ContextPacketConfig::default(),
+            None,
+            &response,
+        )
+        .unwrap();
+
+        let item = build
+            .packet
+            .items
+            .iter()
+            .find(|item| item.text.contains("COREFERENCE MAP"))
+            .expect("coreference evidence should be present");
+        assert_eq!(item.authority, ContextAuthority::Inferred);
+        assert!(item.text.contains("\"She\" → Mina"));
+        assert!(build.packet.rendered_context.contains("never canon"));
     }
 
     #[test]

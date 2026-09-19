@@ -196,9 +196,25 @@ Final-head successful runs: Phase 25 `35394490546`, Rust CI `35394490505`, Secur
 
 Detailed research and completion record: `docs/PHASE_25_RESEARCH.md`.
 
-## Current Research Handoff
+## Current Branch — Phase 26 Long-Span Literary Coreference Evidence
 
-The next measured gap is long-span literary coreference: pronouns, nominal mentions and cross-scene/chapter identity links that Phase 25 deliberately leaves unresolved. Phase 26 research must begin with rights-safe evaluation and an optional evidence-only adapter boundary. LitBank (CC BY 4.0) is eligible for attributed reference evaluation; BookCoref, xCoRe and Maverick remain non-commercial research references under their reviewed terms. No heavy coreference model is approved merely by this handoff.
+Branch: `phase-26-long-span-coreference-evidence`; draft PR #111.
+
+Implemented:
+
+- provider/model-neutral coreference request/response schema in `literary-intelligence-engine`;
+- exact character-offset/text validation, unique IDs and duplicate-span rejection before any evidence can be used;
+- bounded optional subprocess execution with timeout;
+- canonical cluster anchoring only through existing `CharacterBible` names/approved aliases;
+- fail-closed omission for unanchored or conflicting-canonical clusters;
+- opt-in `COREFERENCE MAP` Context Packet evidence with `Inferred` authority;
+- a project-owned synthetic Phase-26 regression corpus with successful and fail-closed long-span cases;
+- dedicated Linux/Apple Silicon Phase-26 validation;
+- zero new external model/runtime dependencies.
+
+Phase-26 external-model admission remains gated by source/checkpoint/data licensing, rights-safe measured gain, false-merge analysis, privacy/resource/failure review and Linux/Apple Silicon validation. LitBank may be used as attributed CC BY 4.0 reference evidence; BookCoref/xCoRe/Maverick remain non-commercial research references and are not product dependencies.
+
+Detailed research and exit criteria: `docs/PHASE_26_RESEARCH.md`.
 
 ## CLI / Desktop
 

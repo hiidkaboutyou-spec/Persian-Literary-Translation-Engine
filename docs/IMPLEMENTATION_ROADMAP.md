@@ -225,19 +225,34 @@ PR #106; final reviewed head `9037f569cffb2618b915248db2c60015764d034c`; merge `
 
 Canonical Phase 25 provides a native high-precision explicit quotation-speaker baseline, project-owned regression coverage, bounded deterministic Context Packet speaker evidence, and fail-closed ambiguity/pronoun handling without adding BookNLP/FastCoref/Torch/Transformers/spaCy or another model runtime.
 
-### Phase 26 — Long-Span Literary Coreference — research target
+### Phase 26 — Long-Span Literary Coreference Evidence — active branch/validation
 
-Goal: measure and improve pronoun/nominal/cross-context identity resolution that Phase 25 deliberately leaves unresolved, while preserving canonical character ownership and optional-model failure isolation.
+Branch: `phase-26-long-span-coreference-evidence`.
+Draft PR: #111.
 
-Research constraints:
+Goal: add an optional, rights-safe and fail-closed coreference evidence boundary for pronouns/nominal mentions without letting model clusters become character canon.
 
-- build project-owned synthetic long-span coreference cases first and optionally evaluate against attributed LitBank CC BY 4.0 examples;
-- measure false merges and false links separately from coverage/recall;
-- do not treat a coreference cluster as canon or silently rewrite manuscript text;
-- any model runs behind a provider-neutral optional process boundary and normal translation remains usable without it;
-- BookCoref/xCoRe/Maverick are non-commercial research references under reviewed licensing and are not approved product dependencies;
-- FastCoref remains a candidate only after exact checkpoint/dependency/license/security review and measured gain;
-- validate Linux and Apple Silicon before any optional sidecar is admitted.
+Implemented:
+
+- model-agnostic `CoreferenceRequest/CoreferenceResponse` protocol with strict schema, source-offset and exact-text validation;
+- globally unique cluster/mention IDs and duplicate-span rejection;
+- bounded optional subprocess wrapper with timeout and failure isolation;
+- canonical anchoring through existing `CharacterBible` names/approved aliases only;
+- clusters with no canonical anchor or conflicting canonical anchors are omitted;
+- opt-in Context Packet integration as `ContextAuthority::Inferred`, below deterministic speaker evidence and canonical character context;
+- project-owned synthetic Phase-26 corpus covering canonical/alias anchors, pronouns, nominal mentions, longer spans, ambiguous clusters and unanchored clusters;
+- no xCoRe/Maverick/BookCoref/FastCoref/CorPipe/Torch/Transformers/spaCy runtime dependency;
+- permanent Linux + Apple Silicon Phase-26 validation.
+
+Research decisions:
+
+- LitBank is CC BY 4.0 and eligible for future attributed external/reference evaluation;
+- BookCoref and xCoRe are technically relevant to book-scale/cross-context resolution but remain research-only under CC BY-NC-SA terms;
+- FastCoref software is MIT but checkpoint licensing, book-scale quality, security and resources require a separate measured admission review;
+- CorPipe 2026 is MPL-2.0 and useful as a current multilingual reference but is not itself proof of long-fiction suitability;
+- NovelCR remains reference-only until exact dataset-level redistribution/licensing is explicitly verified.
+
+Exit criteria: `docs/PHASE_26_RESEARCH.md`.
 
 ## Next Action Rule
 

@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "provenance": {
+    "owner": "Persian-Literary-Translation-Engine",
+    "license": "project-owned synthetic benchmark",
+    "synthetic": true,
+    "redistribution_allowed": true
+  },
+  "cases": [
+    {
+      "id": "canonical-anchor-pronoun",
+      "text": "Mina closed the door. She sighed.",
+      "characters": [{"name":"Mina","aliases":[]}],
+      "response": {
+        "schema_version": 1,
+        "source_fingerprint": "coreference-source-e77af310cc90e4658cb4589a2cfb3c671dfd67a1ed0bd00edb750a09d9bcafbc",
+        "model": "synthetic-phase26",
+        "clusters": [{
+          "id": "c1",
+          "mentions": [
+            {"id":"m1","start_char":0,"end_char":4,"text":"Mina"},
+            {"id":"m2","start_char":22,"end_char":25,"text":"She"}
+          ]
+        }]
+      },
+      "expected": [{"mention":"She","canonical":"Mina"}]
+    },
+    {
+      "id": "approved-alias-anchor",
+      "text": "Min waited by the window. She looked away.",
+      "characters": [{"name":"Mina","aliases":["Min"]}],
+      "response": {
+        "schema_version": 1,
+        "source_fingerprint": "coreference-source-3c9dccb2e8d979a57c6258226423fe8100d862696631cb6848086304d0288c18",
+        "model": "synthetic-phase26",
+        "clusters": [{
+          "id": "c1",
+          "mentions": [
+            {"id":"m1","start_char":0,"end_char":3,"text":"Min"},
+            {"id":"m2","start_char":26,"end_char":29,"text":"She"}
+          ]
+        }]
+      },
+      "expected": [{"mention":"She","canonical":"Mina"}]
+    },
+    {
+      "id": "nominal-and-pronoun-links",
+      "text": "Mina entered the clinic. The doctor removed her coat.",
+      "characters": [{"name":"Mina","aliases":[]}],
+      "response": {
+        "schema_version": 1,
+        "source_fingerprint": "coreference-source-93faf01c88a8e8efeee08ea1f70434e915b863444dea7cc159794a0b78acf993",
+        "model": "synthetic-phase26",
+        "clusters": [{
+          "id": "c1",
+          "mentions": [
+            {"id":"m1","start_char":0,"end_char":4,"text":"Mina"},
+            {"id":"m2","start_char":25,"end_char":35,"text":"The doctor"},
+            {"id":"m3","start_char":44,"end_char":47,"text":"her"}
+          ]
+        }]
+      },
+      "expected": [
+        {"mention":"The doctor","canonical":"Mina"},
+        {"mention":"her","canonical":"Mina"}
+      ]
+    },
+    {
+      "id": "longer-span-pronoun",
+      "text": "Mina folded the letter and placed it beneath the lamp. Rain tapped against the glass for several minutes. She finally stood.",
+      "characters": [{"name":"Mina","aliases":[]}],
+      "response": {
+        "schema_version": 1,
+        "source_fingerprint": "coreference-source-4e6898c1737e592f86d2b88eebbc0385a79a45e362a0f40b24faeafda2b6bf95",
+        "model": "synthetic-phase26",
+        "clusters": [{
+          "id": "c1",
+          "mentions": [
+            {"id":"m1","start_char":0,"end_char":4,"text":"Mina"},
+            {"id":"m2","start_char":106,"end_char":109,"text":"She"}
+          ]
+        }]
+      },
+      "expected": [{"mention":"She","canonical":"Mina"}]
+    },
+    {
+      "id": "conflicting-canonical-anchors-fail-closed",
+      "text": "Mina met Reza in the hall. They left together.",
+      "characters": [
+        {"name":"Mina","aliases":[]},
+        {"name":"Reza","aliases":[]}
+      ],
+      "response": {
+        "schema_version": 1,
+        "source_fingerprint": "coreference-source-f231eca87e54222076c1e7071664252bb3616eb38ff14f34b65f68b5936ee327",
+        "model": "synthetic-phase26",
+        "clusters": [{
+          "id": "c1",
+          "mentions": [
+            {"id":"m1","start_char":0,"end_char":4,"text":"Mina"},
+            {"id":"m2","start_char":9,"end_char":13,"text":"Reza"},
+            {"id":"m3","start_char":27,"end_char":31,"text":"They"}
+          ]
+        }]
+      },
+      "expected": []
+    },
+    {
+      "id": "unanchored-cluster-fail-closed",
+      "text": "She waited near the station. The woman checked the clock.",
+      "characters": [{"name":"Mina","aliases":[]}],
+      "response": {
+        "schema_version": 1,
+        "source_fingerprint": "coreference-source-31990eb6889dc2a5a84ee0755cd4fe8f5c4de13790bc3e7bdbdfdde7a1db8a58",
+        "model": "synthetic-phase26",
+        "clusters": [{
+          "id": "c1",
+          "mentions": [
+            {"id":"m1","start_char":0,"end_char":3,"text":"She"},
+            {"id":"m2","start_char":29,"end_char":38,"text":"The woman"}
+          ]
+        }]
+      },
+      "expected": []
+    }
+  ]
+}

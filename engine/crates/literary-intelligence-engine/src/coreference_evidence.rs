@@ -1,0 +1,870 @@
+use std::collections::{BTreeSet, HashSet};
+use std::io::{Read, Write};
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
+use std::thread;
+use std::time::{Duration, Instant};
+
+use character_engine::CharacterBible;
+use memory_engine::stable_evidence_id;
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+
+pub const COREFERENCE_PROTOCOL_VERSION: u32 = 1;
+const DEFAULT_MAX_SOURCE_CHARS: usize = 500_000;
+const DEFAULT_MAX_CLUSTERS: usize = 4_096;
+const DEFAULT_MAX_MENTIONS_PER_CLUSTER: usize = 2_048;
+const DEFAULT_MAX_TOTAL_MENTIONS: usize = 32_768;
+const DEFAULT_MAX_STDOUT_BYTES: usize = 8 * 1024 * 1024;
+const DEFAULT_MAX_STDERR_BYTES: usize = 256 * 1024;
+const MAX_CONTEXT_LINKS: usize = 24;
+const MAX_CONTEXT_MENTION_CHARS: usize = 96;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CoreferenceRequest {
+    pub schema_version: u32,
+    pub unit_id: String,
+    pub source_fingerprint: String,
+    pub text: String,
+}
+
+impl CoreferenceRequest {
+    pub fn new(unit_id: impl Into<String>, text: impl Into<String>) -> Self {
+        let unit_id = unit_id.into();
+        let text = text.into();
+        let source_fingerprint = coreference_source_fingerprint(&unit_id, &text);
+        Self {
+            schema_version: COREFERENCE_PROTOCOL_VERSION,
+            unit_id,
+            source_fingerprint,
+            text,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CoreferenceMention {
+    pub id: String,
+    pub start_char: usize,
+    pub end_char: usize,
+    pub text: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CoreferenceCluster {
+    pub id: String,
+    pub mentions: Vec<CoreferenceMention>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CoreferenceResponse {
+    pub schema_version: u32,
+    pub source_fingerprint: String,
+    pub model: String,
+    pub clusters: Vec<CoreferenceCluster>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CanonicalCoreferenceLink {
+    pub cluster_id: String,
+    pub canonical_character: String,
+    pub anchor_mentions: Vec<String>,
+    pub linked_mentions: Vec<CoreferenceMention>,
+}
+
+#[derive(Debug, Error)]
+pub enum CoreferenceError {
+    #[error("invalid coreference request: {0}")]
+    InvalidRequest(String),
+    #[error("coreference sidecar I/O error: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("coreference sidecar timed out after {timeout_ms} ms")]
+    Timeout { timeout_ms: u64 },
+    #[error("coreference sidecar failed with status {status:?}: {stderr}")]
+    SidecarFailed { status: Option<i32>, stderr: String },
+    #[error("coreference sidecar {stream} exceeded {limit_bytes} bytes")]
+    OutputTooLarge {
+        stream: &'static str,
+        limit_bytes: usize,
+    },
+    #[error("coreference protocol error: {0}")]
+    Protocol(String),
+}
+
+#[derive(Debug)]
+struct BoundedOutput {
+    bytes: Vec<u8>,
+    exceeded: bool,
+}
+
+pub fn coreference_source_fingerprint(unit_id: &str, source_text: &str) -> String {
+    stable_evidence_id("coreference-source", &[unit_id, source_text])
+}
+
+fn read_bounded(mut reader: impl Read, max_bytes: usize) -> Result<BoundedOutput, std::io::Error> {
+    let mut bytes = Vec::with_capacity(max_bytes.min(64 * 1024));
+    let limit = max_bytes.saturating_add(1);
+    reader.by_ref().take(limit as u64).read_to_end(&mut bytes)?;
+    let exceeded = bytes.len() > max_bytes;
+    if exceeded {
+        bytes.truncate(max_bytes);
+    }
+    Ok(BoundedOutput { bytes, exceeded })
+}
+
+#[derive(Debug, Clone)]
+pub struct CoreferenceSidecar {
+    executable: PathBuf,
+    timeout: Duration,
+    max_source_chars: usize,
+    max_clusters: usize,
+    max_mentions_per_cluster: usize,
+    max_total_mentions: usize,
+    max_stdout_bytes: usize,
+    max_stderr_bytes: usize,
+}
+
+impl CoreferenceSidecar {
+    pub fn new(executable: impl Into<PathBuf>) -> Self {
+        Self {
+            executable: executable.into(),
+            timeout: Duration::from_secs(180),
+            max_source_chars: DEFAULT_MAX_SOURCE_CHARS,
+            max_clusters: DEFAULT_MAX_CLUSTERS,
+            max_mentions_per_cluster: DEFAULT_MAX_MENTIONS_PER_CLUSTER,
+            max_total_mentions: DEFAULT_MAX_TOTAL_MENTIONS,
+            max_stdout_bytes: DEFAULT_MAX_STDOUT_BYTES,
+            max_stderr_bytes: DEFAULT_MAX_STDERR_BYTES,
+        }
+    }
+
+    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = timeout.max(Duration::from_millis(1));
+        self
+    }
+
+    pub fn with_max_source_chars(mut self, max_source_chars: usize) -> Self {
+        self.max_source_chars = max_source_chars.max(1);
+        self
+    }
+
+    pub fn with_limits(mut self, max_clusters: usize, max_mentions_per_cluster: usize) -> Self {
+        self.max_clusters = max_clusters.max(1);
+        self.max_mentions_per_cluster = max_mentions_per_cluster.max(1);
+        self
+    }
+
+    pub fn with_total_mention_limit(mut self, max_total_mentions: usize) -> Self {
+        self.max_total_mentions = max_total_mentions.max(1);
+        self
+    }
+
+    pub fn with_output_limits(mut self, max_stdout_bytes: usize, max_stderr_bytes: usize) -> Self {
+        self.max_stdout_bytes = max_stdout_bytes.max(1);
+        self.max_stderr_bytes = max_stderr_bytes.max(1);
+        self
+    }
+
+    pub fn executable(&self) -> &Path {
+        &self.executable
+    }
+
+    pub fn resolve(
+        &self,
+        request: &CoreferenceRequest,
+    ) -> Result<CoreferenceResponse, CoreferenceError> {
+        validate_request(request, self.max_source_chars)?;
+        let payload = serde_json::to_vec(request)
+            .map_err(|error| CoreferenceError::Protocol(error.to_string()))?;
+
+        let mut child = Command::new(&self.executable)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()?;
+        let mut stdin = child
+            .stdin
+            .take()
+            .ok_or_else(|| CoreferenceError::Protocol("sidecar stdin was not available".into()))?;
+        let stdout = child
+            .stdout
+            .take()
+            .ok_or_else(|| CoreferenceError::Protocol("sidecar stdout was not available".into()))?;
+        let stderr = child
+            .stderr
+            .take()
+            .ok_or_else(|| CoreferenceError::Protocol("sidecar stderr was not available".into()))?;
+
+        // Drain all pipes concurrently. A sidecar that writes before reading stdin,
+        // or emits enough output to fill an OS pipe, must not deadlock the host.
+        let writer = thread::spawn(move || {
+            let result = stdin.write_all(&payload);
+            drop(stdin);
+            result
+        });
+        let max_stdout_bytes = self.max_stdout_bytes;
+        let stdout_reader = thread::spawn(move || read_bounded(stdout, max_stdout_bytes));
+        let max_stderr_bytes = self.max_stderr_bytes;
+        let stderr_reader = thread::spawn(move || read_bounded(stderr, max_stderr_bytes));
+
+        let started = Instant::now();
+        let status = loop {
+            if let Some(status) = child.try_wait()? {
+                break status;
+            }
+            if started.elapsed() >= self.timeout {
+                let _ = child.kill();
+                let _ = child.wait();
+                let _ = writer.join();
+                let _ = stdout_reader.join();
+                let _ = stderr_reader.join();
+                return Err(CoreferenceError::Timeout {
+                    timeout_ms: self.timeout.as_millis().min(u128::from(u64::MAX)) as u64,
+                });
+            }
+            thread::sleep(Duration::from_millis(25));
+        };
+
+        let write_result = writer
+            .join()
+            .map_err(|_| CoreferenceError::Protocol("sidecar stdin writer panicked".into()))?;
+        let stdout = stdout_reader
+            .join()
+            .map_err(|_| CoreferenceError::Protocol("sidecar stdout reader panicked".into()))??;
+        let stderr = stderr_reader
+            .join()
+            .map_err(|_| CoreferenceError::Protocol("sidecar stderr reader panicked".into()))??;
+
+        if stdout.exceeded {
+            return Err(CoreferenceError::OutputTooLarge {
+                stream: "stdout",
+                limit_bytes: self.max_stdout_bytes,
+            });
+        }
+        if stderr.exceeded {
+            return Err(CoreferenceError::OutputTooLarge {
+                stream: "stderr",
+                limit_bytes: self.max_stderr_bytes,
+            });
+        }
+        if !status.success() {
+            return Err(CoreferenceError::SidecarFailed {
+                status: status.code(),
+                stderr: String::from_utf8_lossy(&stderr.bytes).into_owned(),
+            });
+        }
+        write_result?;
+
+        let response: CoreferenceResponse =
+            serde_json::from_slice(&stdout.bytes).map_err(|error| {
+                CoreferenceError::Protocol(format!("invalid JSON response: {error}"))
+            })?;
+        validate_response_with_limits(
+            &request.unit_id,
+            &request.text,
+            &response,
+            self.max_clusters,
+            self.max_mentions_per_cluster,
+            self.max_total_mentions,
+        )?;
+        Ok(response)
+    }
+}
+
+pub fn canonical_coreference_links(
+    unit_id: &str,
+    source_text: &str,
+    characters: &CharacterBible,
+    response: &CoreferenceResponse,
+) -> Result<Vec<CanonicalCoreferenceLink>, CoreferenceError> {
+    validate_response(
+        unit_id,
+        source_text,
+        response,
+        DEFAULT_MAX_CLUSTERS,
+        DEFAULT_MAX_MENTIONS_PER_CLUSTER,
+    )?;
+
+    let mut clusters = response.clusters.iter().collect::<Vec<_>>();
+    clusters.sort_by(|a, b| {
+        let a_start = a
+            .mentions
+            .iter()
+            .map(|mention| mention.start_char)
+            .min()
+            .unwrap_or(usize::MAX);
+        let b_start = b
+            .mentions
+            .iter()
+            .map(|mention| mention.start_char)
+            .min()
+            .unwrap_or(usize::MAX);
+        a_start.cmp(&b_start).then_with(|| a.id.cmp(&b.id))
+    });
+
+    let mut links = Vec::new();
+    for cluster in clusters {
+        let mut canonical_names = BTreeSet::new();
+        let mut anchor_ids = Vec::new();
+
+        for mention in &cluster.mentions {
+            if let Some(owner) = characters.find_alias_owner(mention.text.trim()) {
+                canonical_names.insert(owner.to_string());
+                anchor_ids.push(mention.id.clone());
+            }
+        }
+
+        if canonical_names.len() != 1 {
+            continue;
+        }
+        let canonical_character = canonical_names
+            .into_iter()
+            .next()
+            .expect("exactly one canonical character after len check");
+        let anchor_set = anchor_ids
+            .iter()
+            .map(String::as_str)
+            .collect::<HashSet<_>>();
+        anchor_ids.sort();
+        let mut linked_mentions = cluster
+            .mentions
+            .iter()
+            .filter(|mention| !anchor_set.contains(mention.id.as_str()))
+            .cloned()
+            .collect::<Vec<_>>();
+        linked_mentions.sort_by(|a, b| {
+            a.start_char
+                .cmp(&b.start_char)
+                .then_with(|| a.end_char.cmp(&b.end_char))
+                .then_with(|| a.id.cmp(&b.id))
+        });
+        if linked_mentions.is_empty() {
+            continue;
+        }
+
+        links.push(CanonicalCoreferenceLink {
+            cluster_id: cluster.id.clone(),
+            canonical_character,
+            anchor_mentions: anchor_ids,
+            linked_mentions,
+        });
+    }
+    Ok(links)
+}
+
+pub fn model_coreference_context(
+    unit_id: &str,
+    source_text: &str,
+    characters: &CharacterBible,
+    response: &CoreferenceResponse,
+) -> Result<Option<String>, CoreferenceError> {
+    let links = canonical_coreference_links(unit_id, source_text, characters, response)?;
+    if links.is_empty() {
+        return Ok(None);
+    }
+
+    let mut lines = vec![format!(
+        "COREFERENCE MAP — optional model evidence ({}) mapped only through explicit canonical anchors; never canon:",
+        response.model.trim()
+    )];
+    let mut emitted = 0usize;
+    for link in links {
+        for mention in link.linked_mentions {
+            if emitted >= MAX_CONTEXT_LINKS {
+                break;
+            }
+            let text = truncate_chars(mention.text.trim(), MAX_CONTEXT_MENTION_CHARS);
+            lines.push(format!(
+                "- {:?} → {} (cluster={})",
+                text, link.canonical_character, link.cluster_id
+            ));
+            emitted += 1;
+        }
+        if emitted >= MAX_CONTEXT_LINKS {
+            break;
+        }
+    }
+    if emitted == 0 {
+        return Ok(None);
+    }
+    Ok(Some(lines.join("\n")))
+}
+
+fn validate_request(
+    request: &CoreferenceRequest,
+    max_source_chars: usize,
+) -> Result<(), CoreferenceError> {
+    if request.schema_version != COREFERENCE_PROTOCOL_VERSION {
+        return Err(CoreferenceError::InvalidRequest(format!(
+            "unsupported schema version {}; expected {}",
+            request.schema_version, COREFERENCE_PROTOCOL_VERSION
+        )));
+    }
+    if request.unit_id.trim().is_empty() {
+        return Err(CoreferenceError::InvalidRequest(
+            "unit_id must not be empty".into(),
+        ));
+    }
+    if request.text.trim().is_empty() {
+        return Err(CoreferenceError::InvalidRequest(
+            "source text must not be empty".into(),
+        ));
+    }
+    let source_chars = request.text.chars().count();
+    if source_chars > max_source_chars {
+        return Err(CoreferenceError::InvalidRequest(format!(
+            "source has {source_chars} characters; limit is {max_source_chars}"
+        )));
+    }
+    let expected_fingerprint = coreference_source_fingerprint(&request.unit_id, &request.text);
+    if request.source_fingerprint != expected_fingerprint {
+        return Err(CoreferenceError::InvalidRequest(
+            "source_fingerprint does not match unit_id + source text".into(),
+        ));
+    }
+    Ok(())
+}
+
+pub fn validate_response(
+    unit_id: &str,
+    source_text: &str,
+    response: &CoreferenceResponse,
+    max_clusters: usize,
+    max_mentions_per_cluster: usize,
+) -> Result<(), CoreferenceError> {
+    validate_response_with_limits(
+        unit_id,
+        source_text,
+        response,
+        max_clusters,
+        max_mentions_per_cluster,
+        DEFAULT_MAX_TOTAL_MENTIONS,
+    )
+}
+
+fn validate_response_with_limits(
+    unit_id: &str,
+    source_text: &str,
+    response: &CoreferenceResponse,
+    max_clusters: usize,
+    max_mentions_per_cluster: usize,
+    max_total_mentions: usize,
+) -> Result<(), CoreferenceError> {
+    if response.schema_version != COREFERENCE_PROTOCOL_VERSION {
+        return Err(CoreferenceError::Protocol(format!(
+            "response schema version {} does not match {}",
+            response.schema_version, COREFERENCE_PROTOCOL_VERSION
+        )));
+    }
+
+    let expected_fingerprint = coreference_source_fingerprint(unit_id, source_text);
+    if response.source_fingerprint != expected_fingerprint {
+        return Err(CoreferenceError::Protocol(
+            "response source_fingerprint does not match the requested source unit".into(),
+        ));
+    }
+
+    validate_protocol_identifier("model", &response.model, 160)?;
+
+    if response.clusters.len() > max_clusters {
+        return Err(CoreferenceError::Protocol(format!(
+            "response returned {} clusters; limit is {max_clusters}",
+            response.clusters.len()
+        )));
+    }
+
+    let source_chars = source_text.chars().collect::<Vec<_>>();
+    let mut cluster_ids = HashSet::new();
+    let mut mention_ids = HashSet::new();
+    let mut spans = HashSet::new();
+    let mut total_mentions = 0usize;
+
+    for cluster in &response.clusters {
+        validate_protocol_identifier("cluster id", &cluster.id, 160)?;
+        if !cluster_ids.insert(cluster.id.as_str()) {
+            return Err(CoreferenceError::Protocol(
+                "cluster IDs must be globally unique".into(),
+            ));
+        }
+        if cluster.mentions.is_empty() || cluster.mentions.len() > max_mentions_per_cluster {
+            return Err(CoreferenceError::Protocol(format!(
+                "cluster '{}' must contain 1..={max_mentions_per_cluster} mentions",
+                cluster.id
+            )));
+        }
+
+        total_mentions = total_mentions
+            .checked_add(cluster.mentions.len())
+            .ok_or_else(|| CoreferenceError::Protocol("total mention count overflowed".into()))?;
+        if total_mentions > max_total_mentions {
+            return Err(CoreferenceError::Protocol(format!(
+                "response returned more than {max_total_mentions} total mentions"
+            )));
+        }
+
+        for mention in &cluster.mentions {
+            validate_protocol_identifier("mention id", &mention.id, 160)?;
+            if !mention_ids.insert(mention.id.as_str()) {
+                return Err(CoreferenceError::Protocol(
+                    "mention IDs must be globally unique".into(),
+                ));
+            }
+            if mention.start_char >= mention.end_char || mention.end_char > source_chars.len() {
+                return Err(CoreferenceError::Protocol(format!(
+                    "mention '{}' has invalid character offsets",
+                    mention.id
+                )));
+            }
+            if !spans.insert((mention.start_char, mention.end_char)) {
+                return Err(CoreferenceError::Protocol(format!(
+                    "mention '{}' reuses a span already assigned to another cluster",
+                    mention.id
+                )));
+            }
+            let actual = source_chars[mention.start_char..mention.end_char]
+                .iter()
+                .collect::<String>();
+            if actual != mention.text {
+                return Err(CoreferenceError::Protocol(format!(
+                    "mention '{}' text does not match source offsets",
+                    mention.id
+                )));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn validate_protocol_identifier(
+    label: &str,
+    value: &str,
+    max_chars: usize,
+) -> Result<(), CoreferenceError> {
+    if value.is_empty()
+        || value.chars().count() > max_chars
+        || !value
+            .chars()
+            .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_' | '.' | '/' | ':' | '@'))
+    {
+        return Err(CoreferenceError::Protocol(format!(
+            "{label} must be a non-empty bounded ASCII identifier"
+        )));
+    }
+    Ok(())
+}
+
+fn truncate_chars(value: &str, max_chars: usize) -> String {
+    if value.chars().count() <= max_chars {
+        value.to_string()
+    } else {
+        value.chars().take(max_chars).collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use character_engine::CharacterProfile;
+
+    fn bible() -> CharacterBible {
+        let mut bible = CharacterBible::new();
+        bible.add(CharacterProfile {
+            name: "Mina".into(),
+            voice_notes: "quiet".into(),
+            personality_notes: "guarded".into(),
+        });
+        bible.add(CharacterProfile {
+            name: "Reza".into(),
+            voice_notes: "warm".into(),
+            personality_notes: "patient".into(),
+        });
+        bible.add_alias("Mina", "Min");
+        bible
+    }
+
+    fn mention(id: &str, start: usize, end: usize, text: &str) -> CoreferenceMention {
+        CoreferenceMention {
+            id: id.into(),
+            start_char: start,
+            end_char: end,
+            text: text.into(),
+        }
+    }
+
+    #[test]
+    fn canonical_anchor_maps_pronoun_without_creating_canon() {
+        let text = "Mina closed the door. She sighed.";
+        let response = CoreferenceResponse {
+            schema_version: COREFERENCE_PROTOCOL_VERSION,
+            source_fingerprint: coreference_source_fingerprint("u1", text),
+            model: "synthetic".into(),
+            clusters: vec![CoreferenceCluster {
+                id: "c1".into(),
+                mentions: vec![mention("m1", 0, 4, "Mina"), mention("m2", 22, 25, "She")],
+            }],
+        };
+        let links = canonical_coreference_links("u1", text, &bible(), &response).unwrap();
+        assert_eq!(links.len(), 1);
+        assert_eq!(links[0].canonical_character, "Mina");
+        assert_eq!(links[0].linked_mentions[0].text, "She");
+    }
+
+    #[test]
+    fn approved_alias_can_anchor_a_cluster() {
+        let text = "Min waited. She looked away.";
+        let response = CoreferenceResponse {
+            schema_version: COREFERENCE_PROTOCOL_VERSION,
+            source_fingerprint: coreference_source_fingerprint("u1", text),
+            model: "synthetic".into(),
+            clusters: vec![CoreferenceCluster {
+                id: "c1".into(),
+                mentions: vec![mention("m1", 0, 3, "Min"), mention("m2", 12, 15, "She")],
+            }],
+        };
+        let links = canonical_coreference_links("u1", text, &bible(), &response).unwrap();
+        assert_eq!(links[0].canonical_character, "Mina");
+    }
+
+    #[test]
+    fn conflicting_canonical_anchors_fail_closed() {
+        let text = "Mina met Reza. They left.";
+        let response = CoreferenceResponse {
+            schema_version: COREFERENCE_PROTOCOL_VERSION,
+            source_fingerprint: coreference_source_fingerprint("u1", text),
+            model: "synthetic".into(),
+            clusters: vec![CoreferenceCluster {
+                id: "c1".into(),
+                mentions: vec![
+                    mention("m1", 0, 4, "Mina"),
+                    mention("m2", 9, 13, "Reza"),
+                    mention("m3", 15, 19, "They"),
+                ],
+            }],
+        };
+        assert!(canonical_coreference_links("u1", text, &bible(), &response)
+            .unwrap()
+            .is_empty());
+    }
+
+    #[test]
+    fn unanchored_cluster_is_omitted() {
+        let text = "She waited. The doctor frowned.";
+        let response = CoreferenceResponse {
+            schema_version: COREFERENCE_PROTOCOL_VERSION,
+            source_fingerprint: coreference_source_fingerprint("u1", text),
+            model: "synthetic".into(),
+            clusters: vec![CoreferenceCluster {
+                id: "c1".into(),
+                mentions: vec![
+                    mention("m1", 0, 3, "She"),
+                    mention("m2", 12, 22, "The doctor"),
+                ],
+            }],
+        };
+        assert!(canonical_coreference_links("u1", text, &bible(), &response)
+            .unwrap()
+            .is_empty());
+    }
+
+    #[test]
+    fn mismatched_offsets_are_rejected() {
+        let text = "Mina left.";
+        let response = CoreferenceResponse {
+            schema_version: COREFERENCE_PROTOCOL_VERSION,
+            source_fingerprint: coreference_source_fingerprint("u1", text),
+            model: "synthetic".into(),
+            clusters: vec![CoreferenceCluster {
+                id: "c1".into(),
+                mentions: vec![mention("m1", 0, 4, "Reza")],
+            }],
+        };
+        assert!(matches!(
+            validate_response("u1", text, &response, 10, 10),
+            Err(CoreferenceError::Protocol(_))
+        ));
+    }
+
+    #[test]
+    fn duplicate_mention_ids_are_rejected() {
+        let text = "Mina left. She returned.";
+        let response = CoreferenceResponse {
+            schema_version: COREFERENCE_PROTOCOL_VERSION,
+            source_fingerprint: coreference_source_fingerprint("u1", text),
+            model: "synthetic".into(),
+            clusters: vec![CoreferenceCluster {
+                id: "c1".into(),
+                mentions: vec![mention("m1", 0, 4, "Mina"), mention("m1", 11, 14, "She")],
+            }],
+        };
+        assert!(matches!(
+            validate_response("u1", text, &response, 10, 10),
+            Err(CoreferenceError::Protocol(_))
+        ));
+    }
+
+    #[test]
+    fn reused_span_across_clusters_is_rejected() {
+        let text = "Mina left.";
+        let response = CoreferenceResponse {
+            schema_version: COREFERENCE_PROTOCOL_VERSION,
+            source_fingerprint: coreference_source_fingerprint("u1", text),
+            model: "synthetic".into(),
+            clusters: vec![
+                CoreferenceCluster {
+                    id: "c1".into(),
+                    mentions: vec![mention("m1", 0, 4, "Mina")],
+                },
+                CoreferenceCluster {
+                    id: "c2".into(),
+                    mentions: vec![mention("m2", 0, 4, "Mina")],
+                },
+            ],
+        };
+        assert!(matches!(
+            validate_response("u1", text, &response, 10, 10),
+            Err(CoreferenceError::Protocol(_))
+        ));
+    }
+
+    #[test]
+    fn model_context_is_bounded_and_labeled_noncanonical() {
+        let text = "Mina closed the door. She sighed.";
+        let response = CoreferenceResponse {
+            schema_version: COREFERENCE_PROTOCOL_VERSION,
+            source_fingerprint: coreference_source_fingerprint("u1", text),
+            model: "synthetic".into(),
+            clusters: vec![CoreferenceCluster {
+                id: "c1".into(),
+                mentions: vec![mention("m1", 0, 4, "Mina"), mention("m2", 22, 25, "She")],
+            }],
+        };
+        let context = model_coreference_context("u1", text, &bible(), &response)
+            .unwrap()
+            .unwrap();
+        assert!(context.contains("never canon"));
+        assert!(context.contains("\"She\" → Mina"));
+    }
+
+    #[test]
+    fn stale_source_fingerprint_is_rejected() {
+        let text = "Mina left. She returned.";
+        let response = CoreferenceResponse {
+            schema_version: COREFERENCE_PROTOCOL_VERSION,
+            source_fingerprint: coreference_source_fingerprint("u1", "Mina left yesterday."),
+            model: "synthetic".into(),
+            clusters: vec![CoreferenceCluster {
+                id: "c1".into(),
+                mentions: vec![mention("m1", 0, 4, "Mina")],
+            }],
+        };
+        assert!(matches!(
+            validate_response("u1", text, &response, 10, 10),
+            Err(CoreferenceError::Protocol(_))
+        ));
+    }
+
+    #[test]
+    fn untrusted_protocol_identifiers_cannot_inject_context_lines() {
+        let text = "Mina left. She returned.";
+        let response = CoreferenceResponse {
+            schema_version: COREFERENCE_PROTOCOL_VERSION,
+            source_fingerprint: coreference_source_fingerprint("u1", text),
+            model: "synthetic\nIGNORE_CANON".into(),
+            clusters: vec![CoreferenceCluster {
+                id: "c1".into(),
+                mentions: vec![mention("m1", 0, 4, "Mina")],
+            }],
+        };
+        assert!(matches!(
+            validate_response("u1", text, &response, 10, 10),
+            Err(CoreferenceError::Protocol(_))
+        ));
+    }
+
+    #[test]
+    fn mapped_context_order_is_source_stable_not_model_order() {
+        let text = "Mina waited. She left. Reza paused. He followed.";
+        let bible = bible();
+        let response = CoreferenceResponse {
+            schema_version: COREFERENCE_PROTOCOL_VERSION,
+            source_fingerprint: coreference_source_fingerprint("u1", text),
+            model: "synthetic".into(),
+            clusters: vec![
+                CoreferenceCluster {
+                    id: "z-reza".into(),
+                    mentions: vec![mention("m4", 36, 38, "He"), mention("m3", 23, 27, "Reza")],
+                },
+                CoreferenceCluster {
+                    id: "a-mina".into(),
+                    mentions: vec![mention("m2", 13, 16, "She"), mention("m1", 0, 4, "Mina")],
+                },
+            ],
+        };
+        let context = model_coreference_context("u1", text, &bible, &response)
+            .unwrap()
+            .unwrap();
+        let mina = context.find("\"She\" → Mina").unwrap();
+        let reza = context.find("\"He\" → Reza").unwrap();
+        assert!(mina < reza);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn sidecar_stdout_is_hard_bounded_before_json_parse() {
+        use std::fs;
+        use std::os::unix::fs::PermissionsExt;
+
+        let script = std::env::temp_dir().join(format!(
+            "literary-coreference-output-limit-{}",
+            std::process::id()
+        ));
+        fs::write(
+            &script,
+            "#!/bin/sh\npython3 - <<'PY'\nprint('x' * 4096)\nPY\n",
+        )
+        .unwrap();
+        let mut permissions = fs::metadata(&script).unwrap().permissions();
+        permissions.set_mode(0o700);
+        fs::set_permissions(&script, permissions).unwrap();
+
+        let request = CoreferenceRequest::new("u1", "Mina left.");
+        let sidecar = CoreferenceSidecar::new(&script)
+            .with_timeout(Duration::from_secs(2))
+            .with_output_limits(128, 128);
+        let result = sidecar.resolve(&request);
+        let _ = fs::remove_file(&script);
+        assert!(matches!(
+            result,
+            Err(CoreferenceError::OutputTooLarge {
+                stream: "stdout",
+                limit_bytes: 128
+            })
+        ));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn sidecar_timeout_is_bounded() {
+        use std::fs;
+        use std::os::unix::fs::PermissionsExt;
+
+        let script = std::env::temp_dir().join(format!(
+            "literary-coreference-timeout-{}",
+            std::process::id()
+        ));
+        fs::write(&script, "#!/bin/sh\nsleep 5\n").unwrap();
+        let mut permissions = fs::metadata(&script).unwrap().permissions();
+        permissions.set_mode(0o700);
+        fs::set_permissions(&script, permissions).unwrap();
+
+        let request = CoreferenceRequest::new("u1", "Mina left.");
+        let sidecar = CoreferenceSidecar::new(&script).with_timeout(Duration::from_millis(50));
+        let result = sidecar.resolve(&request);
+        let _ = fs::remove_file(&script);
+        assert!(matches!(result, Err(CoreferenceError::Timeout { .. })));
+    }
+}
