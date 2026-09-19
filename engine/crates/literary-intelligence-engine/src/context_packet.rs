@@ -7,8 +7,8 @@ use memory_engine::{
 };
 
 use crate::{
-    deterministic_speaker_context, model_coreference_context, CoreferenceError, CoreferenceResponse,
-    ManuscriptIntelligence,
+    deterministic_speaker_context, model_coreference_context, CoreferenceError,
+    CoreferenceResponse, ManuscriptIntelligence,
 };
 
 const NEIGHBOR_EXCERPT_CHARS: usize = 900;
