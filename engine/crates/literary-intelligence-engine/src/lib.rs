@@ -36,9 +36,9 @@ pub use speaker_attribution::{
     SpeakerAttribution,
 };
 
-
 pub use coreference_evidence::{
-    canonical_coreference_links, model_coreference_context, validate_response as validate_coreference_response,
-    CanonicalCoreferenceLink, CoreferenceCluster, CoreferenceError, CoreferenceMention,
-    CoreferenceRequest, CoreferenceResponse, CoreferenceSidecar, COREFERENCE_PROTOCOL_VERSION,
+    canonical_coreference_links, model_coreference_context,
+    validate_response as validate_coreference_response, CanonicalCoreferenceLink,
+    CoreferenceCluster, CoreferenceError, CoreferenceMention, CoreferenceRequest,
+    CoreferenceResponse, CoreferenceSidecar, COREFERENCE_PROTOCOL_VERSION,
 };
