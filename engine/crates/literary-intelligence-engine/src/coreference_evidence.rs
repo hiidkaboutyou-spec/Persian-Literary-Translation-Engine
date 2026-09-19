@@ -105,16 +105,10 @@ pub fn coreference_source_fingerprint(unit_id: &str, source_text: &str) -> Strin
     stable_evidence_id("coreference-source", &[unit_id, source_text])
 }
 
-fn read_bounded(
-    mut reader: impl Read,
-    max_bytes: usize,
-) -> Result<BoundedOutput, std::io::Error> {
+fn read_bounded(mut reader: impl Read, max_bytes: usize) -> Result<BoundedOutput, std::io::Error> {
     let mut bytes = Vec::with_capacity(max_bytes.min(64 * 1024));
     let limit = max_bytes.saturating_add(1);
-    reader
-        .by_ref()
-        .take(limit as u64)
-        .read_to_end(&mut bytes)?;
+    reader.by_ref().take(limit as u64).read_to_end(&mut bytes)?;
     let exceeded = bytes.len() > max_bytes;
     if exceeded {
         bytes.truncate(max_bytes);
@@ -552,9 +546,9 @@ fn validate_protocol_identifier(
 ) -> Result<(), CoreferenceError> {
     if value.is_empty()
         || value.chars().count() > max_chars
-        || !value.chars().all(|ch| {
-            ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_' | '.' | '/' | ':' | '@')
-        })
+        || !value
+            .chars()
+            .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_' | '.' | '/' | ':' | '@'))
     {
         return Err(CoreferenceError::Protocol(format!(
             "{label} must be a non-empty bounded ASCII identifier"
@@ -802,17 +796,11 @@ mod tests {
             clusters: vec![
                 CoreferenceCluster {
                     id: "z-reza".into(),
-                    mentions: vec![
-                        mention("m4", 36, 38, "He"),
-                        mention("m3", 23, 27, "Reza"),
-                    ],
+                    mentions: vec![mention("m4", 36, 38, "He"), mention("m3", 23, 27, "Reza")],
                 },
                 CoreferenceCluster {
                     id: "a-mina".into(),
-                    mentions: vec![
-                        mention("m2", 13, 16, "She"),
-                        mention("m1", 0, 4, "Mina"),
-                    ],
+                    mentions: vec![mention("m2", 13, 16, "She"), mention("m1", 0, 4, "Mina")],
                 },
             ],
         };
