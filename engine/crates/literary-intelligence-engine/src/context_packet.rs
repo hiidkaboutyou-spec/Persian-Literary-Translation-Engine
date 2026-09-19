@@ -6,7 +6,10 @@ use memory_engine::{
     SemanticRetrievalStatus, SemanticSidecar, TranslationMemory,
 };
 
-use crate::{deterministic_speaker_context, ManuscriptIntelligence};
+use crate::{
+    deterministic_speaker_context, model_coreference_context, CoreferenceError, CoreferenceResponse,
+    ManuscriptIntelligence,
+};
 
 const NEIGHBOR_EXCERPT_CHARS: usize = 900;
 
@@ -41,10 +44,11 @@ pub struct ChapterContextPacketBuild {
 /// Shared context assembly for CLI and ApplicationService. The function only
 /// consumes canon/evidence owned by existing engines and emits a bounded packet;
 /// it does not promote inferred data or mutate any source of truth.
-pub fn build_chapter_context_packet_with_semantic(
+fn build_chapter_context_packet_internal(
     input: ChapterContextPacketInput<'_>,
     config: &ContextPacketConfig,
     semantic_sidecar: Option<&SemanticSidecar>,
+    coreference_candidate: Option<ContextCandidate>,
 ) -> ChapterContextPacketBuild {
     let mut candidates = Vec::new();
 
@@ -87,6 +91,10 @@ pub fn build_chapter_context_packet_with_semantic(
             )
             .with_evidence_ids([input.chapter_id.to_string()]),
         );
+    }
+
+    if let Some(candidate) = coreference_candidate {
+        candidates.push(candidate);
     }
 
     for relationship in input.characters.relevant_relationships(input.source_text) {
@@ -188,6 +196,50 @@ pub fn build_chapter_context_packet_with_semantic(
         packet: build_context_packet_v2(input.chapter_id, input.source_text, &candidates, config),
         semantic,
     }
+}
+
+/// Shared context assembly with the already-approved optional semantic retrieval sidecar.
+/// Coreference evidence is absent unless callers opt into the dedicated Phase-26 API.
+pub fn build_chapter_context_packet_with_semantic(
+    input: ChapterContextPacketInput<'_>,
+    config: &ContextPacketConfig,
+    semantic_sidecar: Option<&SemanticSidecar>,
+) -> ChapterContextPacketBuild {
+    build_chapter_context_packet_internal(input, config, semantic_sidecar, None)
+}
+
+/// Opt-in Phase-26 context assembly. External/model coreference remains Inferred evidence:
+/// it is accepted only after strict protocol validation and only when a cluster has one
+/// unambiguous canonical name/approved-alias anchor from CharacterBible.
+pub fn build_chapter_context_packet_with_semantic_and_coreference(
+    input: ChapterContextPacketInput<'_>,
+    config: &ContextPacketConfig,
+    semantic_sidecar: Option<&SemanticSidecar>,
+    coreference_response: &CoreferenceResponse,
+) -> Result<ChapterContextPacketBuild, CoreferenceError> {
+    let coreference_candidate =
+        model_coreference_context(input.source_text, input.characters, coreference_response)?
+            .map(|text| {
+                ContextCandidate::new(
+                    stable_evidence_id(
+                        "coreference-map",
+                        &[input.chapter_id, coreference_response.model.as_str(), &text],
+                    ),
+                    ContextKind::Character,
+                    ContextAuthority::Inferred,
+                    text,
+                    "optional coreference-model evidence anchored to exactly one canonical character; never canon",
+                    0.76,
+                )
+                .with_evidence_ids([input.chapter_id.to_string()])
+            });
+
+    Ok(build_chapter_context_packet_internal(
+        input,
+        config,
+        semantic_sidecar,
+        coreference_candidate,
+    ))
 }
 
 /// Deterministic compatibility wrapper. Existing callers keep exactly the old
