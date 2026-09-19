@@ -170,8 +170,9 @@ impl CoreferenceSidecar {
             });
         }
 
-        let response: CoreferenceResponse = serde_json::from_slice(&stdout)
-            .map_err(|error| CoreferenceError::Protocol(format!("invalid JSON response: {error}")))?;
+        let response: CoreferenceResponse = serde_json::from_slice(&stdout).map_err(|error| {
+            CoreferenceError::Protocol(format!("invalid JSON response: {error}"))
+        })?;
         validate_response(
             &request.text,
             &response,
@@ -213,7 +214,10 @@ pub fn canonical_coreference_links(
             .into_iter()
             .next()
             .expect("exactly one canonical character after len check");
-        let anchor_set = anchor_ids.iter().map(String::as_str).collect::<HashSet<_>>();
+        let anchor_set = anchor_ids
+            .iter()
+            .map(String::as_str)
+            .collect::<HashSet<_>>();
         let linked_mentions = cluster
             .mentions
             .iter()
