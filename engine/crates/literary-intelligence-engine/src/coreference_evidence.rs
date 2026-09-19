@@ -505,6 +505,49 @@ mod tests {
     }
 
     #[test]
+    fn duplicate_mention_ids_are_rejected() {
+        let text = "Mina left. She returned.";
+        let response = CoreferenceResponse {
+            schema_version: COREFERENCE_PROTOCOL_VERSION,
+            model: "synthetic".into(),
+            clusters: vec![CoreferenceCluster {
+                id: "c1".into(),
+                mentions: vec![
+                    mention("m1", 0, 4, "Mina"),
+                    mention("m1", 11, 14, "She"),
+                ],
+            }],
+        };
+        assert!(matches!(
+            validate_response(text, &response, 10, 10),
+            Err(CoreferenceError::Protocol(_))
+        ));
+    }
+
+    #[test]
+    fn reused_span_across_clusters_is_rejected() {
+        let text = "Mina left.";
+        let response = CoreferenceResponse {
+            schema_version: COREFERENCE_PROTOCOL_VERSION,
+            model: "synthetic".into(),
+            clusters: vec![
+                CoreferenceCluster {
+                    id: "c1".into(),
+                    mentions: vec![mention("m1", 0, 4, "Mina")],
+                },
+                CoreferenceCluster {
+                    id: "c2".into(),
+                    mentions: vec![mention("m2", 0, 4, "Mina")],
+                },
+            ],
+        };
+        assert!(matches!(
+            validate_response(text, &response, 10, 10),
+            Err(CoreferenceError::Protocol(_))
+        ));
+    }
+
+    #[test]
     fn model_context_is_bounded_and_labeled_noncanonical() {
         let text = "Mina closed the door. She sighed.";
         let response = CoreferenceResponse {
