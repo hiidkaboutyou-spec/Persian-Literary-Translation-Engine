@@ -196,7 +196,9 @@ For Phase 25 changes, run the dedicated `Phase 25 Narrative Speaker Intelligence
 - Coreference model output is evidence only. It must never create, merge, rename, or mutate CharacterBible canon automatically.
 - A model cluster may enter translation context only when explicit canonical-name/approved-alias mentions inside that cluster resolve to exactly one existing canonical character.
 - Clusters with no canonical anchor or multiple conflicting canonical anchors fail closed and are omitted.
-- Validate schema, globally unique mention IDs, unique cluster IDs, non-reused spans, character-offset bounds, and exact source-slice text before consuming a response.
+- Validate schema, source fingerprint binding, globally unique bounded/safe mention IDs, unique bounded/safe cluster IDs, non-reused spans, aggregate mention limits, character-offset bounds, and exact source-slice text before consuming a response.
+- Bound sidecar stdin/stdout/stderr execution: concurrent pipe draining, timeout, stdout/stderr byte ceilings, and explicit oversized-output failure are part of the protocol safety contract.
+- Canonicalize accepted clusters/mentions by source position before bounded Context Packet rendering; model return order must not control which evidence survives the output budget.
 - Coreference Context Packet items have Inferred authority. Do not upgrade them to Deterministic, Canonical, or HumanApproved merely because they contain a canonical anchor.
 - Existing non-coreference translation/context paths must remain usable when the optional sidecar is missing, malformed, timed out, or disabled.
 - Keep optional sidecars bounded by input size, cluster/mention limits, and timeout. Do not silently send manuscripts to a remote service.
