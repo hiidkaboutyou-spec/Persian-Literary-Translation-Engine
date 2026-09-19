@@ -216,7 +216,8 @@ Detailed rationale: `docs/PHASE_23_RESEARCH.md`.
 - Phase 22 — Product Surface & Distribution Hardening — canonical/merged (PR #102; `dc2bf1eee2f5d2dedc7c97d0164c3c26b8ac979b`).
 - Phase 23 — Trusted Release & Supply-Chain Hardening — canonical/merged (PR #103; `adc2ab2294feec6ff190b4e4d11c3fa6407ca7f2`).
 - Phase 24 — Literary Precision & Persian Polish — canonical/merged (PR #104; `2fa48dfd39437f79e6ac9db949f54e6595f2cc0a`).
-- Phase 25 — Narrative Speaker & Coreference Intelligence — active branch `phase-25-narrative-speaker-intelligence`; draft PR #106.
+- Phase 25 — Narrative Speaker & Coreference Intelligence — canonical/merged (PR #106; `e39a46dd652aaea6fd8d990d70a32fba2d96b0d4`).
+- Phase 26 — Editorial Workspace UX & Accessibility — active branch `phase-26-editorial-workspace-accessibility`.
 
 Always finish/verify the current numbered phase before starting the next numbered phase. Supporting tooling may land between phases only when runtime defaults remain intact, ownership/failure boundaries are explicit, and validation passes.
 
@@ -243,7 +244,9 @@ Before adding any GitHub repository/package/tool:
 - `AGENTS.md` — engineering/agent constraints
 - `docs/IMPLEMENTATION_STATUS.md` — implemented capabilities/current branch state
 - `docs/IMPLEMENTATION_ROADMAP.md` — roadmap
-- `docs/PHASE_23_RESEARCH.md` — current trusted-release/supply-chain/branding-tool research
+- `docs/PHASE_26_RESEARCH.md` — current editorial workspace/accessibility research and exit criteria
+- `docs/PHASE_25_RESEARCH.md` — canonical narrative speaker/coreference research
+- `docs/PHASE_23_RESEARCH.md` — trusted-release/supply-chain/branding-tool research
 - `docs/PHASE_22_RESEARCH.md` — canonical product/distribution research/decisions
 - `docs/PHASE_21_RESEARCH.md` — benchmark/evaluation research/decisions
 - `docs/PHASE_20_RESEARCH.md` — publication research/decisions
@@ -277,6 +280,25 @@ Updating this repository seed does **not** mean the user's local PMC/Obsidian va
 13. Phase-24 dependency commands must be `--locked` after the committed lockfile. Do not reintroduce a CI lockfile bootstrap on canonical main.
 14. No source manuscript, generated translation, reviewer private data or provider secret may be added to repository/project memory.
 15. **Next research target is speaker/coreference evidence** — the current character context is strong for canonical names/aliases but does not itself resolve pronouns or quotation speakers. Any Phase-25 work must begin with a rights-safe benchmark and must not install BookNLP/FastCoref or another model stack until it proves a measurable gain.
+
+## Durable Phase 26 decisions
+
+1. **Phase 25 is canonical** — PR #106 merged at `e39a46dd652aaea6fd8d990d70a32fba2d96b0d4`; final reviewed head `9037f569cffb2618b915248db2c60015764d034c`.
+2. **UI remains an adapter** — Phase 26 may change local HTML/CSS/JavaScript presentation only; translation, review, canon, persistence, providers, filesystem and publishing remain owned by Rust/`ApplicationService`.
+3. **No frontend framework is justified** — stay with locally bundled static HTML/CSS/JS; no React/Vue/Svelte/Vite/Tailwind/npm runtime.
+4. **Themes are session-only presentation state** — System, Midnight Ink, Rose Paper and Sage Manuscript must not write `localStorage`/`sessionStorage` or project files.
+5. **Keyboard is first-class** — command palette plus `⌘1`…`⌘8` navigation must preserve standard system shortcuts and remain operable without a pointer.
+6. **Accessibility is part of product correctness** — retain visible focus, polite atomic live-region notices, `aria-current`, `aria-keyshortcuts`, dialog/search semantics and focus return.
+7. **Motion is optional** — View Transitions are progressive enhancement only; direct-update fallback and `prefers-reduced-motion` are mandatory.
+8. **Persian focus mode is presentation-only** — hiding the source pane must not mutate source/chapter/application state.
+9. **No remote visual surface** — no CDN/font/script/image/page, no `innerHTML`, and no general frontend filesystem authority.
+10. **No Tauri upgrade in Phase 26** — keep the already-audited Tauri 2.11.5 / tauri-cli 2.11.4 line; UX work and dependency migration stay separate.
+11. **No private native glass API** — do not enable `window-vibrancy`/`macOSPrivateApi` merely for decoration.
+12. **Apple Silicon proof is permanent** — Phase 22 desktop bundle validation now also runs on `main` and the Phase-26 branch; Phase 26 has its own UI/accessibility + locked compile gate.
+13. **Old visual PRs are design references only** — #107–#109 were based before canonical Phase 25 and must not be merged as numbered Phase 25 work.
+14. **Memory privacy remains unchanged** — store architecture/decisions/CI handoff only; never manuscripts, generated translations, provider keys or private reviewer content.
+
+Detailed rationale: `docs/PHASE_26_RESEARCH.md`.
 
 ## Durable Phase 25 decisions
 
