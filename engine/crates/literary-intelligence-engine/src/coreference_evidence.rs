@@ -196,8 +196,26 @@ impl CoreferenceSidecar {
             .stdin
             .take()
             .ok_or_else(|| CoreferenceError::Protocol("sidecar stdin was not available".into()))?;
-        stdin.write_all(&payload)?;
-        drop(stdin);
+        let stdout = child
+            .stdout
+            .take()
+            .ok_or_else(|| CoreferenceError::Protocol("sidecar stdout was not available".into()))?;
+        let stderr = child
+            .stderr
+            .take()
+            .ok_or_else(|| CoreferenceError::Protocol("sidecar stderr was not available".into()))?;
+
+        // Drain all pipes concurrently. A sidecar that writes before reading stdin,
+        // or emits enough output to fill an OS pipe, must not deadlock the host.
+        let writer = thread::spawn(move || {
+            let result = stdin.write_all(&payload);
+            drop(stdin);
+            result
+        });
+        let max_stdout_bytes = self.max_stdout_bytes;
+        let stdout_reader = thread::spawn(move || read_bounded(stdout, max_stdout_bytes));
+        let max_stderr_bytes = self.max_stderr_bytes;
+        let stderr_reader = thread::spawn(move || read_bounded(stderr, max_stderr_bytes));
 
         let started = Instant::now();
         let status = loop {
@@ -207,6 +225,9 @@ impl CoreferenceSidecar {
             if started.elapsed() >= self.timeout {
                 let _ = child.kill();
                 let _ = child.wait();
+                let _ = writer.join();
+                let _ = stdout_reader.join();
+                let _ = stderr_reader.join();
                 return Err(CoreferenceError::Timeout {
                     timeout_ms: self.timeout.as_millis().min(u128::from(u64::MAX)) as u64,
                 });
@@ -214,48 +235,85 @@ impl CoreferenceSidecar {
             thread::sleep(Duration::from_millis(25));
         };
 
-        let mut stdout = Vec::new();
-        let mut stderr = Vec::new();
-        if let Some(mut pipe) = child.stdout.take() {
-            pipe.read_to_end(&mut stdout)?;
+        let write_result = writer
+            .join()
+            .map_err(|_| CoreferenceError::Protocol("sidecar stdin writer panicked".into()))?;
+        let stdout = stdout_reader
+            .join()
+            .map_err(|_| CoreferenceError::Protocol("sidecar stdout reader panicked".into()))??;
+        let stderr = stderr_reader
+            .join()
+            .map_err(|_| CoreferenceError::Protocol("sidecar stderr reader panicked".into()))??;
+
+        if stdout.exceeded {
+            return Err(CoreferenceError::OutputTooLarge {
+                stream: "stdout",
+                limit_bytes: self.max_stdout_bytes,
+            });
         }
-        if let Some(mut pipe) = child.stderr.take() {
-            pipe.read_to_end(&mut stderr)?;
+        if stderr.exceeded {
+            return Err(CoreferenceError::OutputTooLarge {
+                stream: "stderr",
+                limit_bytes: self.max_stderr_bytes,
+            });
         }
         if !status.success() {
             return Err(CoreferenceError::SidecarFailed {
                 status: status.code(),
-                stderr: String::from_utf8_lossy(&stderr).into_owned(),
+                stderr: String::from_utf8_lossy(&stderr.bytes).into_owned(),
             });
         }
+        write_result?;
 
-        let response: CoreferenceResponse = serde_json::from_slice(&stdout).map_err(|error| {
-            CoreferenceError::Protocol(format!("invalid JSON response: {error}"))
-        })?;
-        validate_response(
+        let response: CoreferenceResponse =
+            serde_json::from_slice(&stdout.bytes).map_err(|error| {
+                CoreferenceError::Protocol(format!("invalid JSON response: {error}"))
+            })?;
+        validate_response_with_limits(
+            &request.unit_id,
             &request.text,
             &response,
             self.max_clusters,
             self.max_mentions_per_cluster,
+            self.max_total_mentions,
         )?;
         Ok(response)
     }
 }
 
 pub fn canonical_coreference_links(
+    unit_id: &str,
     source_text: &str,
     characters: &CharacterBible,
     response: &CoreferenceResponse,
 ) -> Result<Vec<CanonicalCoreferenceLink>, CoreferenceError> {
     validate_response(
+        unit_id,
         source_text,
         response,
         DEFAULT_MAX_CLUSTERS,
         DEFAULT_MAX_MENTIONS_PER_CLUSTER,
     )?;
 
+    let mut clusters = response.clusters.iter().collect::<Vec<_>>();
+    clusters.sort_by(|a, b| {
+        let a_start = a
+            .mentions
+            .iter()
+            .map(|mention| mention.start_char)
+            .min()
+            .unwrap_or(usize::MAX);
+        let b_start = b
+            .mentions
+            .iter()
+            .map(|mention| mention.start_char)
+            .min()
+            .unwrap_or(usize::MAX);
+        a_start.cmp(&b_start).then_with(|| a.id.cmp(&b.id))
+    });
+
     let mut links = Vec::new();
-    for cluster in &response.clusters {
+    for cluster in clusters {
         let mut canonical_names = BTreeSet::new();
         let mut anchor_ids = Vec::new();
 
@@ -277,12 +335,19 @@ pub fn canonical_coreference_links(
             .iter()
             .map(String::as_str)
             .collect::<HashSet<_>>();
-        let linked_mentions = cluster
+        anchor_ids.sort();
+        let mut linked_mentions = cluster
             .mentions
             .iter()
             .filter(|mention| !anchor_set.contains(mention.id.as_str()))
             .cloned()
             .collect::<Vec<_>>();
+        linked_mentions.sort_by(|a, b| {
+            a.start_char
+                .cmp(&b.start_char)
+                .then_with(|| a.end_char.cmp(&b.end_char))
+                .then_with(|| a.id.cmp(&b.id))
+        });
         if linked_mentions.is_empty() {
             continue;
         }
@@ -298,11 +363,12 @@ pub fn canonical_coreference_links(
 }
 
 pub fn model_coreference_context(
+    unit_id: &str,
     source_text: &str,
     characters: &CharacterBible,
     response: &CoreferenceResponse,
 ) -> Result<Option<String>, CoreferenceError> {
-    let links = canonical_coreference_links(source_text, characters, response)?;
+    let links = canonical_coreference_links(unit_id, source_text, characters, response)?;
     if links.is_empty() {
         return Ok(None);
     }
