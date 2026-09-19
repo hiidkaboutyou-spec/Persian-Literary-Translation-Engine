@@ -18,6 +18,7 @@ pub mod traits;
 
 mod context_packet;
 mod manuscript_analyzer;
+mod speaker_attribution;
 
 pub use context_packet::{
     build_chapter_context_packet, build_chapter_context_packet_with_semantic,
@@ -28,3 +29,8 @@ pub use manuscript_analyzer::{
     AnalysisCanon, AnalysisConfig, DeterministicManuscriptAnalyzer, ManuscriptAnalyzer,
 };
 pub use models::manuscript_intelligence::*;
+
+pub use speaker_attribution::{
+    attribute_speakers, deterministic_speaker_context, AttributionMethod, QuoteSpan, QuoteStyle,
+    SpeakerAttribution,
+};

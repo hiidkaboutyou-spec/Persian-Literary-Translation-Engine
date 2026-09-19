@@ -354,3 +354,58 @@ Before adding/upgrading any external repository/package/model/tool:
 8. validate optional tools on Linux/macOS when expected there;
 9. never convert external evidence into canon or human approval;
 10. record selected/deferred decisions in roadmap/status/PMC/this document before merge.
+
+## Phase 25 narrative-speaker candidates
+
+### ModernBookNLP
+
+Upstream: `gasmichel/ModernBookNLP_QA`.
+
+Research value: 2026 joint-scoring quotation attribution with strong reported PDNC results and an MIT-licensed modified BookNLP subfolder.
+
+Boundary:
+
+- root research stack is Python/Torch/Transformers/spaCy/torch-geometric heavy;
+- root repository licensing and separately downloaded model checkpoint terms must be reviewed independently before any integration;
+- not installed and not a runtime/build requirement;
+- future use, if any, must be an optional process sidecar with benchmark-proven gain and evidence-only output.
+
+### BookNLP
+
+Upstream: `booknlp/booknlp`; MIT source.
+
+Research value: literary entities, quotation detection/speaker attribution and coreference.
+
+Boundary: reference/optional future benchmark only. The Phase-25 native explicit-speaker baseline does not require its model stack.
+
+### FastCoref
+
+Upstream: `shon-otmazgin/fastcoref`; previously reviewed MIT software/model-card terms for F-Coref/LingMess.
+
+Boundary: optional future English coreference benchmark only. No product dependency until a rights-safe pronoun/coreference benchmark proves a measurable gap.
+
+### Maverick / BookCoref
+
+Upstreams: `SapienzaNLP/maverick-coref`, `SapienzaNLP/bookcoref`.
+
+Reviewed terms include non-commercial CC licensing. Research-only; do not vendor or integrate into product/runtime.
+
+### Renard
+
+Upstream: `CompNet/Renard`; GPL-3.0-only.
+
+Research value: modular character-network pipeline design.
+
+Boundary: architecture reference only; no dependency/code adoption.
+
+### LitBank
+
+Upstream: `dbamman/litbank`; dataset license CC BY 4.0.
+
+Boundary: eligible for a future attributed external/reference benchmark. Permanent CI remains project-owned synthetic and network-free.
+
+### PDNC
+
+Project Dialogism Novel Corpus; CC BY-NC 4.0.
+
+Boundary: research reference only; not a product benchmark dependency or committed corpus.

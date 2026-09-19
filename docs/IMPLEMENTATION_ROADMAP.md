@@ -219,6 +219,33 @@ Research/dependency decisions remain: Virastar/`rezkam/persian` are references o
 
 Detailed research: `docs/PHASE_24_RESEARCH.md`.
 
+### Phase 25 — Narrative Speaker & Coreference Intelligence — active branch/validation
+
+Branch: `phase-25-narrative-speaker-intelligence`.
+Draft PR: #106.
+
+Goal: make quote-speaker identity explicit enough to preserve character voice in literary translation without guessing pronouns/turn-taking or adding a hidden model runtime.
+
+Implemented:
+
+- native Rust quotation detection for straight double quotes, curly double quotes, curly single quotes, guillemets, and conservative leading-dash dialogue detection;
+- high-precision explicit name/approved-alias + speech-verb attribution with quote-local cue isolation;
+- fail-closed handling for pronoun-only, no-cue, ambiguous/collision and vocative cases, plus same-verb `asked <object>` disambiguation without ranking unrelated conflicting speakers;
+- bounded deterministic `SPEAKER MAP` evidence injected into Context Packet v2 with Deterministic (not Canonical) authority;
+- project-owned synthetic Phase-25 benchmark requiring zero wrong resolved speaker labels while preserving unresolved examples;
+- permanent Linux + Apple Silicon Phase-25 workflow with locked dependency graph and no external model dependency.
+
+Research decisions:
+
+- LitBank is CC BY 4.0 and may be used later as an attributed external/reference benchmark; permanent CI remains project-owned/network-free.
+- PDNC and BookCoref are non-commercially licensed and remain research references only.
+- Renard is GPL-3.0-only and Torch/Transformers-heavy; architecture reference only.
+- ModernBookNLP reports strong 2026 quotation-attribution results but its heavy model stack and separate checkpoint-provenance boundary do not justify product integration before a measured benchmark gain.
+- BookNLP and FastCoref remain optional future benchmark candidates only; Maverick remains blocked from product integration by non-commercial terms.
+- no Torch, Transformers, spaCy, BookNLP, FastCoref, Maverick, BookCoref, or Renard dependency is installed.
+
+Exit criteria: `docs/PHASE_25_RESEARCH.md`.
+
 ## Next Action Rule
 
 Always finish and verify the current numbered phase before starting the next numbered phase. Supporting tooling may be added only when it leaves runtime defaults intact and has an explicit owner/failure boundary. Do not treat branch-only work as merged. When a phase changes architecture, persistence, quality, or publishing contracts, update `IMPLEMENTATION_STATUS.md`, this roadmap, engineering decisions, external-integration notes, and project-memory notes together.

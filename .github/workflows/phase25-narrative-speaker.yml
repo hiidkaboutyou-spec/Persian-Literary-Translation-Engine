@@ -1,0 +1,93 @@
+name: Phase 25 Narrative Speaker Intelligence
+
+on:
+  push:
+    branches:
+      - main
+      - phase-25-narrative-speaker-intelligence
+    paths:
+      - 'engine/crates/literary-intelligence-engine/**'
+      - 'engine/crates/project-engine/**'
+      - 'benchmarks/phase25/**'
+      - '.github/workflows/phase25-narrative-speaker.yml'
+      - 'docs/PHASE_25_RESEARCH.md'
+      - 'docs/IMPLEMENTATION_ROADMAP.md'
+      - 'docs/IMPLEMENTATION_STATUS.md'
+      - 'docs/PMC_BOOTSTRAP.md'
+      - 'docs/EXTERNAL_INTEGRATIONS.md'
+      - 'AGENTS.md'
+  pull_request:
+    paths:
+      - 'engine/crates/literary-intelligence-engine/**'
+      - 'engine/crates/project-engine/**'
+      - 'benchmarks/phase25/**'
+      - '.github/workflows/phase25-narrative-speaker.yml'
+      - 'docs/PHASE_25_RESEARCH.md'
+      - 'docs/IMPLEMENTATION_ROADMAP.md'
+      - 'docs/IMPLEMENTATION_STATUS.md'
+      - 'docs/PMC_BOOTSTRAP.md'
+      - 'docs/EXTERNAL_INTEGRATIONS.md'
+      - 'AGENTS.md'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase25-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-speaker-intelligence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # reviewed stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Verify committed dependency graph
+        working-directory: engine
+        run: cargo metadata --locked --format-version 1 --no-deps > /dev/null
+
+      - name: Verify formatting
+        working-directory: engine
+        run: cargo fmt --all -- --check
+
+      - name: Clippy narrative intelligence surfaces
+        working-directory: engine
+        run: cargo clippy --locked -p literary-intelligence-engine -p project-engine --all-targets -- -D warnings
+
+      - name: Test speaker attribution, rights-safe corpus, and context integration
+        working-directory: engine
+        run: cargo test --locked -p literary-intelligence-engine -p project-engine
+
+      - name: Prove benchmark stays project-owned and model-free
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q '"synthetic": true' benchmarks/phase25/speaker-corpus-v1.json
+          grep -q '"redistribution_allowed": true' benchmarks/phase25/speaker-corpus-v1.json
+          ! grep -R -nE 'booknlp|fastcoref|maverick-coref|torch|transformers'             engine/crates/literary-intelligence-engine/Cargo.toml             engine/crates/project-engine/Cargo.toml
+
+  macos-arm64:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Verify Apple Silicon runner
+        run: test "$(uname -m)" = arm64
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # reviewed stable
+
+      - name: Compile and test narrative intelligence
+        working-directory: engine
+        run: |
+          cargo check --locked -p literary-intelligence-engine -p project-engine --all-targets
+          cargo test --locked -p literary-intelligence-engine

@@ -6,7 +6,7 @@ use memory_engine::{
     SemanticRetrievalStatus, SemanticSidecar, TranslationMemory,
 };
 
-use crate::ManuscriptIntelligence;
+use crate::{deterministic_speaker_context, ManuscriptIntelligence};
 
 const NEIGHBOR_EXCERPT_CHARS: usize = 900;
 
@@ -71,6 +71,22 @@ pub fn build_chapter_context_packet_with_semantic(
             "canonical character is present in the current source unit",
             1.0,
         ));
+    }
+
+    if let Some(text) =
+        deterministic_speaker_context(input.chapter_id, input.source_text, input.characters)
+    {
+        candidates.push(
+            ContextCandidate::new(
+                stable_evidence_id("speaker-map", &[input.chapter_id, &text]),
+                ContextKind::Character,
+                ContextAuthority::Deterministic,
+                text,
+                "high-precision explicit quote-speaker evidence; unresolved dialogue is omitted",
+                0.94,
+            )
+            .with_evidence_ids([input.chapter_id.to_string()]),
+        );
     }
 
     for relationship in input.characters.relevant_relationships(input.source_text) {
@@ -452,6 +468,52 @@ mod tests {
             candidate.kind == ContextKind::ChapterSummary
                 && candidate.authority == ContextAuthority::Deterministic
         }));
+    }
+
+    #[test]
+    fn explicit_speaker_map_reaches_context_without_resolving_pronouns() {
+        let document = test_manuscript("\"Stay,\" Mina said. \"No,\" she replied.");
+        let mut characters = CharacterBible::new();
+        characters.add(CharacterProfile {
+            name: "Mina".into(),
+            voice_notes: "quiet and precise".into(),
+            personality_notes: "guarded".into(),
+        });
+        let glossary = Glossary::default();
+        let translation_memory = TranslationMemory::new();
+        let intelligence = DeterministicManuscriptAnalyzer::default()
+            .analyze(
+                &document,
+                AnalysisCanon {
+                    characters: &characters,
+                    glossary: &glossary,
+                },
+            )
+            .unwrap();
+        let chapter_id = intelligence.chapter_maps[0].chapter_id.clone();
+        let packet = build_chapter_context_packet(
+            ChapterContextPacketInput {
+                document_title: "Test",
+                chapter_id: &chapter_id,
+                chapter_title: "Chapter 1",
+                source_text: "\"Stay,\" Mina said. \"No,\" she replied.",
+                previous: None,
+                next: None,
+                characters: &characters,
+                glossary: &glossary,
+                translation_memory: &translation_memory,
+                intelligence: &intelligence,
+                reviewed_literary_lines: &[],
+            },
+            &ContextPacketConfig::default(),
+        );
+
+        assert!(packet
+            .items
+            .iter()
+            .any(|item| item.text.contains("SPEAKER MAP")));
+        assert!(packet.rendered_context.contains("Mina"));
+        assert!(!packet.rendered_context.contains("she →"));
     }
 
     #[test]

@@ -174,3 +174,19 @@ For Phase 20 publishing changes, run the dedicated `Phase 20 EPUB Round Trip` wo
 - `rbook` is dev/CI-only independent EPUB evidence. Do not move it into normal document-engine dependencies or replace the pinned BookForge reconstruction boundary.
 - Do not add BookNLP, FastCoref, Hazm, DadmaTools or another model/NLP stack to defaults without a rights-safe benchmark proving a concrete gap plus license/security review.
 - Do not duplicate existing Context Packet v2 or relevant-only glossary/canon selection when adopting ideas from document-translation research.
+
+## Phase 25 narrative-speaker invariants
+
+- Speaker attribution belongs to `literary-intelligence-engine`; canonical character identity remains owned by `CharacterBible`.
+- Resolve only supported high-precision explicit name/alias + speech-verb patterns by default. Do not guess pronoun/coreference or conversational turn-taking.
+- Never infer character gender from names or use gender assumptions to resolve `he/she/they`.
+- Do not treat a vocative/name inside quoted text as the speaker.
+- Preserve the `asked <object>` guard and quote-local cue isolation; cues cannot cross another quotation or a hard pre-quote sentence boundary, and conflicting local character cues fail closed.
+- Unresolved/ambiguous dialogue is a valid output. Never turn lack of attribution into a silent pass or fabricated character.
+- Context Packet speaker maps have Deterministic authority, not Canonical/HumanApproved authority.
+- Keep speaker context bounded; do not dump whole-book dialogue or model traces into provider context.
+- Permanent speaker-attribution CI must remain project-owned/network-free unless a future phase explicitly adopts an external benchmark with reviewed rights.
+- Do not add BookNLP, ModernBookNLP, FastCoref, Maverick, BookCoref, Renard, Torch, Transformers or spaCy to default dependencies without a new benchmark/license/security decision.
+- Any future speaker/coreference sidecar is optional evidence only and must fail without breaking normal translation.
+
+For Phase 25 changes, run the dedicated `Phase 25 Narrative Speaker Intelligence` workflow. It must cover native speaker attribution, project-owned benchmark provenance, zero incorrect resolved labels on the committed corpus, Context Packet integration, locked Linux validation and Apple Silicon compilation/tests.

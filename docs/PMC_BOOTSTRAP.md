@@ -216,6 +216,7 @@ Detailed rationale: `docs/PHASE_23_RESEARCH.md`.
 - Phase 22 — Product Surface & Distribution Hardening — canonical/merged (PR #102; `dc2bf1eee2f5d2dedc7c97d0164c3c26b8ac979b`).
 - Phase 23 — Trusted Release & Supply-Chain Hardening — canonical/merged (PR #103; `adc2ab2294feec6ff190b4e4d11c3fa6407ca7f2`).
 - Phase 24 — Literary Precision & Persian Polish — canonical/merged (PR #104; `2fa48dfd39437f79e6ac9db949f54e6595f2cc0a`).
+- Phase 25 — Narrative Speaker & Coreference Intelligence — active branch `phase-25-narrative-speaker-intelligence`; draft PR #106.
 
 Always finish/verify the current numbered phase before starting the next numbered phase. Supporting tooling may land between phases only when runtime defaults remain intact, ownership/failure boundaries are explicit, and validation passes.
 
@@ -276,3 +277,19 @@ Updating this repository seed does **not** mean the user's local PMC/Obsidian va
 13. Phase-24 dependency commands must be `--locked` after the committed lockfile. Do not reintroduce a CI lockfile bootstrap on canonical main.
 14. No source manuscript, generated translation, reviewer private data or provider secret may be added to repository/project memory.
 15. **Next research target is speaker/coreference evidence** — the current character context is strong for canonical names/aliases but does not itself resolve pronouns or quotation speakers. Any Phase-25 work must begin with a rights-safe benchmark and must not install BookNLP/FastCoref or another model stack until it proves a measurable gain.
+
+## Durable Phase 25 decisions
+
+1. **Speaker attribution belongs to literary intelligence** — it reuses canonical `CharacterBible` identities and must not create a second character/canon owner.
+2. **Precision before coverage** — resolve only explicit high-precision name/alias + speech-verb patterns first. Pronoun-only, implicit turn-taking and unsupported dialogue remain unresolved.
+3. **No gender inference** — never infer speaker identity from pronoun gender or character-name assumptions.
+4. **Vocatives are not speakers** — character names inside a quotation are content unless independent outside-quote evidence identifies a speaker.
+5. **Ask-object guard** — before a quote, `verb + name` is not accepted as speaker evidence because `Mina asked Reza, "..."` makes Reza an object/addressee candidate. After a quote, when `name + speech-verb` and `speech-verb + name` candidates share the exact same speech-verb token (for example `"..." Mina asked Reza`), the inverted candidate is treated as that verb’s object/addressee; unrelated local cues still fail closed.
+6. **Quote-local evidence, conflict fail-closed** — attribution cues cannot cross another quotation or a hard pre-quote sentence boundary; if multiple explicit local character cues remain, do not pick the nearest one—leave the quote unresolved.
+7. **Context authority stays Deterministic** — the canonical character is known, but quote-to-speaker linkage is inferred evidence and is never promoted to Canonical/HumanApproved automatically.
+8. **Permanent CI corpus is project-owned synthetic** — LitBank CC BY 4.0 may be used later as an attributed external/reference benchmark, but CI has no network/corpus dependency.
+9. **Non-commercial corpora/models are research-only** — PDNC, BookCoref and Maverick terms do not become product dependencies.
+10. **ModernBookNLP/BookNLP/FastCoref are not installed** — a future sidecar requires separate source/model/data license review and a measurable rights-safe gain over the native baseline.
+11. **Renard is reference-only** — GPL-3.0-only plus heavy Python/Torch dependencies do not justify integration.
+12. **No new runtime dependency in Phase 25 baseline** — the implementation is native Rust inside existing `literary-intelligence-engine`.
+13. **Model evidence can never create canon** — any future coreference/speaker sidecar remains optional evidence and normal translation must work without it.
