@@ -3,7 +3,9 @@ name: Phase 22 Desktop Product
 on:
   push:
     branches:
+      - main
       - phase-22-product-surface-distribution
+      - phase-26-editorial-workspace-accessibility
     paths:
       - 'desktop/**'
       - 'engine/crates/project-engine/**'
