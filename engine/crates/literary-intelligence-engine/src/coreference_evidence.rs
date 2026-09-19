@@ -794,7 +794,7 @@ mod tests {
     #[test]
     fn mapped_context_order_is_source_stable_not_model_order() {
         let text = "Mina waited. She left. Reza paused. He followed.";
-        let mut bible = bible();
+        let bible = bible();
         let response = CoreferenceResponse {
             schema_version: COREFERENCE_PROTOCOL_VERSION,
             source_fingerprint: coreference_source_fingerprint("u1", text),
@@ -803,8 +803,8 @@ mod tests {
                 CoreferenceCluster {
                     id: "z-reza".into(),
                     mentions: vec![
-                        mention("m4", 37, 39, "He"),
-                        mention("m3", 24, 28, "Reza"),
+                        mention("m4", 36, 38, "He"),
+                        mention("m3", 23, 27, "Reza"),
                     ],
                 },
                 CoreferenceCluster {
@@ -816,12 +816,6 @@ mod tests {
                 },
             ],
         };
-        // Re-adding the existing profile is a no-op for this assertion's ownership model.
-        bible.add(CharacterProfile {
-            name: "Reza".into(),
-            voice_notes: "warm".into(),
-            personality_notes: "patient".into(),
-        });
         let context = model_coreference_context("u1", text, &bible, &response)
             .unwrap()
             .unwrap();
