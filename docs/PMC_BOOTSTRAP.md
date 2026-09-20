@@ -312,4 +312,25 @@ Updating this repository seed does **not** mean the user's local PMC/Obsidian va
 11. **NovelCR is blocked from committed use until dataset licensing is explicit** — public availability is not enough.
 12. **No model stack added in Phase 26** — no Torch, Transformers, spaCy, xCoRe, Maverick, BookCoref, FastCoref or CorPipe dependency is introduced.
 
-13. **Sidecar deadlines include host scheduling delay** — optional coreference process timeouts start before spawn and fail closed when the host has not observed completion within the configured budget. Late completion after scheduler delay is not accepted as timely evidence.
+
+## Durable Phase 27 decisions
+
+1. **Phase 26 is canonical before Phase 27 landing** — Phase-26 final head `8418fdf4eb06252dec8a014c13e789efa7fe800e` landed via PR #111 at merge `5c0d4c8514b999faf786971da8541f7ea5a1b773`. PR #113 now targets `main`; Phase 27 remains non-canonical until its own exact-head gates pass and it lands.
+2. **The next measured gap is operational full-book reliability** — after long-span coreference, do not add another model stack before proving that multi-session whole-book execution, recovery and export are trustworthy.
+3. **Checkpoint reuse is semantic-plan aware** — source/context equality is insufficient. Reuse also requires a deterministic translation-plan fingerprint covering resolved provider/model, target language, style profile, protocol version and pipeline contract.
+4. **Execution budgets are not semantic identity** — `max_chapters` is deliberately excluded from the plan fingerprint and counts newly translated chapters only. Valid reused checkpoints must not consume the current run's translation budget.
+5. **Resume rebuilds progress from evidence** — completed chapter/paragraph counts are reconstructed from valid current-plan checkpoints on each run instead of adding persisted counts again. Final completed counts must exactly equal book totals.
+6. **Legacy/mismatched checkpoints fail safe** — a checkpoint with no Phase-27 plan fingerprint, or a different plan fingerprint, is regenerated rather than silently mixed into the new run.
+7. **Permanent pilot CI remains rights-safe** — the Phase-27 12-chapter rehearsal uses project-owned synthetic manuscript generation. A real/user book is never committed as a fixture.
+8. **Real-book text stays in native project storage** — do not copy manuscript or generated translation text into GitHub, PMC/projectmem, Linear, CI artifacts/logs, or external benchmark/research services. Developer trackers may store non-text metadata such as chapter ID, failure class and fix status.
+9. **No single automatic book-quality score becomes authority** — research through 2026 shows weaknesses in document-level metrics. Use deterministic whole-book invariants, bounded local/discourse windows, omission/addition evidence and focused human review.
+10. **Do not change refinement granularity from literature alone** — ACL 2026 evidence favors document translation plus smaller refinement in studied settings, but EN→FA behavior must be measured in our pilot before changing the production default.
+11. **Pilot sampling is position-aware** — first real-book review must include early, middle and late chapters; long/chunk-boundary passages; dialogue/coreference; recurring terminology; and relationship/register continuity.
+12. **No new runtime dependency in the Phase-27 baseline** — no Temporal/workflow engine, cloud persistence, new provider/model stack or second persistence owner is introduced to solve these operational bugs.
+
+13. **Export is current-plan fail-closed** — disk presence is insufficient. Export requires Completed current progress, exact chapter/source-paragraph totals, current source identity, non-empty plan identity, and every structured chapter artifact matching the current plan/source.
+14. **Structured artifacts are part of checkpoint validity** — a text/fingerprint checkpoint without a matching structured chapter artifact is regenerated; EPUB additionally requires exact block provenance.
+15. **Operational paragraph progress counts source paragraphs** — provider changes to paragraph segmentation must not distort completion percentages or prevent a valid completed DOCX workflow.
+16. **Bounded repair may scan later valid checkpoints** — `max_chapters` limits new provider translations, not evidence reconstruction. After repairing one hole, later valid checkpoints may still be counted in the same resume pass.
+
+17. **Sidecar deadlines include host scheduling delay** — optional coreference process timeouts start before spawn and fail closed when the host has not observed completion within the configured budget. Late completion after scheduler delay is not accepted as timely evidence.

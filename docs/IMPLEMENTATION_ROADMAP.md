@@ -225,10 +225,12 @@ PR #106; final reviewed head `9037f569cffb2618b915248db2c60015764d034c`; merge `
 
 Canonical Phase 25 provides a native high-precision explicit quotation-speaker baseline, project-owned regression coverage, bounded deterministic Context Packet speaker evidence, and fail-closed ambiguity/pronoun handling without adding BookNLP/FastCoref/Torch/Transformers/spaCy or another model runtime.
 
-### Phase 26 — Long-Span Literary Coreference Evidence — active branch/validation
+### Phase 26 — Long-Span Literary Coreference Evidence — canonical
 
-Branch: `phase-26-long-span-coreference-evidence`.
-Draft PR: #111.
+PR #111 final validated head: `8418fdf4eb06252dec8a014c13e789efa7fe800e`.
+Merge commit: `5c0d4c8514b999faf786971da8541f7ea5a1b773`.
+
+Final-head gates were green: Phase 26, Rust CI, Security, Phases 18–25, Desktop Product, Trusted Release, and Project Memory. Final hardening also made optional sidecar deadlines fail closed under host scheduler delay.
 
 Goal: add an optional, rights-safe and fail-closed coreference evidence boundary for pronouns/nominal mentions without letting model clusters become character canon.
 
@@ -253,6 +255,28 @@ Research decisions:
 - NovelCR remains reference-only until exact dataset-level redistribution/licensing is explicitly verified.
 
 Exit criteria: `docs/PHASE_26_RESEARCH.md`.
+
+### Phase 27 — Real-Book Pilot Readiness & Resume Integrity — active validation
+
+Branch: `phase-27-real-book-pilot-hardening`.
+PR #113 now targets canonical `main` after Phase 26 merge.
+
+Goal: make the first user-supplied full-book run operationally trustworthy before adding another model stack.
+
+Current Phase-27 work:
+
+- semantic translation-plan fingerprints bind checkpoint reuse to resolved provider/model, target language, style profile, and pipeline contract;
+- resume reconstructs progress from valid current-plan checkpoints instead of incrementing previously persisted counts;
+- valid reused checkpoints no longer consume `max_chapters`, so bounded resume advances to genuinely untranslated chapters;
+- legacy or mismatched plan checkpoints regenerate instead of silently mixing translation configurations;
+- structured chapter artifacts are mandatory reuse evidence and operational progress counts completed source paragraphs;
+- `max_chapters` limits new provider work while later valid checkpoints remain discoverable during sparse repair;
+- mixed-plan/partial exports fail closed instead of combining stale chapters into a publishable DOCX/EPUB;
+- project-owned 12-chapter repeated-resume rehearsal proves exact completion, reopen, and DOCX export without committing a real manuscript;
+- first real-book evaluation protocol samples early/middle/late text, long/chunk-boundary passages, dialogue/coreference, terminology/register recurrence, and omission/addition evidence;
+- no new runtime dependency/model/provider/cloud service is introduced.
+
+Research and exit criteria: `docs/PHASE_27_RESEARCH.md`.
 
 ## Next Action Rule
 

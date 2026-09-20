@@ -6,7 +6,11 @@ A production-grade English-to-Persian literary translation engine with a Rust co
 
 ## Canonical Main State
 
-`main` is verified through Phase 25.
+`main` is canonical through Phase 26.
+
+Phase 26 PR #111 landed from final validated head `8418fdf4eb06252dec8a014c13e789efa7fe800e` at merge commit `5c0d4c8514b999faf786971da8541f7ea5a1b773`. The final head passed Rust CI, Security, Phases 18–26, Desktop Product, Trusted Release, Project Memory, and Apple Silicon checks.
+
+Phase 27 is active on branch `phase-27-real-book-pilot-hardening` / PR #113 targeting `main`. It remains non-canonical until its final exact-head gates pass and the PR lands.
 
 Phase 21 implementation merged through PR #100 at:
 
@@ -15,6 +19,31 @@ Phase 21 implementation merged through PR #100 at:
 ```
 
 The final reviewed Phase 21 head `d543b0448bdb8c886e58c69b719183daf07a66bc` passed the dedicated Phase 21 benchmark gate, Rust CI, Security/cargo-audit, Phase 18 context/retrieval, Phase 19 literary review, Phase 20 publication regression, Project Memory Tooling, and Apple Silicon arm64 benchmark checks before merge. The permanent Phase 21 workflow also runs on pushes to `main`.
+
+### Active stacked Phase 27 — Real-Book Pilot Readiness & Resume Integrity
+
+Measured operational gaps being closed:
+
+- bounded resume previously counted reused checkpoints against `max_chapters`, allowing a one-chapter resume budget to stall on chapter 1 forever;
+- paragraph progress was additive across resumes and could exceed the actual book total;
+- checkpoint reuse was bound to source/context but not the semantic translation plan, so provider/model/target/style changes could reuse stale output.
+
+Phase-27 contract:
+
+- checkpoint reuse requires source + context + translation-plan fingerprints;
+- translation-plan identity includes resolved provider/model, target language, style profile, protocol version, and pipeline contract;
+- `max_chapters` counts newly translated chapters, not reused checkpoints;
+- progress counters are rebuilt from valid current-plan checkpoints on every resume;
+- legacy/mismatched checkpoints are regenerated rather than silently trusted;
+- structured artifacts must match source/context/plan before checkpoint reuse;
+- operational progress counts completed source paragraphs and can reconstruct later valid checkpoints around a repaired hole;
+- export refuses partial or mixed-plan books even if stale artifacts still exist on disk;
+- permanent CI rehearses a 12-chapter repeated-resume flow through exact completion, export, and reopen;
+- the later real-book pilot keeps manuscript/translation text out of GitHub, PMC/projectmem, Linear, CI, logs, and external benchmark services.
+
+No new runtime dependency, provider, model stack, cloud backend, or second persistence owner is introduced.
+
+Detailed research: `docs/PHASE_27_RESEARCH.md`.
 
 ### Core crates and application boundaries
 

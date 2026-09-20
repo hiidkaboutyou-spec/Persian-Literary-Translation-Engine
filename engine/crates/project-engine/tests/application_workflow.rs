@@ -627,8 +627,9 @@ fn translation_progress_pause_resume_and_manual_edit() {
     assert_eq!(progress.completed_chapters, 3);
     assert_eq!(progress.percent, 1.0);
 
-    // Monotonic progress: final >= every intermediate.
-    assert!(progress.completed_paragraphs >= progress.total_paragraphs / 3);
+    // Resuming rebuilds progress from checkpoints instead of double-counting
+    // paragraphs that were already completed before the pause.
+    assert_eq!(progress.completed_paragraphs, progress.total_paragraphs);
 
     // Manual edit with revision history.
     let chapter = service.get_translated_chapter(&project, 0).unwrap();
@@ -674,6 +675,242 @@ fn translation_progress_pause_resume_and_manual_edit() {
         .find(|paragraph| paragraph.paragraph_id == revision.paragraph_id)
         .unwrap();
     assert_eq!(paragraph.translated, revision.new);
+}
+
+#[test]
+fn bounded_resume_advances_past_reused_checkpoints() {
+    let service = ApplicationService;
+    let (project, _) = fresh_project("bounded-resume");
+    import_manuscript(&project, 3);
+    run_analysis(&project);
+    let approved = approve_all_pending(&project);
+    promote(&project, &approved);
+
+    start_echo_translation(&project, Some(1));
+    let progress = service.get_progress(&project).unwrap();
+    assert_eq!(progress.completed_chapters, 1);
+    assert_eq!(progress.state, TranslationState::Paused);
+
+    let config = TranslationConfig {
+        provider: "echo".to_string(),
+        target_language: "fa".to_string(),
+        max_chapters: Some(1),
+        ..TranslationConfig::default()
+    };
+
+    let mut sink = silent_sink();
+    let progress = service
+        .resume_translation(&project, &config, &mut sink)
+        .unwrap();
+    assert_eq!(progress.completed_chapters, 2);
+    assert_eq!(progress.state, TranslationState::Paused);
+    assert_eq!(
+        progress.completed_paragraphs,
+        progress.total_paragraphs * 2 / 3
+    );
+
+    let progress = service
+        .resume_translation(&project, &config, &mut sink)
+        .unwrap();
+    assert_eq!(progress.completed_chapters, 3);
+    assert_eq!(progress.state, TranslationState::Completed);
+    assert_eq!(progress.completed_paragraphs, progress.total_paragraphs);
+}
+
+#[test]
+fn legacy_checkpoint_without_plan_fingerprint_is_regenerated() {
+    let service = ApplicationService;
+    let (project, _) = fresh_project("legacy-plan");
+    import_manuscript(&project, 3);
+    run_analysis(&project);
+    let approved = approve_all_pending(&project);
+    promote(&project, &approved);
+
+    start_echo_translation(&project, Some(1));
+
+    let legacy_plan = project
+        .layout
+        .chapters_dir
+        .join("001-Chapter_1.plan-fingerprint");
+    assert!(legacy_plan.is_file());
+    std::fs::remove_file(&legacy_plan).unwrap();
+
+    let config = TranslationConfig {
+        provider: "echo".to_string(),
+        target_language: "fa".to_string(),
+        max_chapters: Some(1),
+        ..TranslationConfig::default()
+    };
+    let mut sink = silent_sink();
+    let progress = service
+        .resume_translation(&project, &config, &mut sink)
+        .unwrap();
+
+    // The missing plan identity makes chapter 1 non-reusable. The one-chapter
+    // budget must regenerate it rather than silently accepting the legacy
+    // checkpoint and advancing to chapter 2.
+    assert_eq!(progress.completed_chapters, 1);
+    assert!(legacy_plan.is_file());
+    let regenerated = service.get_translated_chapter(&project, 0).unwrap();
+    assert!(!regenerated.translation_plan_fingerprint.is_empty());
+    assert_eq!(
+        regenerated.translation_plan_fingerprint,
+        progress.translation_plan_fingerprint
+    );
+}
+
+#[test]
+fn bounded_resume_repairs_one_hole_and_counts_later_valid_checkpoints() {
+    let service = ApplicationService;
+    let (project, _) = fresh_project("resume-hole");
+    import_manuscript(&project, 3);
+    run_analysis(&project);
+    let approved = approve_all_pending(&project);
+    promote(&project, &approved);
+    start_echo_translation(&project, None);
+
+    let missing_plan = project
+        .layout
+        .chapters_dir
+        .join("002-Chapter_2.plan-fingerprint");
+    assert!(missing_plan.is_file());
+    std::fs::remove_file(&missing_plan).unwrap();
+
+    let config = TranslationConfig {
+        provider: "echo".to_string(),
+        target_language: "fa".to_string(),
+        max_chapters: Some(1),
+        ..TranslationConfig::default()
+    };
+    let mut sink = silent_sink();
+    let progress = service
+        .resume_translation(&project, &config, &mut sink)
+        .unwrap();
+
+    // Chapter 2 consumes the one-new-translation budget. Chapter 3 was already
+    // valid and must still be rediscovered/countable after that repair.
+    assert_eq!(progress.state, TranslationState::Completed);
+    assert_eq!(progress.completed_chapters, 3);
+    assert_eq!(progress.completed_paragraphs, progress.total_paragraphs);
+    assert!(missing_plan.is_file());
+    assert!(service.export_project(&project, &mut sink).is_ok());
+}
+
+#[test]
+fn changed_translation_plan_invalidates_stale_checkpoints() {
+    let service = ApplicationService;
+    let (project, _) = fresh_project("plan-change");
+    import_manuscript(&project, 3);
+    run_analysis(&project);
+    let approved = approve_all_pending(&project);
+    promote(&project, &approved);
+
+    start_echo_translation(&project, Some(1));
+    let first = service.get_translated_chapter(&project, 0).unwrap();
+    assert!(!first.translation_plan_fingerprint.is_empty());
+    let first_plan = first.translation_plan_fingerprint.clone();
+
+    let mut sink = silent_sink();
+    let changed = TranslationConfig {
+        provider: "echo".to_string(),
+        target_language: "fa-IR".to_string(),
+        max_chapters: Some(1),
+        ..TranslationConfig::default()
+    };
+    let progress = service
+        .resume_translation(&project, &changed, &mut sink)
+        .unwrap();
+
+    // A changed semantic translation plan must not count the old chapter as a
+    // reusable checkpoint and then advance to the next one in the same bounded run.
+    assert_eq!(progress.completed_chapters, 1);
+    assert_eq!(progress.target_language, "fa-IR");
+    assert!(!progress.translation_plan_fingerprint.is_empty());
+    assert_ne!(progress.translation_plan_fingerprint, first_plan);
+    assert!(progress
+        .warnings
+        .iter()
+        .any(|warning| warning.contains("translation plan changed")));
+
+    // Old-plan artifacts for later chapters may still exist on disk, but a
+    // partial current-plan run must never export a mixed book.
+    assert!(service.export_project(&project, &mut sink).is_err());
+
+    let regenerated = service.get_translated_chapter(&project, 0).unwrap();
+    assert_eq!(
+        regenerated.translation_plan_fingerprint,
+        progress.translation_plan_fingerprint
+    );
+    assert_ne!(regenerated.translation_plan_fingerprint, first_plan);
+}
+
+#[test]
+fn export_rejects_mixed_plan_artifact_even_after_completed_progress() {
+    let service = ApplicationService;
+    let (project, _) = fresh_project("mixed-export");
+    import_manuscript(&project, 3);
+    run_analysis(&project);
+    let approved = approve_all_pending(&project);
+    promote(&project, &approved);
+    start_echo_translation(&project, None);
+
+    let path = project
+        .layout
+        .chapters_dir
+        .join("002-Chapter_2.chapter.json");
+    let mut value: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    value["translation_plan_fingerprint"] = serde_json::Value::String("stale-plan".to_string());
+    std::fs::write(&path, serde_json::to_vec_pretty(&value).unwrap()).unwrap();
+
+    let mut sink = silent_sink();
+    assert!(service.export_project(&project, &mut sink).is_err());
+}
+
+#[test]
+fn phase27_pilot_readiness_repeated_resume_reaches_exact_completion_and_export() {
+    let service = ApplicationService;
+    let (project, root) = fresh_project("phase27-pilot");
+    import_manuscript(&project, 12);
+    run_analysis(&project);
+    let approved = approve_all_pending(&project);
+    promote(&project, &approved);
+
+    start_echo_translation(&project, Some(2));
+    let config = TranslationConfig {
+        provider: "echo".to_string(),
+        target_language: "fa".to_string(),
+        max_chapters: Some(2),
+        ..TranslationConfig::default()
+    };
+    let mut sink = silent_sink();
+
+    for expected in [4usize, 6, 8, 10, 12] {
+        let progress = service
+            .resume_translation(&project, &config, &mut sink)
+            .unwrap();
+        assert_eq!(progress.completed_chapters, expected);
+        assert_eq!(progress.completed_paragraphs, expected * 3);
+        assert!(progress.completed_paragraphs <= progress.total_paragraphs);
+    }
+
+    let progress = service.get_progress(&project).unwrap();
+    assert_eq!(progress.state, TranslationState::Completed);
+    assert_eq!(progress.completed_chapters, progress.total_chapters);
+    assert_eq!(progress.completed_paragraphs, progress.total_paragraphs);
+    assert_eq!(progress.percent, 1.0);
+
+    let export = service.export_project(&project, &mut sink).unwrap();
+    assert_eq!(export.format, "docx");
+    assert!(root.join("exports").join(&export.relative_path).is_file());
+
+    let reopened = ApplicationService::open_project(&root).unwrap();
+    let reopened_progress = service.get_progress(&reopened).unwrap();
+    assert_eq!(reopened_progress.completed_chapters, 12);
+    assert_eq!(
+        reopened_progress.completed_paragraphs,
+        reopened_progress.total_paragraphs
+    );
 }
 
 #[test]

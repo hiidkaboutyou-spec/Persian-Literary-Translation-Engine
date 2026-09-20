@@ -106,6 +106,7 @@ fn translation_summary(manifest: &ProjectFile) -> Option<TranslationSummary> {
         provider: record.provider.clone(),
         model: record.model.clone(),
         target_language: record.target_language.clone(),
+        translation_plan_fingerprint: record.translation_plan_fingerprint.clone(),
         completed_chapters: record.completed_chapters,
         total_chapters: record.total_chapters,
         percent: record.percent,
