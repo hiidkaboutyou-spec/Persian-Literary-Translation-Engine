@@ -86,6 +86,10 @@ pub struct TranslationRecord {
     pub provider: String,
     pub model: Option<String>,
     pub target_language: String,
+    /// Stable semantic execution-plan identity. Empty on legacy artifacts.
+    /// Resume may reuse a chapter only when this fingerprint matches.
+    #[serde(default)]
+    pub translation_plan_fingerprint: String,
     pub total_chapters: usize,
     pub completed_chapters: usize,
     /// Monotonic fraction (0.0..=1.0) derived from completed chapters.
@@ -313,6 +317,11 @@ pub struct TranslatedChapter {
     pub title: String,
     pub source_fingerprint: String,
     pub context_fingerprint: String,
+    /// Provider/model/target/style execution-plan identity used to produce
+    /// this chapter. Legacy artifacts deserialize with an empty value and are
+    /// never silently reused by the Phase-27 resume contract.
+    #[serde(default)]
+    pub translation_plan_fingerprint: String,
     /// Translation style contract used for this artifact. Old artifacts default
     /// to the neutral literary profile for backward-compatible deserialization.
     #[serde(default = "default_translation_style_profile")]
