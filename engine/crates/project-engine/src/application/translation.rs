@@ -1033,6 +1033,69 @@ pub fn export_translation(
     export_translation_as(layout, "docx", sink)
 }
 
+fn validate_export_readiness(
+    layout: &ProjectLayout,
+    manifest: &super::models::ProjectFile,
+    manuscript: &document_engine::Manuscript,
+) -> Result<String, ApplicationError> {
+    let source = manifest.source.as_ref().ok_or_else(|| {
+        ApplicationError::ExportUnavailable("project has no imported source".to_string())
+    })?;
+    let progress = load_progress(layout)?.ok_or_else(|| {
+        ApplicationError::ExportUnavailable(
+            "translation has no persisted progress; complete the current translation plan before export"
+                .to_string(),
+        )
+    })?;
+    if progress.state != TranslationState::Completed
+        || progress.completed_chapters != manuscript.chapters.len()
+        || progress.completed_chapters != progress.total_chapters
+        || progress.completed_paragraphs != progress.total_paragraphs
+    {
+        return Err(ApplicationError::ExportUnavailable(
+            "translation is not complete for the current plan; resume translation before export"
+                .to_string(),
+        ));
+    }
+    if progress.source_fingerprint != source.fingerprint {
+        return Err(ApplicationError::ExportUnavailable(
+            "translation progress belongs to a different source fingerprint; reimport/retranslate before export"
+                .to_string(),
+        ));
+    }
+    if progress.translation_plan_fingerprint.trim().is_empty() {
+        return Err(ApplicationError::ExportUnavailable(
+            "translation progress predates plan-safe checkpoints; resume/retranslate before export"
+                .to_string(),
+        ));
+    }
+
+    for chapter in &manuscript.chapters {
+        let stem = chapter_stem(&chapter.title, chapter.index);
+        let artifact = load_chapter_artifact(layout, &stem)?.ok_or_else(|| {
+            ApplicationError::ExportUnavailable(format!(
+                "chapter {} is not translated yet",
+                chapter.index + 1
+            ))
+        })?;
+        let expected_source = content_fingerprint(chapter.content.as_bytes());
+        if artifact.source_fingerprint != expected_source {
+            return Err(ApplicationError::ExportUnavailable(format!(
+                "chapter {} translation belongs to stale source text; resume/retranslate it before export",
+                chapter.index + 1
+            )));
+        }
+        if artifact.translation_plan_fingerprint != progress.translation_plan_fingerprint {
+            return Err(ApplicationError::ExportUnavailable(format!(
+                "chapter {} belongs to a different or legacy translation plan; resume/retranslate it before export",
+                chapter.index + 1
+            )));
+        }
+    }
+
+    Ok(progress.translation_plan_fingerprint)
+}
+
 pub fn export_translation_as(
     layout: &ProjectLayout,
     format: &str,
@@ -1046,6 +1109,7 @@ pub fn export_translation_as(
             "no chapters to export".to_string(),
         ));
     }
+    let _current_plan = validate_export_readiness(layout, &manifest, &manuscript)?;
 
     emit_and_history(
         layout,
