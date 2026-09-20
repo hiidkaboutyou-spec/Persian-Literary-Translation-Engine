@@ -33,11 +33,13 @@ Phase 27 changes the budget to count **new provider translations only**. Reused 
 
 Resume loaded the old persisted totals and then added every reused chapter again. Chapter progress was mostly protected by `max(index + 1)`, but paragraph progress was additive and could exceed the actual book total.
 
-Phase 27 reconstructs completed chapter/paragraph progress from currently valid checkpoints on every run. Exact final progress is therefore:
+Phase 27 reconstructs completed chapter/paragraph progress from currently valid checkpoints on every run. Paragraph progress counts completed **source paragraphs**, not the number of post-translation alignment records, so provider paragraph-boundary changes cannot inflate or suppress operational progress. Exact final progress is therefore:
 
 - completed chapters == total chapters;
-- completed paragraphs == total paragraphs;
+- completed source paragraphs == total source paragraphs;
 - percent == 1.0.
+
+A checkpoint is reusable only when its structured chapter artifact is also present and matches chapter identity, source fingerprint, context fingerprint, and plan fingerprint. EPUB checkpoints additionally keep the existing exact block-provenance requirement.
 
 ## Translation-plan fingerprint
 
@@ -62,7 +64,7 @@ Phase 27 introduces a deterministic translation-plan fingerprint over:
 
 `max_chapters` is intentionally excluded because it is an execution budget, not a semantic translation choice.
 
-Each completed chapter stores a `.plan-fingerprint` checkpoint and the structured chapter artifact records the same identity.
+Each completed chapter stores a `.plan-fingerprint` checkpoint and the structured chapter artifact records the same identity. The current plan identity is also persisted in translation progress and the project translation record, and is exposed through the UI-facing translation snapshot for diagnostics.
 
 A resume may reuse a chapter only when all three match:
 
@@ -71,6 +73,8 @@ A resume may reuse a chapter only when all three match:
 3. translation-plan fingerprint.
 
 Legacy checkpoints with no plan fingerprint are safe to open but are regenerated instead of being silently trusted.
+
+The per-run `max_chapters` limit is checked only when new provider work is actually needed. Valid checkpoints may still be rediscovered after the new-translation budget is exhausted, allowing a one-chapter repair in the middle of an otherwise valid book to reconstruct a complete state in the same resume pass.
 
 ## Research findings
 
@@ -150,6 +154,19 @@ The real-book sampling protocol must deliberately cover:
 - dialogue-heavy passages;
 - coreference-heavy passages;
 - recurring terminology/relationship-register passages.
+
+## Export fail-closed boundary
+
+Disk presence alone is not proof that a book is safe to publish. Phase 27 rejects export unless:
+
+- current translation progress is Completed;
+- completed chapter/source-paragraph counts equal current manuscript totals;
+- progress belongs to the current imported source fingerprint;
+- progress has a non-empty Phase-27 plan identity;
+- every chapter has a structured artifact for the exact current source;
+- every chapter artifact has the same translation-plan fingerprint as current progress.
+
+This prevents a partial retranslation after changing provider/model/target/style from mixing old-plan chapters into a new DOCX/EPUB. Manual paragraph edits remain valid because they preserve the producing chapter's plan identity while marking quality evidence stale under the existing review contract.
 
 ## Rights-safe Phase-27 rehearsal
 
@@ -233,10 +250,13 @@ Phase 27 becomes canonical only when:
 2. resumed paragraph/chapter progress is exact, never inflated;
 3. provider/model/target/style plan changes invalidate old chapter reuse;
 4. legacy no-plan checkpoints fail safe by regeneration;
-5. structured artifacts persist plan identity;
-6. a project-owned 12-chapter repeated-resume rehearsal reaches exact completion and export;
-7. Linux and Apple Silicon Phase-27 gates pass;
-8. Rust CI, Security, Phases 18–26, Desktop, Trusted Release and Project Memory remain green;
-9. Phase 26 is first merged/canonical, then the Phase-27 branch is rebased/retargeted or verified against canonical main;
-10. no manuscript/private translation is committed or copied into developer-memory/tracking systems;
-11. exact final head/merge/run IDs are recorded after landing.
+5. structured artifacts persist plan identity and are mandatory for checkpoint reuse;
+6. progress counts completed source paragraphs exactly, independent of translated paragraph segmentation;
+7. partial or mixed-plan artifacts cannot be exported;
+8. a sparse invalid checkpoint can be repaired within a bounded run while later valid checkpoints are still reconstructed;
+9. a project-owned 12-chapter repeated-resume rehearsal reaches exact completion and export;
+10. Linux and Apple Silicon Phase-27 gates pass;
+11. Rust CI/cargo-audit, Phases 18–26, Desktop, Trusted Release and Project Memory remain green;
+12. Phase 26 is first merged/canonical, then the Phase-27 branch is rebased/retargeted or verified against canonical main;
+13. no manuscript/private translation is committed or copied into developer-memory/tracking systems;
+14. exact final head/merge/run IDs are recorded after landing.
