@@ -181,6 +181,10 @@ impl CoreferenceSidecar {
         let payload = serde_json::to_vec(request)
             .map_err(|error| CoreferenceError::Protocol(error.to_string()))?;
 
+        // Start the deadline before process creation. Host scheduling delay,
+        // pipe setup, and child startup are all part of the bounded sidecar
+        // execution budget.
+        let started = Instant::now();
         let mut child = Command::new(&self.executable)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -211,11 +215,11 @@ impl CoreferenceSidecar {
         let max_stderr_bytes = self.max_stderr_bytes;
         let stderr_reader = thread::spawn(move || read_bounded(stderr, max_stderr_bytes));
 
-        let started = Instant::now();
         let status = loop {
-            if let Some(status) = child.try_wait()? {
-                break status;
-            }
+            // Fail closed when the host did not observe completion within the
+            // deadline. Checking the deadline before try_wait avoids accepting
+            // a process that finished only after the host was descheduled past
+            // the configured timeout.
             if started.elapsed() >= self.timeout {
                 let _ = child.kill();
                 let _ = child.wait();
@@ -225,6 +229,9 @@ impl CoreferenceSidecar {
                 return Err(CoreferenceError::Timeout {
                     timeout_ms: self.timeout.as_millis().min(u128::from(u64::MAX)) as u64,
                 });
+            }
+            if let Some(status) = child.try_wait()? {
+                break status;
             }
             thread::sleep(Duration::from_millis(25));
         };
