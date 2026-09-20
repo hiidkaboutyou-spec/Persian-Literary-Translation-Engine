@@ -367,7 +367,7 @@ Updating this repository seed does **not** mean the user's local PMC/Obsidian va
 ## Durable Phase 29 decisions
 
 1. **Human review records are append-only** — later decisions append; earlier decisions remain audit history.
-2. **Current human decisions are fingerprint-bound** — source, translation and translation-plan fingerprints must all match the current target.
+2. **Current human decisions are context-conservative and fingerprint-bound** — SHA-256 fingerprints of the full chapter source and full chapter translation, plus translation-context and translation-plan fingerprints, must all match. A neighboring paragraph/context change therefore stales an earlier sign-off even when the selected paragraph text itself did not change.
 3. **Target identity and content identity are separate** — opaque target IDs identify a stable location; fingerprints decide whether a specific human record is still current.
 4. **Human authority is explicit** — only a human submission can create `clear`, `accepted_as_is` or `needs_revision`. Automated evidence never manufactures these states.
 5. **Accepted literary choices are first-class** — `accepted_as_is` exists because automated literary evidence can incorrectly penalize deliberate creative/cultural choices. It requires a note/finding and cannot coexist with a human critical finding.
