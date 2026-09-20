@@ -627,8 +627,9 @@ fn translation_progress_pause_resume_and_manual_edit() {
     assert_eq!(progress.completed_chapters, 3);
     assert_eq!(progress.percent, 1.0);
 
-    // Monotonic progress: final >= every intermediate.
-    assert!(progress.completed_paragraphs >= progress.total_paragraphs / 3);
+    // Resuming rebuilds progress from checkpoints instead of double-counting
+    // paragraphs that were already completed before the pause.
+    assert_eq!(progress.completed_paragraphs, progress.total_paragraphs);
 
     // Manual edit with revision history.
     let chapter = service.get_translated_chapter(&project, 0).unwrap();
@@ -674,6 +675,136 @@ fn translation_progress_pause_resume_and_manual_edit() {
         .find(|paragraph| paragraph.paragraph_id == revision.paragraph_id)
         .unwrap();
     assert_eq!(paragraph.translated, revision.new);
+}
+
+#[test]
+fn bounded_resume_advances_past_reused_checkpoints() {
+    let service = ApplicationService;
+    let (project, _) = fresh_project("bounded-resume");
+    import_manuscript(&project, 3);
+    run_analysis(&project);
+    let approved = approve_all_pending(&project);
+    promote(&project, &approved);
+
+    start_echo_translation(&project, Some(1));
+    let progress = service.get_progress(&project).unwrap();
+    assert_eq!(progress.completed_chapters, 1);
+    assert_eq!(progress.state, TranslationState::Paused);
+
+    let config = TranslationConfig {
+        provider: "echo".to_string(),
+        target_language: "fa".to_string(),
+        max_chapters: Some(1),
+        ..TranslationConfig::default()
+    };
+
+    let mut sink = silent_sink();
+    let progress = service
+        .resume_translation(&project, &config, &mut sink)
+        .unwrap();
+    assert_eq!(progress.completed_chapters, 2);
+    assert_eq!(progress.state, TranslationState::Paused);
+    assert_eq!(
+        progress.completed_paragraphs,
+        progress.total_paragraphs * 2 / 3
+    );
+
+    let progress = service
+        .resume_translation(&project, &config, &mut sink)
+        .unwrap();
+    assert_eq!(progress.completed_chapters, 3);
+    assert_eq!(progress.state, TranslationState::Completed);
+    assert_eq!(progress.completed_paragraphs, progress.total_paragraphs);
+}
+
+#[test]
+fn changed_translation_plan_invalidates_stale_checkpoints() {
+    let service = ApplicationService;
+    let (project, _) = fresh_project("plan-change");
+    import_manuscript(&project, 3);
+    run_analysis(&project);
+    let approved = approve_all_pending(&project);
+    promote(&project, &approved);
+
+    start_echo_translation(&project, Some(1));
+    let first = service.get_translated_chapter(&project, 0).unwrap();
+    assert!(!first.translation_plan_fingerprint.is_empty());
+    let first_plan = first.translation_plan_fingerprint.clone();
+
+    let mut sink = silent_sink();
+    let changed = TranslationConfig {
+        provider: "echo".to_string(),
+        target_language: "fa-IR".to_string(),
+        max_chapters: Some(1),
+        ..TranslationConfig::default()
+    };
+    let progress = service
+        .resume_translation(&project, &changed, &mut sink)
+        .unwrap();
+
+    // A changed semantic translation plan must not count the old chapter as a
+    // reusable checkpoint and then advance to the next one in the same bounded run.
+    assert_eq!(progress.completed_chapters, 1);
+    assert_eq!(progress.target_language, "fa-IR");
+    assert!(!progress.translation_plan_fingerprint.is_empty());
+    assert_ne!(progress.translation_plan_fingerprint, first_plan);
+    assert!(progress
+        .warnings
+        .iter()
+        .any(|warning| warning.contains("translation plan changed")));
+
+    let regenerated = service.get_translated_chapter(&project, 0).unwrap();
+    assert_eq!(
+        regenerated.translation_plan_fingerprint,
+        progress.translation_plan_fingerprint
+    );
+    assert_ne!(regenerated.translation_plan_fingerprint, first_plan);
+}
+
+#[test]
+fn phase27_pilot_readiness_repeated_resume_reaches_exact_completion_and_export() {
+    let service = ApplicationService;
+    let (project, root) = fresh_project("phase27-pilot");
+    import_manuscript(&project, 12);
+    run_analysis(&project);
+    let approved = approve_all_pending(&project);
+    promote(&project, &approved);
+
+    start_echo_translation(&project, Some(2));
+    let config = TranslationConfig {
+        provider: "echo".to_string(),
+        target_language: "fa".to_string(),
+        max_chapters: Some(2),
+        ..TranslationConfig::default()
+    };
+    let mut sink = silent_sink();
+
+    for expected in [4usize, 6, 8, 10, 12] {
+        let progress = service
+            .resume_translation(&project, &config, &mut sink)
+            .unwrap();
+        assert_eq!(progress.completed_chapters, expected);
+        assert_eq!(progress.completed_paragraphs, expected * 3);
+        assert!(progress.completed_paragraphs <= progress.total_paragraphs);
+    }
+
+    let progress = service.get_progress(&project).unwrap();
+    assert_eq!(progress.state, TranslationState::Completed);
+    assert_eq!(progress.completed_chapters, progress.total_chapters);
+    assert_eq!(progress.completed_paragraphs, progress.total_paragraphs);
+    assert_eq!(progress.percent, 1.0);
+
+    let export = service.export_project(&project, &mut sink).unwrap();
+    assert_eq!(export.format, "docx");
+    assert!(root.join("exports").join(&export.relative_path).is_file());
+
+    let reopened = ApplicationService::open_project(&root).unwrap();
+    let reopened_progress = service.get_progress(&reopened).unwrap();
+    assert_eq!(reopened_progress.completed_chapters, 12);
+    assert_eq!(
+        reopened_progress.completed_paragraphs,
+        reopened_progress.total_paragraphs
+    );
 }
 
 #[test]
