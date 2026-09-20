@@ -35,6 +35,9 @@ Phase-27 contract:
 - `max_chapters` counts newly translated chapters, not reused checkpoints;
 - progress counters are rebuilt from valid current-plan checkpoints on every resume;
 - legacy/mismatched checkpoints are regenerated rather than silently trusted;
+- structured artifacts must match source/context/plan before checkpoint reuse;
+- operational progress counts completed source paragraphs and can reconstruct later valid checkpoints around a repaired hole;
+- export refuses partial or mixed-plan books even if stale artifacts still exist on disk;
 - permanent CI rehearses a 12-chapter repeated-resume flow through exact completion, export, and reopen;
 - the later real-book pilot keeps manuscript/translation text out of GitHub, PMC/projectmem, Linear, CI, logs, and external benchmark services.
 
