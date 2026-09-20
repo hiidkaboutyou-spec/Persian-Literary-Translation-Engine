@@ -776,9 +776,7 @@ pub fn run_translation(
             .chapters_dir
             .join(format!("{stem}.context-fingerprint"));
         super::project::atomic_write_bytes(&context_fp_path, context_fingerprint.as_bytes())?;
-        let plan_fp_path = layout
-            .chapters_dir
-            .join(format!("{stem}.plan-fingerprint"));
+        let plan_fp_path = layout.chapters_dir.join(format!("{stem}.plan-fingerprint"));
         super::project::atomic_write_bytes(&plan_fp_path, plan_fingerprint.as_bytes())?;
         let artifact = TranslatedChapter {
             schema_version: CHAPTER_ARTIFACT_SCHEMA_VERSION,
