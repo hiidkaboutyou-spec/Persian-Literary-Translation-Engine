@@ -454,6 +454,12 @@ fn history_detail(event: &ProjectEvent) -> (String, String) {
             "manual_translation_edit".into(),
             format!("chapter={chapter_index},revision={revision_id}"),
         ),
+        ProjectEvent::PilotReviewRecorded {
+            target_id, outcome, ..
+        } => (
+            "pilot_review_recorded".into(),
+            format!("target={target_id},outcome={outcome}"),
+        ),
         ProjectEvent::ExportStarted { .. } => ("export_started".into(), "export started".into()),
         ProjectEvent::ExportCompleted { format, .. } => {
             ("export_completed".into(), format!("format={format}"))
