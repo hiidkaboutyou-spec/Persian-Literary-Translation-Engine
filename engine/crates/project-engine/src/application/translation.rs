@@ -944,7 +944,7 @@ pub fn get_translated_chapter(
 pub fn get_translated_text(
     layout: &ProjectLayout,
     chapter_index: usize,
-) -> Result<(), ApplicationError> {
+) -> Result<String, ApplicationError> {
     Ok(join_translated(
         &get_translated_chapter(layout, chapter_index)?.paragraphs,
     ))
@@ -1041,7 +1041,7 @@ fn validate_export_readiness(
     layout: &ProjectLayout,
     manifest: &super::models::ProjectFile,
     manuscript: &document_engine::Manuscript,
-) -> Result<String, ApplicationError> {
+) -> Result<(), ApplicationError> {
     let source = manifest.source.as_ref().ok_or_else(|| {
         ApplicationError::ExportUnavailable("project has no imported source".to_string())
     })?;
