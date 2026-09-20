@@ -6,7 +6,6 @@
 //! as audit history when later edits make them stale.
 
 use super::error::ApplicationError;
-use super::models::content_fingerprint;
 use super::pilot_audit::{build_pilot_audit, BookPilotAudit, PilotReviewTarget};
 use super::project::{atomic_write_json, load_manifest, ProjectLayout};
 use super::translation;
@@ -88,6 +87,7 @@ pub struct PilotReviewRecord {
     pub paragraph_id: Option<String>,
     pub source_fingerprint: String,
     pub translation_fingerprint: String,
+    pub translation_context_fingerprint: String,
     pub translation_plan_fingerprint: String,
     pub reviewer: String,
     pub outcome: PilotReviewOutcome,
@@ -109,6 +109,7 @@ pub struct PilotReviewTargetState {
     pub target_id: String,
     pub source_fingerprint: String,
     pub translation_fingerprint: String,
+    pub translation_context_fingerprint: String,
     pub translation_plan_fingerprint: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub current_record: Option<PilotReviewRecord>,
@@ -139,6 +140,7 @@ struct TargetSnapshot {
     target_id: String,
     source_fingerprint: String,
     translation_fingerprint: String,
+    translation_context_fingerprint: String,
     translation_plan_fingerprint: String,
     source_chars: usize,
     translation_chars: usize,
@@ -173,6 +175,8 @@ pub fn review_summary(
         {
             if record.source_fingerprint == snapshot.source_fingerprint
                 && record.translation_fingerprint == snapshot.translation_fingerprint
+                && record.translation_context_fingerprint
+                    == snapshot.translation_context_fingerprint
                 && record.translation_plan_fingerprint == snapshot.translation_plan_fingerprint
             {
                 latest_current = Some(record.clone());
@@ -198,6 +202,7 @@ pub fn review_summary(
             target_id: snapshot.target_id,
             source_fingerprint: snapshot.source_fingerprint,
             translation_fingerprint: snapshot.translation_fingerprint,
+            translation_context_fingerprint: snapshot.translation_context_fingerprint,
             translation_plan_fingerprint: snapshot.translation_plan_fingerprint,
             current_record: latest_current,
             stale_record_count: stale_for_target,
@@ -269,6 +274,7 @@ pub fn record_review(
         &snapshot.target_id,
         &snapshot.source_fingerprint,
         &snapshot.translation_fingerprint,
+        &snapshot.translation_context_fingerprint,
         submission.outcome,
         &submission.reviewer,
         reviewed_at,
@@ -282,6 +288,7 @@ pub fn record_review(
         paragraph_id: snapshot.target.paragraph_id,
         source_fingerprint: snapshot.source_fingerprint,
         translation_fingerprint: snapshot.translation_fingerprint,
+        translation_context_fingerprint: snapshot.translation_context_fingerprint,
         translation_plan_fingerprint: snapshot.translation_plan_fingerprint,
         reviewer: submission.reviewer.trim().to_string(),
         outcome: submission.outcome,
@@ -340,6 +347,19 @@ fn resolve_target(
         )
     };
 
+    let source_fingerprint = fingerprint_segments(
+        translated
+            .paragraphs
+            .iter()
+            .map(|paragraph| paragraph.source.as_str()),
+    );
+    let translation_fingerprint = fingerprint_segments(
+        translated
+            .paragraphs
+            .iter()
+            .map(|paragraph| paragraph.translated.as_str()),
+    );
+
     Ok(TargetSnapshot {
         target: target.clone(),
         target_id: stable_target_id(
@@ -347,8 +367,9 @@ fn resolve_target(
             &target.chapter_id,
             target.paragraph_id.as_deref(),
         ),
-        source_fingerprint: content_fingerprint(source.as_bytes()),
-        translation_fingerprint: content_fingerprint(translation.as_bytes()),
+        source_fingerprint,
+        translation_fingerprint,
+        translation_context_fingerprint: translated.context_fingerprint,
         translation_plan_fingerprint: translated.translation_plan_fingerprint,
         source_chars: source.chars().count(),
         translation_chars: translation.chars().count(),
@@ -494,6 +515,17 @@ fn load_ledger(
     Ok(ledger)
 }
 
+fn fingerprint_segments<'a>(segments: impl IntoIterator<Item = &'a str>) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(b"phase29-chapter-fingerprint-v1\0");
+    for segment in segments {
+        let bytes = segment.as_bytes();
+        hasher.update((bytes.len() as u64).to_le_bytes());
+        hasher.update(bytes);
+    }
+    format!("sha256-{:x}", hasher.finalize())
+}
+
 fn stable_target_id(project_id: &str, chapter_id: &str, paragraph_id: Option<&str>) -> String {
     let identity = format!(
         "phase29-target-v1\0{project_id}\0{chapter_id}\0{}",
@@ -506,13 +538,14 @@ fn record_id(
     target_id: &str,
     source_fingerprint: &str,
     translation_fingerprint: &str,
+    translation_context_fingerprint: &str,
     outcome: PilotReviewOutcome,
     reviewer: &str,
     reviewed_at: DateTime<Utc>,
     sequence: usize,
 ) -> String {
     let identity = format!(
-        "phase29-record-v1\0{target_id}\0{source_fingerprint}\0{translation_fingerprint}\0{}\0{}\0{}\0{sequence}",
+        "phase29-record-v1\0{target_id}\0{source_fingerprint}\0{translation_fingerprint}\0{translation_context_fingerprint}\0{}\0{}\0{}\0{sequence}",
         outcome.as_str(),
         reviewer.trim(),
         reviewed_at.to_rfc3339_opts(chrono::SecondsFormat::Nanos, true),
