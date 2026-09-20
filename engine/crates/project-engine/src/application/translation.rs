@@ -656,15 +656,13 @@ pub fn run_translation(
         // assembled context, and semantic translation plan. Canon/provider/model/
         // target/style changes therefore invalidate reuse.
         if resume {
-            if let Some(existing) =
-                resumable_chapter(
-                    layout,
-                    &stem,
-                    &source_fingerprint,
-                    &context_fingerprint,
-                    &plan_fingerprint,
-                )?
-            {
+            if let Some(existing) = resumable_chapter(
+                layout,
+                &stem,
+                &source_fingerprint,
+                &context_fingerprint,
+                &plan_fingerprint,
+            )? {
                 let artifact = load_chapter_artifact(layout, &stem)?;
                 let structured_reuse_ok = artifact
                     .as_ref()
