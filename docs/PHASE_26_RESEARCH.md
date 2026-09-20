@@ -293,3 +293,17 @@ Phase 26 becomes canonical only when:
 12. Linux and Apple Silicon Phase-26 gates are green;
 13. Rust CI, Security, Phases 18–25, Desktop, Trusted Release and Project Memory remain green;
 14. final merge SHA/run IDs are recorded.
+
+
+## Final timeout hardening
+
+A final full-workspace validation exposed a scheduler-sensitive edge case in the optional coreference sidecar timeout. The original timer began after process spawn and pipe-thread setup, and checked child completion before the deadline. On a heavily descheduled CI host, a child could finish well after the configured deadline before the parent was scheduled again, and the host could accept that late completion.
+
+The Phase-26 contract is now explicitly fail-closed:
+
+- timeout accounting starts before process creation;
+- child startup, pipe setup, host scheduling delay, and execution all consume the same configured budget;
+- once the host observes that the deadline has elapsed, it terminates/reaps the child and returns `CoreferenceError::Timeout` before accepting a late completion;
+- the normal translation path still falls back cleanly because model-backed coreference remains optional evidence.
+
+This is a runtime correctness fix, not a relaxation of the timeout test.
