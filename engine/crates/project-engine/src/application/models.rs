@@ -242,6 +242,8 @@ pub struct TranslationSummary {
     pub provider: String,
     pub model: Option<String>,
     pub target_language: String,
+    #[serde(default)]
+    pub translation_plan_fingerprint: String,
     pub completed_chapters: usize,
     pub total_chapters: usize,
     pub percent: f32,
@@ -289,6 +291,9 @@ pub struct TranslationProgress {
     pub provider: String,
     pub model: Option<String>,
     pub target_language: String,
+    /// Stable semantic execution-plan identity. Empty only for legacy progress.
+    #[serde(default)]
+    pub translation_plan_fingerprint: String,
     pub total_chapters: usize,
     pub completed_chapters: usize,
     pub current_chapter: Option<usize>,
