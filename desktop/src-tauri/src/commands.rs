@@ -3,9 +3,9 @@ use memory_engine::glossary::GlossaryEntry;
 use project_engine::application::{
     AdvancedAnalysisSettings, ApplicationCapabilities, ApplicationError, ApplicationErrorPayload,
     ApplicationService, ArtifactState, BookPilotAudit, DecisionAction, HistoryEvent,
-    LiteraryReviewArtifactView, LiteraryReviewRunSummary, LiteraryReviewSettings, Project,
-    ProjectSnapshot, ReviewItemSummary, TranslatedChapter, TranslationConfig, TranslationProgress,
-    TranslationRevision, VecEventSink,
+    LiteraryReviewArtifactView, LiteraryReviewRunSummary, LiteraryReviewSettings, PilotReviewRecord,
+    PilotReviewSubmission, PilotReviewSummary, Project, ProjectSnapshot, ReviewItemSummary,
+    TranslatedChapter, TranslationConfig, TranslationProgress, TranslationRevision, VecEventSink,
 };
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
@@ -414,6 +414,41 @@ pub async fn get_pilot_audit(
         let service = ApplicationService;
         let project = load_project(project_root)?;
         service.pilot_audit(&project, max_review_targets)
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn get_pilot_review_summary(
+    project_root: String,
+    max_review_targets: Option<usize>,
+) -> CommandResult<PilotReviewSummary> {
+    blocking(move || {
+        let service = ApplicationService;
+        let project = load_project(project_root)?;
+        service.pilot_review_summary(&project, max_review_targets)
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn record_pilot_review(
+    project_root: String,
+    max_review_targets: Option<usize>,
+    target_id: String,
+    submission: PilotReviewSubmission,
+) -> CommandResult<PilotReviewRecord> {
+    blocking(move || {
+        let service = ApplicationService;
+        let project = load_project(project_root)?;
+        let mut sink = VecEventSink::new();
+        service.record_pilot_review(
+            &project,
+            max_review_targets,
+            &target_id,
+            submission,
+            &mut sink,
+        )
     })
     .await
 }
