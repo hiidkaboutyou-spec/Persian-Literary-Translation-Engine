@@ -260,3 +260,27 @@ Phase 27 becomes canonical only when:
 12. Phase 26 is first merged/canonical, then the Phase-27 branch is rebased/retargeted or verified against canonical main;
 13. no manuscript/private translation is committed or copied into developer-memory/tracking systems;
 14. exact final head/merge/run IDs are recorded after landing.
+
+
+## Canonical landing record
+
+Phase 27 became canonical on 2026-09-20.
+
+- final validated PR head: `f75212a496d5073d249e47cb920abf1c4303eae9`
+- PR: #113
+- merge commit: `e06182d0f6ea487d47d56ad76672e595b3b8e25a`
+- dedicated Phase 27 run: `35509554696`
+- Rust CI: `35509554703`
+- Security: `35509554694`
+- Phase 18: `35509554702`
+- Phase 19: `35509554705`
+- Phase 20: `35509554745`
+- Phase 21: `35509554721`
+- Desktop Product / Phase 22: `35509554716`
+- Trusted Release / Phase 23: `35509554715`
+- Phase 24: `35509554707`
+- Phase 25: `35509554697`
+- Phase 26: `35509554695`
+- Project Memory Tooling: `35509554735`
+
+All listed final-head runs completed successfully before merge.
