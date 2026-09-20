@@ -1115,9 +1115,10 @@ fn phase29_clear_records_complete_current_sample_without_copying_book_text() {
     assert!(!ledger.contains("Shirin walked into the garden of roses"));
     assert!(!ledger.contains("Farhad watched from the terrace"));
     assert!(!ledger.contains("A nightingale sang from the cypress tree"));
-    assert!(sink.events.iter().any(|event| {
-        matches!(event, ProjectEvent::PilotReviewRecorded { .. })
-    }));
+    assert!(sink
+        .events
+        .iter()
+        .any(|event| { matches!(event, ProjectEvent::PilotReviewRecorded { .. }) }));
 }
 
 #[test]
