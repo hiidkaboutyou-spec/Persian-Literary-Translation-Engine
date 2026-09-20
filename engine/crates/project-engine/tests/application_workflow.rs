@@ -760,6 +760,43 @@ fn legacy_checkpoint_without_plan_fingerprint_is_regenerated() {
 }
 
 #[test]
+fn bounded_resume_repairs_one_hole_and_counts_later_valid_checkpoints() {
+    let service = ApplicationService;
+    let (project, _) = fresh_project("resume-hole");
+    import_manuscript(&project, 3);
+    run_analysis(&project);
+    let approved = approve_all_pending(&project);
+    promote(&project, &approved);
+    start_echo_translation(&project, None);
+
+    let missing_plan = project
+        .layout
+        .chapters_dir
+        .join("002-Chapter_2.plan-fingerprint");
+    assert!(missing_plan.is_file());
+    std::fs::remove_file(&missing_plan).unwrap();
+
+    let config = TranslationConfig {
+        provider: "echo".to_string(),
+        target_language: "fa".to_string(),
+        max_chapters: Some(1),
+        ..TranslationConfig::default()
+    };
+    let mut sink = silent_sink();
+    let progress = service
+        .resume_translation(&project, &config, &mut sink)
+        .unwrap();
+
+    // Chapter 2 consumes the one-new-translation budget. Chapter 3 was already
+    // valid and must still be rediscovered/countable after that repair.
+    assert_eq!(progress.state, TranslationState::Completed);
+    assert_eq!(progress.completed_chapters, 3);
+    assert_eq!(progress.completed_paragraphs, progress.total_paragraphs);
+    assert!(missing_plan.is_file());
+    assert!(service.export_project(&project, &mut sink).is_ok());
+}
+
+#[test]
 fn changed_translation_plan_invalidates_stale_checkpoints() {
     let service = ApplicationService;
     let (project, _) = fresh_project("plan-change");
