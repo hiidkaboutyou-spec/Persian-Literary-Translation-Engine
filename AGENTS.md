@@ -247,7 +247,7 @@ For Phase 27 changes, run the dedicated `Phase 27 Real-Book Pilot Readiness` wor
 ## Phase 29 human pilot review invariants
 
 - Human pilot review records are append-only; never overwrite an earlier decision to make history look current.
-- A record is current only when source, translation and translation-plan fingerprints all match.
+- A record is current only when full-chapter source/translation SHA-256 fingerprints plus translation-context and translation-plan fingerprints all match; neighboring chapter edits must stale earlier sign-off.
 - Never auto-create `clear` or `accepted_as_is` from model/metric evidence.
 - `accepted_as_is` cannot retain a human critical finding; `needs_revision` requires a warning/critical finding.
 - Validate source/target spans as Unicode character offsets against the exact current target.
