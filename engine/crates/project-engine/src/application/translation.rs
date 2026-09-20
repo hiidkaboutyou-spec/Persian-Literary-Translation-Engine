@@ -276,9 +276,7 @@ fn resumable_chapter(
     let context_fp_path = layout
         .chapters_dir
         .join(format!("{stem}.context-fingerprint"));
-    let plan_fp_path = layout
-        .chapters_dir
-        .join(format!("{stem}.plan-fingerprint"));
+    let plan_fp_path = layout.chapters_dir.join(format!("{stem}.plan-fingerprint"));
     if !txt_path.is_file()
         || !source_fp_path.is_file()
         || !context_fp_path.is_file()
