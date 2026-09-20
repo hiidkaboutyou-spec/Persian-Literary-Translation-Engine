@@ -214,6 +214,10 @@ For Phase 26 changes, run the dedicated `Phase 26 Long-Span Coreference Evidence
 - Chapter reuse requires matching source fingerprint, Context Packet fingerprint, and translation-plan fingerprint. Do not weaken this to source-only or source+context-only reuse.
 - The translation-plan fingerprint must represent semantic execution choices: resolved provider/model, target language, style profile, versioned pipeline contract. Do not include `max_chapters` or other purely operational budgets.
 - Rebuild completed chapter/paragraph progress from currently valid checkpoints on resume. Never increment old persisted paragraph totals for checkpoints being rediscovered.
+- Count completed source paragraphs for operational progress; do not derive completion from the translated alignment-record count.
+- A reusable checkpoint requires its structured chapter artifact to match chapter identity, source, context, and plan; EPUB still requires block provenance.
+- Export is fail-closed for the current translation plan: partial progress, legacy/mixed-plan chapter artifacts, or stale source artifacts must not be combined into a publishable book.
+- Apply `max_chapters` only before new provider work. Reused checkpoints do not consume it, and later valid checkpoints may still be reconstructed after the new-work budget is exhausted.
 - `max_chapters` limits newly translated chapters in the current invocation. Reusing a valid checkpoint must not consume that budget.
 - Missing/legacy/mismatched plan fingerprints invalidate reuse and trigger regeneration. Never silently mix chapters produced by different provider/model/target/style plans.
 - A paused partial run may contain old artifacts on disk, but project status/export authority comes from current-plan progress. Do not mark a mixed partial run complete.
