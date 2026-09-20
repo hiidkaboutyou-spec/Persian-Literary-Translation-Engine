@@ -58,6 +58,21 @@ Repository/data terms reviewed: **CC BY-NC-SA 4.0**.
 
 Decision: research/reference only. Do not vendor, train on, or make it a product benchmark/runtime dependency.
 
+### GOLEMcoref (ACL 2026)
+
+Upstream: `GOLEM-lab/GOLEMcoref`.
+
+Research value:
+
+- current gold-standard fiction coreference benchmark spanning seven languages;
+- 827k annotated tokens across complete fictional stories, with English included;
+- human-curated character coreference annotations in CoNLL-2012/CorefUD formats;
+- useful evidence that fiction-specific annotation and cross-lingual training remain active research directions in 2026.
+
+Reviewed repository/data terms: **CC BY-NC 4.0**.
+
+Decision: non-commercial research/reference only. Do not vendor it into product CI or use its released model as a product dependency. It may be used only in a separate attributed research evaluation if its terms remain compatible with that evaluation.
+
 ### xCoRe
 
 Upstream: `SapienzaNLP/xcore`; EMNLP 2025.
@@ -95,13 +110,13 @@ Decision: future benchmark candidate only. Do not install in Phase 26.
 
 Upstream: `ufal/crac2026-corpipe`; CRAC 2026 winning multilingual system.
 
-Reviewed software license: **MPL-2.0**.
+Reviewed software license: **MPL-2.0**. The released pretrained CorPipe 26 model weights are separately published under **CC BY-NC-SA 4.0**, so code licensing must not be mistaken for checkpoint/product-use permission.
 
 Research value: current multilingual coreference engineering and evaluation reference.
 
 Limitation: not specifically a long-fiction/book-scale system and does not remove the need for literary/book-scale evaluation.
 
-Decision: reference/benchmark candidate only; no runtime adoption in Phase 26.
+Decision: reference/benchmark candidate only; no runtime adoption in Phase 26. Exact model-weight terms remain an independent admission gate.
 
 ### NovelCR
 
