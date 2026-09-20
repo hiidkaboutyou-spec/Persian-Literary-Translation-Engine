@@ -315,7 +315,7 @@ Updating this repository seed does **not** mean the user's local PMC/Obsidian va
 
 ## Durable Phase 27 decisions
 
-1. **Phase 27 is stacked until Phase 26 lands** — PR #113 is based on ready Phase-26 head `2d535ae520c9d064bbc74e95d494d2cb7dc282f0`. Do not call it canonical or retarget it to `main` until PR #111 is merged and main is verified.
+1. **Phase 26 is canonical before Phase 27 landing** — Phase-26 final head `8418fdf4eb06252dec8a014c13e789efa7fe800e` landed via PR #111 at merge `5c0d4c8514b999faf786971da8541f7ea5a1b773`. PR #113 now targets `main`; Phase 27 remains non-canonical until its own exact-head gates pass and it lands.
 2. **The next measured gap is operational full-book reliability** — after long-span coreference, do not add another model stack before proving that multi-session whole-book execution, recovery and export are trustworthy.
 3. **Checkpoint reuse is semantic-plan aware** — source/context equality is insufficient. Reuse also requires a deterministic translation-plan fingerprint covering resolved provider/model, target language, style profile, protocol version and pipeline contract.
 4. **Execution budgets are not semantic identity** — `max_chapters` is deliberately excluded from the plan fingerprint and counts newly translated chapters only. Valid reused checkpoints must not consume the current run's translation budget.
