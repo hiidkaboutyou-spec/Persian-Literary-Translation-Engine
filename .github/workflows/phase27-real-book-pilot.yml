@@ -63,7 +63,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git diff --exit-code 2d535ae520c9d064bbc74e95d494d2cb7dc282f0 -- engine/Cargo.toml engine/crates/project-engine/Cargo.toml
+          base_sha=2d535ae520c9d064bbc74e95d494d2cb7dc282f0
+          git fetch --no-tags --depth=1 origin "$base_sha"
+          git diff --exit-code "$base_sha" -- engine/Cargo.toml engine/crates/project-engine/Cargo.toml
 
   macos-arm64:
     runs-on: macos-15
