@@ -127,11 +127,14 @@ Target identity deliberately excludes translation fingerprints so the same locat
 
 ### Currentness / staleness
 
-Every human record is bound to:
+Every human record is bound conservatively to the reviewed chapter state:
 
-- source fingerprint;
-- translation fingerprint;
+- SHA-256 fingerprint of the full chapter source;
+- SHA-256 fingerprint of the full chapter translation;
+- translation-context fingerprint;
 - translation-plan fingerprint.
+
+The local source/target spans still refer only to the selected target. This deliberately makes a prior sign-off stale when another paragraph or the translation context in the same chapter changes, because literary judgments can depend on surrounding context.
 
 A record is current only when all three still match the present target.
 
@@ -257,7 +260,7 @@ Phase 29 becomes canonical only when:
 
 1. Phase 28 is canonical first;
 2. ledger persistence is local and append-only;
-3. current records are bound to exact source/translation/plan fingerprints;
+3. current records are bound to exact full-chapter source/translation, context and plan fingerprints;
 4. a manual edit makes the previous record stale without deleting it;
 5. only a current Phase-28 target may receive a record;
 6. Unicode character spans are validated fail-closed;
