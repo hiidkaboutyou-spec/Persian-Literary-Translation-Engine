@@ -475,6 +475,11 @@ pub enum ProjectEvent {
         chapter_index: usize,
         revision_id: String,
     },
+    PilotReviewRecorded {
+        project_id: String,
+        target_id: String,
+        outcome: String,
+    },
     ExportStarted {
         project_id: String,
     },
