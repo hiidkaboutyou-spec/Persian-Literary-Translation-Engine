@@ -311,3 +311,19 @@ Updating this repository seed does **not** mean the user's local PMC/Obsidian va
 10. **FastCoref is not pre-approved** — MIT software alone is insufficient; exact checkpoint terms, security/resources and literary long-span benchmark gain still require review.
 11. **NovelCR is blocked from committed use until dataset licensing is explicit** — public availability is not enough.
 12. **No model stack added in Phase 26** — no Torch, Transformers, spaCy, xCoRe, Maverick, BookCoref, FastCoref or CorPipe dependency is introduced.
+
+
+## Durable Phase 27 decisions
+
+1. **Phase 27 is stacked until Phase 26 lands** — PR #113 is based on ready Phase-26 head `2d535ae520c9d064bbc74e95d494d2cb7dc282f0`. Do not call it canonical or retarget it to `main` until PR #111 is merged and main is verified.
+2. **The next measured gap is operational full-book reliability** — after long-span coreference, do not add another model stack before proving that multi-session whole-book execution, recovery and export are trustworthy.
+3. **Checkpoint reuse is semantic-plan aware** — source/context equality is insufficient. Reuse also requires a deterministic translation-plan fingerprint covering resolved provider/model, target language, style profile, protocol version and pipeline contract.
+4. **Execution budgets are not semantic identity** — `max_chapters` is deliberately excluded from the plan fingerprint and counts newly translated chapters only. Valid reused checkpoints must not consume the current run's translation budget.
+5. **Resume rebuilds progress from evidence** — completed chapter/paragraph counts are reconstructed from valid current-plan checkpoints on each run instead of adding persisted counts again. Final completed counts must exactly equal book totals.
+6. **Legacy/mismatched checkpoints fail safe** — a checkpoint with no Phase-27 plan fingerprint, or a different plan fingerprint, is regenerated rather than silently mixed into the new run.
+7. **Permanent pilot CI remains rights-safe** — the Phase-27 12-chapter rehearsal uses project-owned synthetic manuscript generation. A real/user book is never committed as a fixture.
+8. **Real-book text stays in native project storage** — do not copy manuscript or generated translation text into GitHub, PMC/projectmem, Linear, CI artifacts/logs, or external benchmark/research services. Developer trackers may store non-text metadata such as chapter ID, failure class and fix status.
+9. **No single automatic book-quality score becomes authority** — research through 2026 shows weaknesses in document-level metrics. Use deterministic whole-book invariants, bounded local/discourse windows, omission/addition evidence and focused human review.
+10. **Do not change refinement granularity from literature alone** — ACL 2026 evidence favors document translation plus smaller refinement in studied settings, but EN→FA behavior must be measured in our pilot before changing the production default.
+11. **Pilot sampling is position-aware** — first real-book review must include early, middle and late chapters; long/chunk-boundary passages; dialogue/coreference; recurring terminology; and relationship/register continuity.
+12. **No new runtime dependency in the Phase-27 baseline** — no Temporal/workflow engine, cloud persistence, new provider/model stack or second persistence owner is introduced to solve these operational bugs.
