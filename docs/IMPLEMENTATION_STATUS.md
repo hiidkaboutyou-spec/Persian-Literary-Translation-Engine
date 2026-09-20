@@ -6,11 +6,11 @@ A production-grade English-to-Persian literary translation engine with a Rust co
 
 ## Canonical Main State
 
-`main` is verified through Phase 25.
+`main` is canonical through Phase 26.
 
-Phase 26 PR #111 is fully green at ready head `2d535ae520c9d064bbc74e95d494d2cb7dc282f0` but is not canonical until explicitly merged and verified on `main`.
+Phase 26 PR #111 landed from final validated head `8418fdf4eb06252dec8a014c13e789efa7fe800e` at merge commit `5c0d4c8514b999faf786971da8541f7ea5a1b773`. The final head passed Rust CI, Security, Phases 18–26, Desktop Product, Trusted Release, Project Memory, and Apple Silicon checks.
 
-Phase 27 is a stacked draft on branch `phase-27-real-book-pilot-hardening` / PR #113. It must not be described as canonical while Phase 26 remains unmerged.
+Phase 27 is active on branch `phase-27-real-book-pilot-hardening` / PR #113 targeting `main`. It remains non-canonical until its final exact-head gates pass and the PR lands.
 
 Phase 21 implementation merged through PR #100 at:
 
