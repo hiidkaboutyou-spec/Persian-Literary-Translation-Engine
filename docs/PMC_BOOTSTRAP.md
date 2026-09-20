@@ -315,7 +315,7 @@ Updating this repository seed does **not** mean the user's local PMC/Obsidian va
 
 ## Durable Phase 27 decisions
 
-1. **Phase 26 is canonical before Phase 27 landing** — Phase-26 final head `8418fdf4eb06252dec8a014c13e789efa7fe800e` landed via PR #111 at merge `5c0d4c8514b999faf786971da8541f7ea5a1b773`. PR #113 now targets `main`; Phase 27 remains non-canonical until its own exact-head gates pass and it lands.
+1. **Phase 27 is canonical** — final validated head `f75212a496d5073d249e47cb920abf1c4303eae9` landed via PR #113 at merge `e06182d0f6ea487d47d56ad76672e595b3b8e25a` after Phase 27, Rust CI, Security, Phases 18–26, Desktop Product, Trusted Release and Project Memory all passed on the exact head.
 2. **The next measured gap is operational full-book reliability** — after long-span coreference, do not add another model stack before proving that multi-session whole-book execution, recovery and export are trustworthy.
 3. **Checkpoint reuse is semantic-plan aware** — source/context equality is insufficient. Reuse also requires a deterministic translation-plan fingerprint covering resolved provider/model, target language, style profile, protocol version and pipeline contract.
 4. **Execution budgets are not semantic identity** — `max_chapters` is deliberately excluded from the plan fingerprint and counts newly translated chapters only. Valid reused checkpoints must not consume the current run's translation budget.
@@ -334,3 +334,15 @@ Updating this repository seed does **not** mean the user's local PMC/Obsidian va
 16. **Bounded repair may scan later valid checkpoints** — `max_chapters` limits new provider translations, not evidence reconstruction. After repairing one hole, later valid checkpoints may still be counted in the same resume pass.
 
 17. **Sidecar deadlines include host scheduling delay** — optional coreference process timeouts start before spawn and fail closed when the host has not observed completion within the configured budget. Late completion after scheduler delay is not accepted as timely evidence.
+
+
+## Phase 27 Canonical Evidence
+
+- Final validated head: `f75212a496d5073d249e47cb920abf1c4303eae9`
+- Merge: `e06182d0f6ea487d47d56ad76672e595b3b8e25a`
+- Phase 27: `35509554696`
+- Rust CI: `35509554703`
+- Security: `35509554694`
+- Desktop Product: `35509554716`
+- Trusted Release: `35509554715`
+- Project Memory Tooling: `35509554735`
