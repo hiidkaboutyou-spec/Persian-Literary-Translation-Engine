@@ -271,6 +271,9 @@ Current Phase-27 work:
 - resume reconstructs progress from valid current-plan checkpoints instead of incrementing previously persisted counts;
 - valid reused checkpoints no longer consume `max_chapters`, so bounded resume advances to genuinely untranslated chapters;
 - legacy or mismatched plan checkpoints regenerate instead of silently mixing translation configurations;
+- structured chapter artifacts are mandatory reuse evidence and operational progress counts completed source paragraphs;
+- `max_chapters` limits new provider work while later valid checkpoints remain discoverable during sparse repair;
+- mixed-plan/partial exports fail closed instead of combining stale chapters into a publishable DOCX/EPUB;
 - project-owned 12-chapter repeated-resume rehearsal proves exact completion, reopen, and DOCX export without committing a real manuscript;
 - first real-book evaluation protocol samples early/middle/late text, long/chunk-boundary passages, dialogue/coreference, terminology/register recurrence, and omission/addition evidence;
 - no new runtime dependency/model/provider/cloud service is introduced.
