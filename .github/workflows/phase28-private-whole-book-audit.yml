@@ -68,7 +68,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          base_sha=c30285c04466cd491c7a3fd1c4c46caa9cd8d304
+          base_sha=df12c38066430f5dbbd84deb1bc05cb27f45bf99
           git fetch --no-tags --depth=1 origin "$base_sha"
           git diff --exit-code "$base_sha" -- engine/Cargo.toml engine/crates/project-engine/Cargo.toml
 
