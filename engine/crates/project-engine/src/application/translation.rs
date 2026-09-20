@@ -305,12 +305,12 @@ fn resumable_chapter(
     Ok(Some(translated))
 }
 
-fn count_translated_paragraphs(layout: &ProjectLayout, stem: &str) -> usize {
-    load_chapter_artifact(layout, stem)
-        .ok()
-        .flatten()
-        .map(|artifact| artifact.paragraphs.len())
-        .unwrap_or(0)
+fn source_paragraph_count(chapter: &ManuscriptChapter) -> usize {
+    chapter
+        .scenes
+        .iter()
+        .map(|scene| scene.paragraphs.len())
+        .sum()
 }
 
 // ---------------------------------------------------------------------------
@@ -571,9 +571,6 @@ pub fn run_translation(
     let mut completed_this_run = 0usize;
 
     for (chapter_position, chapter) in manuscript.chapters.iter().enumerate() {
-        if completed_this_run >= max_chapters {
-            break;
-        }
         if pause_requested(layout) || cancel_requested(layout) {
             break;
         }
@@ -662,12 +659,18 @@ pub fn run_translation(
                 &plan_fingerprint,
             )? {
                 let artifact = load_chapter_artifact(layout, &stem)?;
-                let structured_reuse_ok = artifact
-                    .as_ref()
-                    .is_some_and(|artifact| epub_artifact_has_provenance(chapter, artifact));
-                if chapter.source.format != DocumentFormat::Epub || structured_reuse_ok {
+                let structured_reuse_ok = artifact.as_ref().is_some_and(|artifact| {
+                    artifact.chapter_index == chapter.index
+                        && artifact.chapter_id == chapter.id
+                        && artifact.source_fingerprint == source_fingerprint
+                        && artifact.context_fingerprint == context_fingerprint
+                        && artifact.translation_plan_fingerprint == plan_fingerprint
+                        && (chapter.source.format != DocumentFormat::Epub
+                            || epub_artifact_has_provenance(chapter, artifact))
+                });
+                if structured_reuse_ok {
                     progress.completed_chapters += 1;
-                    progress.completed_paragraphs += count_translated_paragraphs(layout, &stem);
+                    progress.completed_paragraphs += source_paragraph_count(chapter);
                     progress.percent = if progress.total_chapters == 0 {
                         1.0
                     } else {
@@ -680,13 +683,17 @@ pub fn run_translation(
                     continue;
                 }
                 let warning = format!(
-                    "EPUB checkpoint for {} predates block provenance or is structurally ambiguous; translating again",
+                    "checkpoint for {} lacks a matching structured artifact or required provenance; translating again",
                     chapter.title
                 );
                 if !progress.warnings.contains(&warning) {
                     progress.warnings.push(warning);
                 }
             }
+        }
+
+        if completed_this_run >= max_chapters {
+            break;
         }
 
         emit_and_history(
@@ -791,7 +798,7 @@ pub fn run_translation(
         write_chapter_artifact(layout, &artifact, &stem)?;
 
         progress.completed_chapters += 1;
-        progress.completed_paragraphs += artifact.paragraphs.len();
+        progress.completed_paragraphs += source_paragraph_count(chapter);
         progress.percent = if progress.total_chapters == 0 {
             1.0
         } else {
@@ -937,7 +944,7 @@ pub fn get_translated_chapter(
 pub fn get_translated_text(
     layout: &ProjectLayout,
     chapter_index: usize,
-) -> Result<String, ApplicationError> {
+) -> Result<(), ApplicationError> {
     Ok(join_translated(
         &get_translated_chapter(layout, chapter_index)?.paragraphs,
     ))
@@ -1090,7 +1097,7 @@ fn validate_export_readiness(
         }
     }
 
-    Ok(progress.translation_plan_fingerprint)
+    Ok(())
 }
 
 pub fn export_translation_as(
@@ -1106,7 +1113,7 @@ pub fn export_translation_as(
             "no chapters to export".to_string(),
         ));
     }
-    let _current_plan = validate_export_readiness(layout, &manifest, &manuscript)?;
+    validate_export_readiness(layout, &manifest, &manuscript)?;
 
     emit_and_history(
         layout,
