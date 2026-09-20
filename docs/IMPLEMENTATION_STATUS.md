@@ -65,6 +65,25 @@ Phase-28 contract:
 
 Detailed research: `docs/PHASE_28_RESEARCH.md`.
 
+### Active stacked Phase 29 — Human Pilot Review Ledger & Resolution Loop
+
+Phase 29 is stacked on Phase 28 and is not canonical.
+
+Measured gap: Phase 28 selects useful whole-book review targets but does not persist whether a human inspected a current target, found a problem, deliberately accepted a literary choice, or must re-review after a later edit.
+
+Phase-29 contract:
+
+- append-only local human decision records;
+- currentness requires exact source + translation + plan fingerprints;
+- manual edits make old records stale without deleting history;
+- no automatic evaluator can create `clear` or `accepted_as_is`;
+- span/severity findings are optional and Unicode-safe;
+- sampled-review completion is separate from export safety and from objective quality claims;
+- notes stay local project data and are never copied automatically to developer memory/CI/telemetry;
+- no new dependency or external review service.
+
+Detailed research: `docs/PHASE_29_RESEARCH.md`.
+
 ### Core crates and application boundaries
 
 - **translation-core** — provider-neutral translate -> revise -> quality pipeline with deterministic EchoProvider and production OpenAIProvider, bounded oversized-passage handling, immutable structural-marker guidance, and explicit translation style profiles.
