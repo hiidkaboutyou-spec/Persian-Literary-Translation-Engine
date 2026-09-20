@@ -9,6 +9,7 @@ pub mod analysis;
 pub mod error;
 pub mod literary_review;
 pub mod models;
+pub mod pilot_audit;
 pub mod project;
 pub mod review;
 pub mod service;
@@ -29,6 +30,10 @@ pub use models::{
     ProjectEventSink, ProjectSnapshot, ProjectStatus, ReviewItemSummary, ReviewSummary,
     TranslatedChapter, TranslatedParagraph, TranslationProgress, TranslationRevision,
     TranslationState, VecEventSink,
+};
+pub use pilot_audit::{
+    BookPilotAudit, PilotAuditIssue, PilotAuditIssueCode, PilotReviewTarget, PilotSampleReason,
+    DEFAULT_MAX_REVIEW_TARGETS, PILOT_AUDIT_SCHEMA_VERSION,
 };
 pub use service::{silent_sink, ApplicationService, Project};
 pub use translation::TranslationConfig;
