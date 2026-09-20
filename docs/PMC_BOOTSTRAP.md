@@ -327,3 +327,8 @@ Updating this repository seed does **not** mean the user's local PMC/Obsidian va
 10. **Do not change refinement granularity from literature alone** — ACL 2026 evidence favors document translation plus smaller refinement in studied settings, but EN→FA behavior must be measured in our pilot before changing the production default.
 11. **Pilot sampling is position-aware** — first real-book review must include early, middle and late chapters; long/chunk-boundary passages; dialogue/coreference; recurring terminology; and relationship/register continuity.
 12. **No new runtime dependency in the Phase-27 baseline** — no Temporal/workflow engine, cloud persistence, new provider/model stack or second persistence owner is introduced to solve these operational bugs.
+
+13. **Export is current-plan fail-closed** — disk presence is insufficient. Export requires Completed current progress, exact chapter/source-paragraph totals, current source identity, non-empty plan identity, and every structured chapter artifact matching the current plan/source.
+14. **Structured artifacts are part of checkpoint validity** — a text/fingerprint checkpoint without a matching structured chapter artifact is regenerated; EPUB additionally requires exact block provenance.
+15. **Operational paragraph progress counts source paragraphs** — provider changes to paragraph segmentation must not distort completion percentages or prevent a valid completed DOCX workflow.
+16. **Bounded repair may scan later valid checkpoints** — `max_chapters` limits new provider translations, not evidence reconstruction. After repairing one hole, later valid checkpoints may still be counted in the same resume pass.
