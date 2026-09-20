@@ -225,14 +225,12 @@ PR #106; final reviewed head `9037f569cffb2618b915248db2c60015764d034c`; merge `
 
 Canonical Phase 25 provides a native high-precision explicit quotation-speaker baseline, project-owned regression coverage, bounded deterministic Context Packet speaker evidence, and fail-closed ambiguity/pronoun handling without adding BookNLP/FastCoref/Torch/Transformers/spaCy or another model runtime.
 
-### Phase 26 — Long-Span Literary Coreference Evidence — ready for landing, not yet canonical
+### Phase 26 — Long-Span Literary Coreference Evidence — canonical
 
-Branch: `phase-26-long-span-coreference-evidence`.
-PR: #111 (ready for review).
+PR #111 final validated head: `8418fdf4eb06252dec8a014c13e789efa7fe800e`.
+Merge commit: `5c0d4c8514b999faf786971da8541f7ea5a1b773`.
 
-Exact ready head: `2d535ae520c9d064bbc74e95d494d2cb7dc282f0`.
-
-All final-head gates are green: Phase 26, Rust CI, Security, Phases 18–25, Desktop Product, Trusted Release, and Project Memory. The phase remains non-canonical until PR #111 is explicitly landed and main is verified.
+Final-head gates were green: Phase 26, Rust CI, Security, Phases 18–25, Desktop Product, Trusted Release, and Project Memory. Final hardening also made optional sidecar deadlines fail closed under host scheduler delay.
 
 Goal: add an optional, rights-safe and fail-closed coreference evidence boundary for pronouns/nominal mentions without letting model clusters become character canon.
 
@@ -258,10 +256,10 @@ Research decisions:
 
 Exit criteria: `docs/PHASE_26_RESEARCH.md`.
 
-### Phase 27 — Real-Book Pilot Readiness & Resume Integrity — stacked draft
+### Phase 27 — Real-Book Pilot Readiness & Resume Integrity — active validation
 
 Branch: `phase-27-real-book-pilot-hardening`.
-Draft PR: #113, stacked on Phase 26 PR #111 until Phase 26 becomes canonical.
+PR #113 now targets canonical `main` after Phase 26 merge.
 
 Goal: make the first user-supplied full-book run operationally trustworthy before adding another model stack.
 
