@@ -252,7 +252,11 @@ pub fn record_review(
             )
         })?;
 
-    validate_submission(&submission, snapshot.source_chars, snapshot.translation_chars)?;
+    validate_submission(
+        &submission,
+        snapshot.source_chars,
+        snapshot.translation_chars,
+    )?;
 
     let mut ledger = load_ledger(layout, &manifest.project_id)?;
     if ledger.records.len() >= MAX_PILOT_REVIEW_RECORDS {
@@ -338,7 +342,11 @@ fn resolve_target(
 
     Ok(TargetSnapshot {
         target: target.clone(),
-        target_id: stable_target_id(project_id, &target.chapter_id, target.paragraph_id.as_deref()),
+        target_id: stable_target_id(
+            project_id,
+            &target.chapter_id,
+            target.paragraph_id.as_deref(),
+        ),
         source_fingerprint: content_fingerprint(source.as_bytes()),
         translation_fingerprint: content_fingerprint(translation.as_bytes()),
         translation_plan_fingerprint: translated.translation_plan_fingerprint,
