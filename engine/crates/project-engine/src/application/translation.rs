@@ -844,6 +844,7 @@ pub fn run_translation(
         provider: provider_name.clone(),
         model: effective_model.clone(),
         target_language: config.target_language.clone(),
+        translation_plan_fingerprint: plan_fingerprint.clone(),
         total_chapters: progress.total_chapters,
         completed_chapters: progress.completed_chapters,
         percent: progress.percent,
