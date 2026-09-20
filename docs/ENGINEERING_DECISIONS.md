@@ -114,3 +114,12 @@ Before adopting a GitHub repository/package/model/tool:
 - A real book remains private project data. GitHub, PMC/projectmem, Linear and CI may store only non-text operational metadata.
 - Research through 2026 is treated conservatively: document-level metrics are not trusted as a single coherence oracle, and reported refinement recipes do not change the EN->FA production default until our own pilot shows a measured gain.
 - No workflow engine, cloud backend, new provider/model runtime or second persistence owner is introduced by this baseline.
+
+## Phase 28 — Private Whole-Book Audit & Human Review Sampling
+
+- Whole-book audit is an application-layer read model over existing artifacts; it does not become a new persistence/canon owner.
+- Mechanical artifact safety and human literary-review workflow state are separate dimensions.
+- Audit serialization is intentionally text-free: stable IDs/fingerprints/counts/status codes only.
+- Bounded human-review sampling covers book position plus deterministic risk/evidence signals instead of asking one evaluator to judge the whole novel at once.
+- Existing Phase-19 literary review/alignment evidence is reused; no competing evaluator is introduced.
+- No network/model call, metric package, analytics SDK, database, cloud backend or new runtime dependency is justified for the Phase-28 baseline.
