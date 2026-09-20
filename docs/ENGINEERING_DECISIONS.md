@@ -97,3 +97,17 @@ Before adopting a GitHub repository/package/model/tool:
 - LitBank CC BY 4.0 is an optional future external/reference benchmark with attribution; PDNC/BookCoref/Maverick remain research-only under non-commercial terms.
 - ModernBookNLP, BookNLP and FastCoref are not installed in Phase 25. Any future sidecar requires separate code/checkpoint/data licensing, resource/privacy review and benchmark-proven gain.
 - No new external runtime dependency is justified for the native Phase-25 baseline.
+
+
+## Phase 27 — Real-Book Pilot Readiness & Resume Integrity
+
+- After Phase 26, the measured gap is operational full-book reliability rather than another model integration.
+- Resume reuse is valid only when source, Context Packet, and translation-plan fingerprints all match.
+- Translation-plan identity covers resolved provider/model, target language, style profile, a version tag, and the production pipeline contract. `max_chapters` remains an execution budget and is excluded.
+- Resume reconstructs completed chapter/paragraph counts from currently valid checkpoints. Persisted counters are not blindly incremented.
+- Reused checkpoints do not consume the current run's `max_chapters`; the budget limits newly translated chapters.
+- Missing legacy plan identity or a changed plan invalidates reuse and triggers regeneration instead of mixing outputs across configurations.
+- The permanent Phase-27 rehearsal is a project-owned synthetic multi-chapter workflow. It proves restart/resume/export integrity, not literary quality.
+- A real book remains private project data. GitHub, PMC/projectmem, Linear and CI may store only non-text operational metadata.
+- Research through 2026 is treated conservatively: document-level metrics are not trusted as a single coherence oracle, and reported refinement recipes do not change the EN->FA production default until our own pilot shows a measured gain.
+- No workflow engine, cloud backend, new provider/model runtime or second persistence owner is introduced by this baseline.
