@@ -28,6 +28,7 @@ pub fn run() {
             commands::get_progress,
             commands::get_translated_chapter,
             commands::apply_manual_edit,
+            commands::get_pilot_audit,
             commands::run_literary_review,
             commands::get_literary_review,
             commands::accept_literary_review_revision,
