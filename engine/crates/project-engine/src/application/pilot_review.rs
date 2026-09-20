@@ -382,9 +382,26 @@ fn validate_submission(
                 "accepted_as_is requires a reviewer note or explicit finding".to_string(),
             ));
         }
-        PilotReviewOutcome::NeedsRevision if submission.findings.is_empty() => {
+        PilotReviewOutcome::AcceptedAsIs
+            if submission
+                .findings
+                .iter()
+                .any(|finding| finding.severity == ReviewSeverity::Critical) =>
+        {
             return Err(ApplicationError::PilotReviewUnavailable(
-                "needs_revision requires at least one finding".to_string(),
+                "accepted_as_is cannot retain a critical human finding".to_string(),
+            ));
+        }
+        PilotReviewOutcome::NeedsRevision
+            if !submission.findings.iter().any(|finding| {
+                matches!(
+                    finding.severity,
+                    ReviewSeverity::Warning | ReviewSeverity::Critical
+                )
+            }) =>
+        {
+            return Err(ApplicationError::PilotReviewUnavailable(
+                "needs_revision requires at least one warning or critical finding".to_string(),
             ));
         }
         _ => {}
