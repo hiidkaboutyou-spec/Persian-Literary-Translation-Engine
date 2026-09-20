@@ -795,12 +795,39 @@ fn changed_translation_plan_invalidates_stale_checkpoints() {
         .iter()
         .any(|warning| warning.contains("translation plan changed")));
 
+    // Old-plan artifacts for later chapters may still exist on disk, but a
+    // partial current-plan run must never export a mixed book.
+    assert!(service.export_project(&project, &mut sink).is_err());
+
     let regenerated = service.get_translated_chapter(&project, 0).unwrap();
     assert_eq!(
         regenerated.translation_plan_fingerprint,
         progress.translation_plan_fingerprint
     );
     assert_ne!(regenerated.translation_plan_fingerprint, first_plan);
+}
+
+#[test]
+fn export_rejects_mixed_plan_artifact_even_after_completed_progress() {
+    let service = ApplicationService;
+    let (project, _) = fresh_project("mixed-export");
+    import_manuscript(&project, 3);
+    run_analysis(&project);
+    let approved = approve_all_pending(&project);
+    promote(&project, &approved);
+    start_echo_translation(&project, None);
+
+    let path = project
+        .layout
+        .chapters_dir
+        .join("002-Chapter_2.chapter.json");
+    let mut value: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    value["translation_plan_fingerprint"] = serde_json::Value::String("stale-plan".to_string());
+    std::fs::write(&path, serde_json::to_vec_pretty(&value).unwrap()).unwrap();
+
+    let mut sink = silent_sink();
+    assert!(service.export_project(&project, &mut sink).is_err());
 }
 
 #[test]
