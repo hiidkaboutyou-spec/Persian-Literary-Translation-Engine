@@ -332,3 +332,5 @@ Updating this repository seed does **not** mean the user's local PMC/Obsidian va
 14. **Structured artifacts are part of checkpoint validity** — a text/fingerprint checkpoint without a matching structured chapter artifact is regenerated; EPUB additionally requires exact block provenance.
 15. **Operational paragraph progress counts source paragraphs** — provider changes to paragraph segmentation must not distort completion percentages or prevent a valid completed DOCX workflow.
 16. **Bounded repair may scan later valid checkpoints** — `max_chapters` limits new provider translations, not evidence reconstruction. After repairing one hole, later valid checkpoints may still be counted in the same resume pass.
+
+17. **Sidecar deadlines include host scheduling delay** — optional coreference process timeouts start before spawn and fail closed when the host has not observed completion within the configured budget. Late completion after scheduler delay is not accepted as timely evidence.
