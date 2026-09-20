@@ -718,6 +718,48 @@ fn bounded_resume_advances_past_reused_checkpoints() {
 }
 
 #[test]
+fn legacy_checkpoint_without_plan_fingerprint_is_regenerated() {
+    let service = ApplicationService;
+    let (project, _) = fresh_project("legacy-plan");
+    import_manuscript(&project, 3);
+    run_analysis(&project);
+    let approved = approve_all_pending(&project);
+    promote(&project, &approved);
+
+    start_echo_translation(&project, Some(1));
+
+    let legacy_plan = project
+        .layout
+        .chapters_dir
+        .join("001-Chapter_1.plan-fingerprint");
+    assert!(legacy_plan.is_file());
+    std::fs::remove_file(&legacy_plan).unwrap();
+
+    let config = TranslationConfig {
+        provider: "echo".to_string(),
+        target_language: "fa".to_string(),
+        max_chapters: Some(1),
+        ..TranslationConfig::default()
+    };
+    let mut sink = silent_sink();
+    let progress = service
+        .resume_translation(&project, &config, &mut sink)
+        .unwrap();
+
+    // The missing plan identity makes chapter 1 non-reusable. The one-chapter
+    // budget must regenerate it rather than silently accepting the legacy
+    // checkpoint and advancing to chapter 2.
+    assert_eq!(progress.completed_chapters, 1);
+    assert!(legacy_plan.is_file());
+    let regenerated = service.get_translated_chapter(&project, 0).unwrap();
+    assert!(!regenerated.translation_plan_fingerprint.is_empty());
+    assert_eq!(
+        regenerated.translation_plan_fingerprint,
+        progress.translation_plan_fingerprint
+    );
+}
+
+#[test]
 fn changed_translation_plan_invalidates_stale_checkpoints() {
     let service = ApplicationService;
     let (project, _) = fresh_project("plan-change");
