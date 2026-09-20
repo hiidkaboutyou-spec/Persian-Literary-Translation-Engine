@@ -652,8 +652,9 @@ pub fn run_translation(
             )
         };
 
-        // Resume: reuse only chapters whose checkpoints match both the source
-        // and the assembled context (canon changes invalidate reuse).
+        // Resume: reuse only chapters whose checkpoints match the source,
+        // assembled context, and semantic translation plan. Canon/provider/model/
+        // target/style changes therefore invalidate reuse.
         if resume {
             if let Some(existing) =
                 resumable_chapter(
