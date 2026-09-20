@@ -256,10 +256,12 @@ Research decisions:
 
 Exit criteria: `docs/PHASE_26_RESEARCH.md`.
 
-### Phase 27 — Real-Book Pilot Readiness & Resume Integrity — active validation
+### Phase 27 — Real-Book Pilot Readiness & Resume Integrity — canonical
 
-Branch: `phase-27-real-book-pilot-hardening`.
-PR #113 now targets canonical `main` after Phase 26 merge.
+PR #113 final validated head: `f75212a496d5073d249e47cb920abf1c4303eae9`.
+Merge commit: `e06182d0f6ea487d47d56ad76672e595b3b8e25a`.
+
+Final-head gates were green: Phase 27, Rust CI, Security, Phases 18–26, Desktop Product, Trusted Release, and Project Memory.
 
 Goal: make the first user-supplied full-book run operationally trustworthy before adding another model stack.
 
