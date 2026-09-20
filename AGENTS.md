@@ -242,3 +242,17 @@ For Phase 27 changes, run the dedicated `Phase 27 Real-Book Pilot Readiness` wor
 - Respect `max_review_targets = 0`; do not force a minimum sample count.
 - `human_review_clear` is meaningful only for mechanically current artifacts; mixed-plan/source-invalid state must keep it false.
 - Desktop callers may invoke the audit through Tauri, but all computation remains in Rust `ApplicationService`.
+
+
+## Phase 29 human pilot review invariants
+
+- Human pilot review records are append-only; never overwrite an earlier decision to make history look current.
+- A record is current only when source, translation and translation-plan fingerprints all match.
+- Never auto-create `clear` or `accepted_as_is` from model/metric evidence.
+- `accepted_as_is` cannot retain a human critical finding; `needs_revision` requires a warning/critical finding.
+- Validate source/target spans as Unicode character offsets against the exact current target.
+- Do not automatically copy manuscript/translation prose into the ledger or history events.
+- Reviewer-authored notes are private local project data; never bridge them into GitHub, PMC/projectmem, CI logs, telemetry or external services automatically.
+- `sample_review_complete` is sampled workflow state, not a quality score, export approval, or canon authority.
+- Keep all pilot-review rules in Rust `ApplicationService`; Tauri/frontend only invokes and renders them.
+- No new QE model, LLM judge, database, telemetry SDK or cloud review service without a separately measured gap and privacy/license/security review.
