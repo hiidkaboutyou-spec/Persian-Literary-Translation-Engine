@@ -207,3 +207,19 @@ For Phase 25 changes, run the dedicated `Phase 25 Narrative Speaker Intelligence
 - Do not add Torch, Transformers, spaCy, xCoRe, Maverick, BookCoref, FastCoref, CorPipe or another model stack to default dependencies as part of Phase 26.
 
 For Phase 26 changes, run the dedicated `Phase 26 Long-Span Coreference Evidence` workflow plus the existing Rust/Security/Phase regression gates.
+
+## Phase 27 real-book pilot invariants
+
+- Treat Phase 27 as stacked/non-canonical until Phase 26 PR #111 lands and canonical `main` is verified.
+- Chapter reuse requires matching source fingerprint, Context Packet fingerprint, and translation-plan fingerprint. Do not weaken this to source-only or source+context-only reuse.
+- The translation-plan fingerprint must represent semantic execution choices: resolved provider/model, target language, style profile, versioned pipeline contract. Do not include `max_chapters` or other purely operational budgets.
+- Rebuild completed chapter/paragraph progress from currently valid checkpoints on resume. Never increment old persisted paragraph totals for checkpoints being rediscovered.
+- `max_chapters` limits newly translated chapters in the current invocation. Reusing a valid checkpoint must not consume that budget.
+- Missing/legacy/mismatched plan fingerprints invalidate reuse and trigger regeneration. Never silently mix chapters produced by different provider/model/target/style plans.
+- A paused partial run may contain old artifacts on disk, but project status/export authority comes from current-plan progress. Do not mark a mixed partial run complete.
+- Permanent Phase-27 CI must use only project-owned synthetic manuscripts and must prove repeated bounded resume reaches exact completion and durable reopen/export.
+- Real/user manuscript text and generated translation text must never be copied to GitHub, PMC/projectmem, Linear, CI logs/artifacts, or external evaluation services merely for tracking. Store only non-text operational metadata outside the native project workspace.
+- Do not adopt a new document-level metric, workflow engine, cloud persistence layer, translation provider, or model stack in Phase 27 without a separate measured gap and rights/security review.
+- Research findings about refinement granularity are advisory. Do not change the EN→FA production pipeline default until project-owned/real-pilot evidence demonstrates improvement.
+
+For Phase 27 changes, run the dedicated `Phase 27 Real-Book Pilot Readiness` workflow plus Rust/Security/Phase 18–26/Desktop/Trusted Release/Project Memory regression gates.
