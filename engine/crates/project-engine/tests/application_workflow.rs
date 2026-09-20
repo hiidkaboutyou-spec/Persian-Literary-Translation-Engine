@@ -5,13 +5,13 @@
 //! directly and no test touches engine JSON files except where the test *is*
 //! about persistence/crash behavior.
 
+use literary_review_engine::{ReviewDimension, ReviewSeverity};
 use project_engine::application::{
     silent_sink, AdvancedAnalysisSettings, ApplicationService, ArtifactState, DecisionAction,
     HumanPilotFinding, LiteraryReviewSettings, NextAction, PilotAuditIssueCode, PilotReviewOutcome,
     PilotReviewSubmission, PilotSampleReason, ProjectEvent, ProjectStatus, ReviewCharSpan,
     TranslationConfig, TranslationState,
 };
-use literary_review_engine::{ReviewDimension, ReviewSeverity};
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
