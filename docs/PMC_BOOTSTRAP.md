@@ -217,6 +217,7 @@ Detailed rationale: `docs/PHASE_23_RESEARCH.md`.
 - Phase 23 — Trusted Release & Supply-Chain Hardening — canonical/merged (PR #103; `adc2ab2294feec6ff190b4e4d11c3fa6407ca7f2`).
 - Phase 24 — Literary Precision & Persian Polish — canonical/merged (PR #104; `2fa48dfd39437f79e6ac9db949f54e6595f2cc0a`).
 - Phase 25 — Narrative Speaker & Coreference Intelligence — canonical/merged (PR #106; `e39a46dd652aaea6fd8d990d70a32fba2d96b0d4`).
+- Phase 26 — Long-Span Literary Coreference Evidence — active branch `phase-26-long-span-coreference-evidence`; draft PR #111.
 
 Always finish/verify the current numbered phase before starting the next numbered phase. Supporting tooling may land between phases only when runtime defaults remain intact, ownership/failure boundaries are explicit, and validation passes.
 
@@ -295,3 +296,20 @@ Updating this repository seed does **not** mean the user's local PMC/Obsidian va
 13. **Model evidence can never create canon** — any future coreference/speaker sidecar remains optional evidence and normal translation must work without it.
 14. **Phase 25 canonical completion** — PR #106 final reviewed head `9037f569cffb2618b915248db2c60015764d034c`; merge `e39a46dd652aaea6fd8d990d70a32fba2d96b0d4`; all final Phase 18–25, Rust, Security, Desktop, Trusted Release and Project Memory gates were green.
 15. **Phase 26 research target** — long-span literary coreference (pronouns, nominal mentions and cross-context identity) must begin with rights-safe evaluation and remain evidence-only. LitBank CC BY 4.0 is eligible for attributed reference benchmarking; BookCoref/xCoRe/Maverick remain non-commercial research references. No model runtime is approved by this handoff.
+
+## Durable Phase 26 decisions
+
+1. **Coreference evidence is not canon** — external/model clusters may inform translation context but can never create, merge or mutate canonical characters automatically.
+2. **Canonical anchoring is mandatory** — a cluster reaches Context Packet only when its explicit canonical-name/approved-alias mentions resolve to exactly one existing CharacterBible identity.
+3. **Conflicts fail closed** — clusters with zero canonical anchors or anchors for multiple canonical characters are omitted rather than guessed.
+4. **Source provenance is exact** — mention IDs are globally unique, spans cannot be reused across clusters, offsets must be in bounds, and mention text must exactly equal the declared source slice.
+5. **Authority stays Inferred** — model-backed coreference evidence ranks below Phase-25 deterministic speaker evidence and below canonical/human-approved context.
+6. **Opt-in compatibility** — existing deterministic and semantic Context Packet APIs retain their behavior; coreference requires the explicit Phase-26 API.
+7. **Sidecars are bounded** — optional coreference executables have source-size/cluster/mention limits and a subprocess timeout. Failure cannot make normal translation unusable.
+8. **Permanent CI is project-owned/network-free** — committed Phase-26 corpus is synthetic and redistribution-allowed. LitBank CC BY 4.0 is optional attributed reference evaluation, not a CI download.
+9. **Non-commercial systems remain research-only** — BookCoref, xCoRe and Maverick are not product/runtime dependencies under reviewed CC BY-NC-SA terms.
+10. **FastCoref is not pre-approved** — MIT software alone is insufficient; exact checkpoint terms, security/resources and literary long-span benchmark gain still require review.
+11. **NovelCR is blocked from committed use until dataset licensing is explicit** — public availability is not enough.
+12. **No model stack added in Phase 26** — no Torch, Transformers, spaCy, xCoRe, Maverick, BookCoref, FastCoref or CorPipe dependency is introduced.
+
+13. **Sidecar deadlines include host scheduling delay** — optional coreference process timeouts start before spawn and fail closed when the host has not observed completion within the configured budget. Late completion after scheduler delay is not accepted as timely evidence.

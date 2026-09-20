@@ -190,3 +190,20 @@ For Phase 20 publishing changes, run the dedicated `Phase 20 EPUB Round Trip` wo
 - Any future speaker/coreference sidecar is optional evidence only and must fail without breaking normal translation.
 
 For Phase 25 changes, run the dedicated `Phase 25 Narrative Speaker Intelligence` workflow. It must cover native speaker attribution, project-owned benchmark provenance, zero incorrect resolved labels on the committed corpus, Context Packet integration, locked Linux validation and Apple Silicon compilation/tests.
+
+## Phase 26 coreference-evidence invariants
+
+- Coreference model output is evidence only. It must never create, merge, rename, or mutate CharacterBible canon automatically.
+- A model cluster may enter translation context only when explicit canonical-name/approved-alias mentions inside that cluster resolve to exactly one existing canonical character.
+- Clusters with no canonical anchor or multiple conflicting canonical anchors fail closed and are omitted.
+- Validate schema, source fingerprint binding, globally unique bounded/safe mention IDs, unique bounded/safe cluster IDs, non-reused spans, aggregate mention limits, character-offset bounds, and exact source-slice text before consuming a response.
+- Bound sidecar stdin/stdout/stderr execution: concurrent pipe draining, timeout, stdout/stderr byte ceilings, and explicit oversized-output failure are part of the protocol safety contract.
+- Canonicalize accepted clusters/mentions by source position before bounded Context Packet rendering; model return order must not control which evidence survives the output budget.
+- Coreference Context Packet items have Inferred authority. Do not upgrade them to Deterministic, Canonical, or HumanApproved merely because they contain a canonical anchor.
+- Existing non-coreference translation/context paths must remain usable when the optional sidecar is missing, malformed, timed out, or disabled.
+- Keep optional sidecars bounded by input size, cluster/mention limits, and timeout. Do not silently send manuscripts to a remote service.
+- Permanent Phase-26 CI uses project-owned synthetic data. External corpora/models require explicit code/checkpoint/data license review before use.
+- BookCoref/xCoRe/Maverick remain research-only under reviewed non-commercial terms. FastCoref is not approved until exact model/license/security/resource and measured literary long-span gain are reviewed.
+- Do not add Torch, Transformers, spaCy, xCoRe, Maverick, BookCoref, FastCoref, CorPipe or another model stack to default dependencies as part of Phase 26.
+
+For Phase 26 changes, run the dedicated `Phase 26 Long-Span Coreference Evidence` workflow plus the existing Rust/Security/Phase regression gates.
