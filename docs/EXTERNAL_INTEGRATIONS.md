@@ -496,3 +496,15 @@ Boundary: use focused human sampling/comparison in the real-book pilot; do not c
 ### Phase-27 integration decision
 
 No new external runtime/service is adopted. The measured defects are solved inside native project-engine checkpoint/progress semantics. Manuscript text must not be transmitted to an external tracker/evaluator merely for pilot management.
+
+## Phase 28 evaluation references — research only
+
+Recent ACL/EMNLP/EAMT research is used to shape the review workflow, not imported as runtime code.
+
+- NAACL 2025 LitEval: expert human evaluation and simpler schemes outperform complex/automatic literary evaluation in important settings.
+- EMNLP 2025 long-input evaluation: larger evaluator inputs can hide error spans; focused/local evaluation is safer.
+- EMNLP 2025 SEGALE: book-length evaluation should tolerate segmentation differences and explicitly reason about under/over-translation.
+- EAMT 2026 Creativity Bias: automatic metrics and LLM judges correlate poorly with professional creativity judgments and can prefer machine-like output.
+- Findings ACL 2026 paired comprehension/creativity framework: source comprehension does not imply human-level translational creativity.
+
+Decision: no external evaluator, judge, corpus or service is integrated by Phase 28. These works justify local bounded sampling plus human authority.
