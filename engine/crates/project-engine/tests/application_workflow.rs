@@ -7,9 +7,11 @@
 
 use project_engine::application::{
     silent_sink, AdvancedAnalysisSettings, ApplicationService, ArtifactState, DecisionAction,
-    LiteraryReviewSettings, NextAction, PilotAuditIssueCode, PilotSampleReason, ProjectEvent,
-    ProjectStatus, TranslationConfig, TranslationState,
+    HumanPilotFinding, LiteraryReviewSettings, NextAction, PilotAuditIssueCode, PilotReviewOutcome,
+    PilotReviewSubmission, PilotSampleReason, ProjectEvent, ProjectStatus, ReviewCharSpan,
+    TranslationConfig, TranslationState,
 };
+use literary_review_engine::{ReviewDimension, ReviewSeverity};
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -1068,6 +1070,220 @@ fn phase28_pilot_audit_detects_mixed_plan_artifacts_fail_closed() {
             && issue.chapter_index == Some(1)
             && issue.blocking
     }));
+}
+
+#[test]
+fn phase29_clear_records_complete_current_sample_without_copying_book_text() {
+    let service = ApplicationService;
+    let (project, _) = fresh_project("phase29-clear");
+    import_manuscript(&project, 5);
+    run_analysis(&project);
+    let approved = approve_all_pending(&project);
+    promote(&project, &approved);
+    start_echo_translation(&project, None);
+
+    let initial = service.pilot_review_summary(&project, None).unwrap();
+    assert!(!initial.targets.is_empty());
+    assert!(!initial.sample_review_complete);
+
+    let mut sink = silent_sink();
+    for target in &initial.targets {
+        service
+            .record_pilot_review(
+                &project,
+                None,
+                &target.target_id,
+                PilotReviewSubmission {
+                    reviewer: "human-editor".into(),
+                    outcome: PilotReviewOutcome::Clear,
+                    findings: Vec::new(),
+                    note: String::new(),
+                },
+                &mut sink,
+            )
+            .unwrap();
+    }
+
+    let summary = service.pilot_review_summary(&project, None).unwrap();
+    assert_eq!(summary.reviewed_current, summary.targets.len());
+    assert_eq!(summary.resolved_current, summary.targets.len());
+    assert_eq!(summary.needs_revision_current, 0);
+    assert_eq!(summary.missing_current, 0);
+    assert!(summary.sample_review_complete);
+
+    let ledger = std::fs::read_to_string(&project.layout.pilot_review_file).unwrap();
+    assert!(!ledger.contains("Shirin walked into the garden of roses"));
+    assert!(!ledger.contains("Farhad watched from the terrace"));
+    assert!(!ledger.contains("A nightingale sang from the cypress tree"));
+    assert!(sink.events.iter().any(|event| {
+        matches!(event, ProjectEvent::PilotReviewRecorded { .. })
+    }));
+}
+
+#[test]
+fn phase29_manual_edit_makes_previous_human_record_stale_without_erasing_history() {
+    let service = ApplicationService;
+    let (project, _) = fresh_project("phase29-stale");
+    import_manuscript(&project, 3);
+    run_analysis(&project);
+    let approved = approve_all_pending(&project);
+    promote(&project, &approved);
+    start_echo_translation(&project, None);
+
+    let initial = service.pilot_review_summary(&project, None).unwrap();
+    let target = initial.targets.first().unwrap().clone();
+    let paragraph_id = target.target.paragraph_id.clone().unwrap();
+
+    let mut sink = silent_sink();
+    service
+        .record_pilot_review(
+            &project,
+            None,
+            &target.target_id,
+            PilotReviewSubmission {
+                reviewer: "human-editor".into(),
+                outcome: PilotReviewOutcome::Clear,
+                findings: Vec::new(),
+                note: String::new(),
+            },
+            &mut sink,
+        )
+        .unwrap();
+
+    service
+        .apply_manual_translation_edit(
+            &project,
+            target.target.chapter_index,
+            &paragraph_id,
+            "ترجمهٔ تازه پس از مرور انسانی.",
+            Some("human-editor"),
+            &mut sink,
+        )
+        .unwrap();
+
+    let after = service.pilot_review_summary(&project, None).unwrap();
+    let refreshed = after
+        .targets
+        .iter()
+        .find(|candidate| candidate.target_id == target.target_id)
+        .unwrap();
+    assert!(refreshed.current_record.is_none());
+    assert_eq!(refreshed.stale_record_count, 1);
+    assert!(after.stale_records >= 1);
+    assert!(!after.sample_review_complete);
+
+    let ledger = std::fs::read_to_string(&project.layout.pilot_review_file).unwrap();
+    assert!(ledger.contains(&target.target_id));
+}
+
+#[test]
+fn phase29_span_validation_and_human_acceptance_are_fail_closed() {
+    let service = ApplicationService;
+    let (project, _) = fresh_project("phase29-spans");
+    import_manuscript(&project, 1);
+    run_analysis(&project);
+    let approved = approve_all_pending(&project);
+    promote(&project, &approved);
+    start_echo_translation(&project, None);
+
+    let summary = service.pilot_review_summary(&project, None).unwrap();
+    assert_eq!(summary.targets.len(), 1);
+    let target = &summary.targets[0];
+    let mut sink = silent_sink();
+
+    let invalid = service.record_pilot_review(
+        &project,
+        None,
+        &target.target_id,
+        PilotReviewSubmission {
+            reviewer: "human-editor".into(),
+            outcome: PilotReviewOutcome::NeedsRevision,
+            findings: vec![HumanPilotFinding {
+                dimension: ReviewDimension::PersianNaturalness,
+                severity: ReviewSeverity::Warning,
+                source_span: Some(ReviewCharSpan {
+                    start_char: 0,
+                    end_char: usize::MAX,
+                }),
+                target_span: None,
+                note: "span should be rejected".into(),
+            }],
+            note: String::new(),
+        },
+        &mut sink,
+    );
+    assert!(invalid.is_err());
+
+    service
+        .record_pilot_review(
+            &project,
+            None,
+            &target.target_id,
+            PilotReviewSubmission {
+                reviewer: "human-editor".into(),
+                outcome: PilotReviewOutcome::NeedsRevision,
+                findings: vec![HumanPilotFinding {
+                    dimension: ReviewDimension::PersianNaturalness,
+                    severity: ReviewSeverity::Warning,
+                    source_span: Some(ReviewCharSpan {
+                        start_char: 0,
+                        end_char: 1,
+                    }),
+                    target_span: Some(ReviewCharSpan {
+                        start_char: 0,
+                        end_char: 1,
+                    }),
+                    note: "wording needs revision".into(),
+                }],
+                note: "revise before sign-off".into(),
+            },
+            &mut sink,
+        )
+        .unwrap();
+
+    let needs_revision = service.pilot_review_summary(&project, None).unwrap();
+    assert_eq!(needs_revision.needs_revision_current, 1);
+    assert!(!needs_revision.sample_review_complete);
+
+    service
+        .record_pilot_review(
+            &project,
+            None,
+            &target.target_id,
+            PilotReviewSubmission {
+                reviewer: "human-editor".into(),
+                outcome: PilotReviewOutcome::AcceptedAsIs,
+                findings: vec![HumanPilotFinding {
+                    dimension: ReviewDimension::PersianNaturalness,
+                    severity: ReviewSeverity::Advisory,
+                    source_span: None,
+                    target_span: None,
+                    note: "deliberate literary choice".into(),
+                }],
+                note: "accepted after contextual review".into(),
+            },
+            &mut sink,
+        )
+        .unwrap();
+
+    let accepted = service.pilot_review_summary(&project, None).unwrap();
+    assert_eq!(accepted.resolved_current, 1);
+    assert_eq!(accepted.needs_revision_current, 0);
+    assert!(accepted.sample_review_complete);
+
+    let unknown = service.record_pilot_review(
+        &project,
+        None,
+        "pilot-target-not-current",
+        PilotReviewSubmission {
+            reviewer: "human-editor".into(),
+            outcome: PilotReviewOutcome::Clear,
+            findings: Vec::new(),
+            note: String::new(),
+        },
+        &mut sink,
+    );
+    assert!(unknown.is_err());
 }
 
 #[test]
