@@ -33,6 +33,7 @@ use translation_core::{
 
 pub const TRANSLATION_PROGRESS_SCHEMA_VERSION: u32 = 1;
 pub const CHAPTER_ARTIFACT_SCHEMA_VERSION: u32 = 1;
+pub const TRANSLATION_PLAN_FINGERPRINT_VERSION: u32 = 1;
 const PAUSE_FLAG: &str = "pause-requested";
 const CANCEL_FLAG: &str = "cancel-requested";
 
@@ -151,6 +152,42 @@ fn configured_translation_provider(
     }
 }
 
+fn effective_model(config: &TranslationConfig, provider_name: &str) -> Option<String> {
+    match provider_name {
+        "echo" => None,
+        "openai" => {
+            let env_model = std::env::var("OPENAI_MODEL").ok();
+            Some(resolved_openai_model(
+                config.model.as_deref(),
+                env_model.as_deref(),
+            ))
+        }
+        _ => config
+            .model
+            .as_deref()
+            .map(str::trim)
+            .filter(|model| !model.is_empty())
+            .map(ToString::to_string),
+    }
+}
+
+fn translation_plan_fingerprint(
+    provider_name: &str,
+    model: Option<&str>,
+    target_language: &str,
+    style_profile: &TranslationStyleProfile,
+) -> String {
+    let material = format!(
+        "translation-plan-v{}\0provider={}\0model={}\0target={}\0style={}\0pipeline=default-literary-v1",
+        TRANSLATION_PLAN_FINGERPRINT_VERSION,
+        provider_name.trim(),
+        model.unwrap_or(""),
+        target_language.trim(),
+        style_profile.id(),
+    );
+    content_fingerprint(material.as_bytes())
+}
+
 // ---------------------------------------------------------------------------
 // Context assembly: both CLI and ApplicationService consume the same shared
 // Context Packet v2 builder. Semantic retrieval is explicitly opt-in.
@@ -230,6 +267,7 @@ fn resumable_chapter(
     stem: &str,
     expected_source: &str,
     expected_context: &str,
+    expected_plan: &str,
 ) -> Result<Option<String>, ApplicationError> {
     let txt_path = layout.chapters_dir.join(format!("{stem}.txt"));
     let source_fp_path = layout
@@ -238,7 +276,14 @@ fn resumable_chapter(
     let context_fp_path = layout
         .chapters_dir
         .join(format!("{stem}.context-fingerprint"));
-    if !txt_path.is_file() || !source_fp_path.is_file() || !context_fp_path.is_file() {
+    let plan_fp_path = layout
+        .chapters_dir
+        .join(format!("{stem}.plan-fingerprint"));
+    if !txt_path.is_file()
+        || !source_fp_path.is_file()
+        || !context_fp_path.is_file()
+        || !plan_fp_path.is_file()
+    {
         return Ok(None);
     }
     let stored_source = fs::read_to_string(&source_fp_path).map_err(|error| {
@@ -247,7 +292,13 @@ fn resumable_chapter(
     let stored_context = fs::read_to_string(&context_fp_path).map_err(|error| {
         ApplicationError::PersistenceFailure(format!("failed to read checkpoint: {error}"))
     })?;
-    if stored_source.trim() != expected_source || stored_context.trim() != expected_context {
+    let stored_plan = fs::read_to_string(&plan_fp_path).map_err(|error| {
+        ApplicationError::PersistenceFailure(format!("failed to read checkpoint: {error}"))
+    })?;
+    if stored_source.trim() != expected_source
+        || stored_context.trim() != expected_context
+        || stored_plan.trim() != expected_plan
+    {
         return Ok(None);
     }
     let translated = fs::read_to_string(&txt_path).map_err(|error| {
@@ -431,6 +482,13 @@ pub fn run_translation(
     let pipeline = TranslationPipeline::default_literary_pipeline();
     let provider = configured_translation_provider(config)?;
     let provider_name = provider.name().to_string();
+    let effective_model = effective_model(config, &provider_name);
+    let plan_fingerprint = translation_plan_fingerprint(
+        &provider_name,
+        effective_model.as_deref(),
+        &config.target_language,
+        &style_profile,
+    );
 
     let mut progress = match (resume, load_progress(layout)?) {
         (true, Some(existing)) => {
@@ -457,8 +515,9 @@ pub fn run_translation(
                 run_id: format!("run-{:x}", chrono::Utc::now().timestamp_millis() as u128),
                 state: TranslationState::Running,
                 provider: provider_name.clone(),
-                model: config.model.clone(),
+                model: effective_model.clone(),
                 target_language: config.target_language.clone(),
+                translation_plan_fingerprint: plan_fingerprint.clone(),
                 total_chapters: manuscript.chapters.len(),
                 completed_chapters: 0,
                 current_chapter: None,
@@ -472,8 +531,29 @@ pub fn run_translation(
             }
         }
     };
+    let previous_plan = progress.translation_plan_fingerprint.clone();
     progress.state = TranslationState::Running;
     progress.provider = provider_name.clone();
+    progress.model = effective_model.clone();
+    progress.target_language = config.target_language.clone();
+    progress.translation_plan_fingerprint = plan_fingerprint.clone();
+    progress.completed_chapters = 0;
+    progress.current_chapter = None;
+    progress.completed_paragraphs = 0;
+    progress.percent = 0.0;
+    progress.last_checkpoint = None;
+    if resume && previous_plan != plan_fingerprint {
+        let warning = if previous_plan.is_empty() {
+            "legacy checkpoints have no translation-plan fingerprint; they will be regenerated"
+                .to_string()
+        } else {
+            "translation plan changed; checkpoints from the previous provider/model/target/style plan will be regenerated"
+                .to_string()
+        };
+        if !progress.warnings.contains(&warning) {
+            progress.warnings.push(warning);
+        }
+    }
     progress.updated_at = Utc::now();
     save_progress(layout, &progress)?;
 
@@ -576,15 +656,20 @@ pub fn run_translation(
         // and the assembled context (canon changes invalidate reuse).
         if resume {
             if let Some(existing) =
-                resumable_chapter(layout, &stem, &source_fingerprint, &context_fingerprint)?
+                resumable_chapter(
+                    layout,
+                    &stem,
+                    &source_fingerprint,
+                    &context_fingerprint,
+                    &plan_fingerprint,
+                )?
             {
                 let artifact = load_chapter_artifact(layout, &stem)?;
                 let structured_reuse_ok = artifact
                     .as_ref()
                     .is_some_and(|artifact| epub_artifact_has_provenance(chapter, artifact));
                 if chapter.source.format != DocumentFormat::Epub || structured_reuse_ok {
-                    progress.completed_chapters =
-                        progress.completed_chapters.max(chapter.index + 1);
+                    progress.completed_chapters += 1;
                     progress.completed_paragraphs += count_translated_paragraphs(layout, &stem);
                     progress.percent = if progress.total_chapters == 0 {
                         1.0
@@ -594,7 +679,6 @@ pub fn run_translation(
                     progress.last_checkpoint = Some(format!("{stem}.txt"));
                     progress.updated_at = Utc::now();
                     save_progress(layout, &progress)?;
-                    completed_this_run += 1;
                     let _ = existing;
                     continue;
                 }
@@ -691,6 +775,10 @@ pub fn run_translation(
             .chapters_dir
             .join(format!("{stem}.context-fingerprint"));
         super::project::atomic_write_bytes(&context_fp_path, context_fingerprint.as_bytes())?;
+        let plan_fp_path = layout
+            .chapters_dir
+            .join(format!("{stem}.plan-fingerprint"));
+        super::project::atomic_write_bytes(&plan_fp_path, plan_fingerprint.as_bytes())?;
         let artifact = TranslatedChapter {
             schema_version: CHAPTER_ARTIFACT_SCHEMA_VERSION,
             chapter_index: chapter.index,
@@ -698,6 +786,7 @@ pub fn run_translation(
             title: chapter.title.clone(),
             source_fingerprint,
             context_fingerprint,
+            translation_plan_fingerprint: plan_fingerprint.clone(),
             style_profile: style_profile.id().to_string(),
             title_source_block_id: chapter.source.block_id.clone(),
             translated_title,
@@ -706,7 +795,7 @@ pub fn run_translation(
         };
         write_chapter_artifact(layout, &artifact, &stem)?;
 
-        progress.completed_chapters = progress.completed_chapters.max(chapter.index + 1);
+        progress.completed_chapters += 1;
         progress.completed_paragraphs += artifact.paragraphs.len();
         progress.percent = if progress.total_chapters == 0 {
             1.0
@@ -758,7 +847,7 @@ pub fn run_translation(
         run_id: progress.run_id.clone(),
         state,
         provider: provider_name.clone(),
-        model: config.model.clone(),
+        model: effective_model.clone(),
         target_language: config.target_language.clone(),
         total_chapters: progress.total_chapters,
         completed_chapters: progress.completed_chapters,
