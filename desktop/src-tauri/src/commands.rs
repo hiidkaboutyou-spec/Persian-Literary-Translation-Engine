@@ -2,9 +2,10 @@ use character_engine::CharacterProfile;
 use memory_engine::glossary::GlossaryEntry;
 use project_engine::application::{
     AdvancedAnalysisSettings, ApplicationCapabilities, ApplicationError, ApplicationErrorPayload,
-    ApplicationService, ArtifactState, DecisionAction, HistoryEvent, LiteraryReviewArtifactView,
-    LiteraryReviewRunSummary, LiteraryReviewSettings, Project, ProjectSnapshot, ReviewItemSummary,
-    TranslatedChapter, TranslationConfig, TranslationProgress, TranslationRevision, VecEventSink,
+    ApplicationService, ArtifactState, BookPilotAudit, DecisionAction, HistoryEvent,
+    LiteraryReviewArtifactView, LiteraryReviewRunSummary, LiteraryReviewSettings, Project,
+    ProjectSnapshot, ReviewItemSummary, TranslatedChapter, TranslationConfig, TranslationProgress,
+    TranslationRevision, VecEventSink,
 };
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
@@ -402,6 +403,19 @@ pub fn apply_manual_edit(
             &mut sink,
         )
         .map_err(payload)
+}
+
+#[tauri::command]
+pub async fn get_pilot_audit(
+    project_root: String,
+    max_review_targets: Option<usize>,
+) -> CommandResult<BookPilotAudit> {
+    blocking(move || {
+        let service = ApplicationService;
+        let project = load_project(project_root)?;
+        service.pilot_audit(&project, max_review_targets)
+    })
+    .await
 }
 
 #[tauri::command]
