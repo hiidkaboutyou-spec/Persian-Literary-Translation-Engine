@@ -457,3 +457,42 @@ Boundary: research reference only until exact dataset-level licensing/redistribu
 ### Phase-26 process boundary
 
 The project-owned Rust protocol accepts model output only as optional evidence. A future adapter must preserve exact source offsets/text, bounded execution, fail-closed validation, canonical-anchor mapping and normal-translation fallback. No candidate listed above is installed by Phase 26.
+
+
+## Phase 27 research references — no runtime adoption
+
+### ACL 2026 document-level literary refinement study
+
+Tan et al., *What Does LLM Refinement Actually Improve? A Systematic Study on Document-Level Literary Translation*.
+
+Research value: document-level MT followed by smaller/segment-level refinement was the strongest and most stable general recipe in the studied systems/language pairs.
+
+Boundary: evidence only. It does not justify changing the production EN->FA pipeline without our own measured pilot gain.
+
+### SEGALE / book-length evaluation
+
+Wang et al., EMNLP 2025, *Extending Automatic Machine Translation Evaluation to Book-Length Documents*.
+
+Research value: continuous-text evaluation plus segmentation/alignment for arbitrary-length translations and under-/over-translation.
+
+Boundary: architecture reference. Reuse the project's native monotonic alignment and omission/addition evidence; do not add a competing evaluator by default.
+
+### MetaDocEval
+
+EAMT 2026, *MetaDocEval: A Contrastive Framework for Evaluating Machine Translation Metrics at the Document-Level*.
+
+Research value: current metric families remain weak at genuine document-level coherence, with short local windows often outperforming ever-longer scoring contexts.
+
+Boundary: no external metric becomes a whole-book quality oracle or human-approval gate.
+
+### LitEval
+
+Zhang, Zhao & Eger, NAACL 2025, *How Good Are LLMs for Literary Translation, Really?*
+
+Research value: evaluator expertise and rubric complexity strongly influence literary judgments.
+
+Boundary: use focused human sampling/comparison in the real-book pilot; do not copy/commit their corpus unless a future rights/provenance review explicitly approves it.
+
+### Phase-27 integration decision
+
+No new external runtime/service is adopted. The measured defects are solved inside native project-engine checkpoint/progress semantics. Manuscript text must not be transmitted to an external tracker/evaluator merely for pilot management.
