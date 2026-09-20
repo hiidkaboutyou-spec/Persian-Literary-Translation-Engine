@@ -311,3 +311,5 @@ Updating this repository seed does **not** mean the user's local PMC/Obsidian va
 10. **FastCoref is not pre-approved** — MIT software alone is insufficient; exact checkpoint terms, security/resources and literary long-span benchmark gain still require review.
 11. **NovelCR is blocked from committed use until dataset licensing is explicit** — public availability is not enough.
 12. **No model stack added in Phase 26** — no Torch, Transformers, spaCy, xCoRe, Maverick, BookCoref, FastCoref or CorPipe dependency is introduced.
+
+13. **Sidecar deadlines include host scheduling delay** — optional coreference process timeouts start before spawn and fail closed when the host has not observed completion within the configured budget. Late completion after scheduler delay is not accepted as timely evidence.
