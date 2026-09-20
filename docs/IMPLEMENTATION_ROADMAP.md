@@ -300,6 +300,29 @@ Validated Phase-28 implementation:
 
 Research and exit criteria: `docs/PHASE_28_RESEARCH.md`.
 
+### Phase 29 — Human Pilot Review Ledger & Resolution Loop — stacked draft
+
+Branch: `phase-29-human-pilot-review-ledger`.
+
+Goal: turn Phase 28's bounded review targets into durable, local, human-owned review decisions without introducing an automatic book-quality score.
+
+Current Phase-29 work:
+
+- append-only `review/pilot-review-ledger.json`;
+- stable opaque target IDs with exact source/translation/plan fingerprint binding;
+- earlier records become stale after edits instead of being overwritten or silently trusted;
+- human outcomes: `clear`, `accepted_as_is`, `needs_revision`;
+- focused Phase-19 review dimensions/severity reused rather than a second taxonomy;
+- optional Unicode-character source/translation spans with fail-closed bounds validation;
+- contradictory records rejected (for example critical + accepted-as-is);
+- only current Phase-28 sample targets can receive records;
+- bounded local state with no automatic manuscript/translation prose copying;
+- `sample_review_complete` is workflow completion, not literary-quality proof;
+- Rust ApplicationService + Tauri commands own the rules; frontend remains presentation-only;
+- no new model, metric, runtime dependency, cloud service, database, telemetry or export gate.
+
+Research and exit criteria: `docs/PHASE_29_RESEARCH.md`.
+
 ## Next Action Rule
 
 Always finish and verify the current numbered phase before starting the next numbered phase. Supporting tooling may be added only when it leaves runtime defaults intact and has an explicit owner/failure boundary. Do not treat branch-only work as merged. When a phase changes architecture, persistence, quality, or publishing contracts, update `IMPLEMENTATION_STATUS.md`, this roadmap, engineering decisions, external-integration notes, and project-memory notes together.
