@@ -1,0 +1,100 @@
+name: Phase 28 Private Whole-Book Audit
+
+on:
+  push:
+    branches:
+      - main
+      - phase-28-private-whole-book-audit
+    paths:
+      - 'engine/crates/project-engine/**'
+      - 'desktop/src-tauri/**'
+      - '.github/workflows/phase28-private-whole-book-audit.yml'
+      - 'docs/PHASE_28_RESEARCH.md'
+      - 'docs/IMPLEMENTATION_ROADMAP.md'
+      - 'docs/IMPLEMENTATION_STATUS.md'
+      - 'docs/PMC_BOOTSTRAP.md'
+      - 'AGENTS.md'
+  pull_request:
+    paths:
+      - 'engine/crates/project-engine/**'
+      - 'desktop/src-tauri/**'
+      - '.github/workflows/phase28-private-whole-book-audit.yml'
+      - 'docs/PHASE_28_RESEARCH.md'
+      - 'docs/IMPLEMENTATION_ROADMAP.md'
+      - 'docs/IMPLEMENTATION_STATUS.md'
+      - 'docs/PMC_BOOTSTRAP.md'
+      - 'AGENTS.md'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase28-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  private-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 2
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # reviewed stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Verify committed dependency graph
+        working-directory: engine
+        run: cargo metadata --locked --format-version 1 --no-deps > /dev/null
+
+      - name: Verify formatting
+        working-directory: engine
+        run: cargo fmt --all -- --check
+
+      - name: Clippy audit surfaces
+        working-directory: engine
+        run: cargo clippy --locked -p project-engine --all-targets -- -D warnings
+
+      - name: Test private whole-book audit
+        working-directory: engine
+        run: |
+          cargo test --locked -p project-engine --test application_workflow phase28_pilot_audit
+
+      - name: Prove no new runtime dependency was added
+        shell: bash
+        run: |
+          set -euo pipefail
+          base_sha=c30285c04466cd491c7a3fd1c4c46caa9cd8d304
+          git fetch --no-tags --depth=1 origin "$base_sha"
+          git diff --exit-code "$base_sha" -- engine/Cargo.toml engine/crates/project-engine/Cargo.toml
+
+  macos-arm64:
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Verify Apple Silicon runner
+        run: test "$(uname -m)" = arm64
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # reviewed stable
+
+      - name: Compile and exercise private audit
+        working-directory: engine
+        run: |
+          cargo check --locked -p project-engine --all-targets
+          cargo test --locked -p project-engine --test application_workflow phase28_pilot_audit_is_text_free_position_aware_and_locally_reviewable
+          cargo test --locked -p project-engine --test application_workflow phase28_pilot_audit_surfaces_manual_edit_and_stale_review_without_blocking_export
+          cargo test --locked -p project-engine --test application_workflow phase28_partial_run_never_samples_untranslated_chapters
+          cargo test --locked -p project-engine --test application_workflow phase28_pilot_audit_detects_mixed_plan_artifacts_fail_closed
+
+      - name: Compile and test Tauri audit boundary
+        run: |
+          cargo check --locked --manifest-path desktop/src-tauri/Cargo.toml --all-targets
+          cargo test --locked --manifest-path desktop/src-tauri/Cargo.toml
