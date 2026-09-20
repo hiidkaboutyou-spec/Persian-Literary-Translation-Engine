@@ -13,6 +13,7 @@ use super::models::{
     ProjectEventSink, ProjectSnapshot, ReviewItemSummary, TranslatedChapter, TranslationProgress,
     TranslationRevision, VecEventSink,
 };
+use super::pilot_audit as pilot_audit_ops;
 use super::project::{
     create_project, load_history, load_manifest, open_project, save_manifest, HistorySink,
     ProjectLayout, ProjectLock,
@@ -160,6 +161,20 @@ impl ApplicationService {
     pub fn snapshot(&self, project: &Project) -> Result<ProjectSnapshot, ApplicationError> {
         let manifest = load_manifest(&project.layout)?;
         snapshot_ops::snapshot(&project.layout, &manifest.project_id)
+    }
+
+    /// Build a local, text-free whole-book pilot audit. The report contains
+    /// only project/chapter/paragraph identifiers and workflow metadata; it
+    /// performs no network or model calls.
+    pub fn pilot_audit(
+        &self,
+        project: &Project,
+        max_review_targets: Option<usize>,
+    ) -> Result<pilot_audit_ops::BookPilotAudit, ApplicationError> {
+        pilot_audit_ops::build_pilot_audit(
+            &project.layout,
+            max_review_targets.unwrap_or(pilot_audit_ops::DEFAULT_MAX_REVIEW_TARGETS),
+        )
     }
 
     // ------------------------------------------------------------------
