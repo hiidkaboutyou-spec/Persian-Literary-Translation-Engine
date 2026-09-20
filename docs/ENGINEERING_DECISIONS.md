@@ -106,6 +106,9 @@ Before adopting a GitHub repository/package/model/tool:
 - Translation-plan identity covers resolved provider/model, target language, style profile, a version tag, and the production pipeline contract. `max_chapters` remains an execution budget and is excluded.
 - Resume reconstructs completed chapter/paragraph counts from currently valid checkpoints. Persisted counters are not blindly incremented.
 - Reused checkpoints do not consume the current run's `max_chapters`; the budget limits newly translated chapters.
+- Structured chapter artifacts are part of checkpoint validity; plain text plus fingerprint sidecars are not enough for safe reuse.
+- Operational paragraph completion counts source paragraphs, not output alignment records.
+- Export validates current-plan completeness and per-chapter plan/source identity before generating DOCX/EPUB, preventing mixed-plan books after partial retranslation.
 - Missing legacy plan identity or a changed plan invalidates reuse and triggers regeneration instead of mixing outputs across configurations.
 - The permanent Phase-27 rehearsal is a project-owned synthetic multi-chapter workflow. It proves restart/resume/export integrity, not literary quality.
 - A real book remains private project data. GitHub, PMC/projectmem, Linear and CI may store only non-text operational metadata.
