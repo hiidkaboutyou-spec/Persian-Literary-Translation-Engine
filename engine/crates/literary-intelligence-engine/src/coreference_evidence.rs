@@ -325,11 +325,11 @@ pub fn canonical_coreference_links(
             .into_iter()
             .next()
             .expect("exactly one canonical character after len check");
+        anchor_ids.sort();
         let anchor_set = anchor_ids
             .iter()
             .map(String::as_str)
             .collect::<HashSet<_>>();
-        anchor_ids.sort();
         let mut linked_mentions = cluster
             .mentions
             .iter()
