@@ -1,0 +1,99 @@
+name: Phase 30 Pilot Review Workspace
+
+on:
+  push:
+    branches:
+      - main
+      - phase-30-pilot-review-workspace
+    paths:
+      - 'desktop/ui/**'
+      - 'desktop/src-tauri/**'
+      - 'engine/crates/project-engine/**'
+      - 'tools/check_phase30_pilot_review_ui.py'
+      - '.github/workflows/phase30-pilot-review-workspace.yml'
+      - 'docs/PHASE_30_RESEARCH.md'
+      - 'docs/IMPLEMENTATION_ROADMAP.md'
+      - 'docs/IMPLEMENTATION_STATUS.md'
+      - 'docs/PMC_BOOTSTRAP.md'
+      - 'AGENTS.md'
+  pull_request:
+    paths:
+      - 'desktop/ui/**'
+      - 'desktop/src-tauri/**'
+      - 'engine/crates/project-engine/**'
+      - 'tools/check_phase30_pilot_review_ui.py'
+      - '.github/workflows/phase30-pilot-review-workspace.yml'
+      - 'docs/PHASE_30_RESEARCH.md'
+      - 'docs/IMPLEMENTATION_ROADMAP.md'
+      - 'docs/IMPLEMENTATION_STATUS.md'
+      - 'docs/PMC_BOOTSTRAP.md'
+      - 'AGENTS.md'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase30-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pilot-review-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 2
+
+      - name: Check JavaScript syntax
+        run: node --check desktop/ui/app.js
+
+      - name: Verify local UI privacy and IPC contract
+        run: python3 tools/check_phase30_pilot_review_ui.py
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # reviewed stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Verify Rust formatting
+        working-directory: engine
+        run: cargo fmt --all -- --check
+
+      - name: Re-run human-review authority tests
+        working-directory: engine
+        run: |
+          cargo test --locked -p project-engine --test application_workflow phase29_
+          cargo test --locked -p project-engine pilot_review
+
+      - name: Prove Phase 30 adds no runtime dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          base_sha=0bd46478999ec0fa2a9092a6a07cf31d3b67fbd0
+          git fetch --no-tags --depth=1 origin "$base_sha"
+          git diff --exit-code "$base_sha" -- engine/Cargo.toml engine/crates/project-engine/Cargo.toml desktop/src-tauri/Cargo.toml
+
+  macos-arm64:
+    runs-on: macos-15
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Verify Apple Silicon runner
+        run: test "$(uname -m)" = arm64
+
+      - name: Check WebView assets
+        run: |
+          node --check desktop/ui/app.js
+          python3 tools/check_phase30_pilot_review_ui.py
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # reviewed stable
+
+      - name: Compile and test desktop IPC boundary
+        run: |
+          cargo check --locked --manifest-path desktop/src-tauri/Cargo.toml --all-targets
+          cargo test --locked --manifest-path desktop/src-tauri/Cargo.toml
