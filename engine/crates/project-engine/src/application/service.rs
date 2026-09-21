@@ -216,7 +216,7 @@ impl ApplicationService {
             Utc::now(),
         )?;
         sink.emit(ProjectEvent::PilotReviewRecorded {
-            project_id,
+            project_id: project_id.clone(),
             target_id: record.target_id.clone(),
             outcome: record.outcome.as_str().to_string(),
         });
