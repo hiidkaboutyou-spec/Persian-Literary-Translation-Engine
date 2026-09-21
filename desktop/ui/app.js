@@ -468,16 +468,20 @@ function renderPilotContext(targetState, chapter) {
 
   const target = targetState.target;
   const paragraphs = chapter.paragraphs || [];
-  let targetIndex = target.paragraph_id
+  const targetIndex = target.paragraph_id
     ? paragraphs.findIndex((paragraph) => paragraph.paragraph_id === target.paragraph_id)
-    : 0;
-  if (targetIndex < 0) targetIndex = 0;
+    : (paragraphs.length ? 0 : -1);
 
   context.append(
     textNode("strong", (chapter.title || ("Chapter " + (target.chapter_index + 1))) + " · " + pilotTargetStatus(targetState)),
     textNode("div", "Reasons: " + (target.reasons || []).map(enumLabel).join(", "), "meta"),
     textNode("div", "Target ID: " + targetState.target_id, "meta")
   );
+
+  if (targetIndex < 0) {
+    context.append(textNode("div", "The current target paragraph could not be resolved in the local translated chapter. Refresh the audit before recording a decision.", "warning danger-warning"));
+    return false;
+  }
 
   const start = Math.max(0, targetIndex - 1);
   const end = Math.min(paragraphs.length, targetIndex + 2);
@@ -514,6 +518,7 @@ function renderPilotContext(targetState, chapter) {
   if (targetState.stale_record_count > 0) {
     context.append(textNode("div", targetState.stale_record_count + " stale prior record(s) remain in append-only history.", "warning"));
   }
+  return true;
 }
 
 async function selectPilotTarget(targetState) {
@@ -523,9 +528,9 @@ async function selectPilotTarget(targetState) {
     chapterIndex: targetState.target.chapter_index,
   });
   state.pilotChapter = chapter;
-  renderPilotContext(targetState, chapter);
-  $("record-pilot-review").disabled = false;
-  $("open-pilot-editor").disabled = false;
+  const inspectable = renderPilotContext(targetState, chapter);
+  $("record-pilot-review").disabled = !inspectable;
+  $("open-pilot-editor").disabled = !inspectable;
 }
 
 function renderPilotSummary(summary) {
