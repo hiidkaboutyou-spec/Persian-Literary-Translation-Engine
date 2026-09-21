@@ -270,16 +270,7 @@ pub fn record_review(
         )));
     }
 
-    let record_id = record_id(
-        &snapshot.target_id,
-        &snapshot.source_fingerprint,
-        &snapshot.translation_fingerprint,
-        &snapshot.translation_context_fingerprint,
-        submission.outcome,
-        &submission.reviewer,
-        reviewed_at,
-        ledger.records.len(),
-    );
+    let record_id = record_id(&snapshot, &submission, reviewed_at, ledger.records.len());
     let record = PilotReviewRecord {
         record_id,
         target_id: snapshot.target_id,
@@ -535,19 +526,19 @@ fn stable_target_id(project_id: &str, chapter_id: &str, paragraph_id: Option<&st
 }
 
 fn record_id(
-    target_id: &str,
-    source_fingerprint: &str,
-    translation_fingerprint: &str,
-    translation_context_fingerprint: &str,
-    outcome: PilotReviewOutcome,
-    reviewer: &str,
+    snapshot: &TargetSnapshot,
+    submission: &PilotReviewSubmission,
     reviewed_at: DateTime<Utc>,
     sequence: usize,
 ) -> String {
     let identity = format!(
-        "phase29-record-v1\0{target_id}\0{source_fingerprint}\0{translation_fingerprint}\0{translation_context_fingerprint}\0{}\0{}\0{}\0{sequence}",
-        outcome.as_str(),
-        reviewer.trim(),
+        "phase29-record-v1\0{}\0{}\0{}\0{}\0{}\0{}\0{}\0{sequence}",
+        snapshot.target_id,
+        snapshot.source_fingerprint,
+        snapshot.translation_fingerprint,
+        snapshot.translation_context_fingerprint,
+        submission.outcome.as_str(),
+        submission.reviewer.trim(),
         reviewed_at.to_rfc3339_opts(chrono::SecondsFormat::Nanos, true),
     );
     format!("pilot-review-{:x}", Sha256::digest(identity.as_bytes()))
