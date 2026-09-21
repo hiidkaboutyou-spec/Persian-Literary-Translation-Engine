@@ -45,6 +45,26 @@ No new runtime dependency, provider, model stack, cloud backend, or second persi
 
 Detailed research: `docs/PHASE_27_RESEARCH.md`.
 
+### Active Phase 28 — Private Whole-Book Audit & Human Review Sampling
+
+Phase 28 is implemented and previously green on its feature head, but is not canonical until rebased exact-head validation and landing complete.
+
+Measured gap after Phase 27: the engine can safely complete/resume/export a full book, but the first real-book pilot still needs a deterministic local way to identify review coverage gaps and bounded human-review targets without uploading prose or trusting whole-book automatic scores.
+
+Phase-28 contract:
+
+- local/read-only audit from current project artifacts;
+- no network/model calls;
+- no prose in audit serialization;
+- separate mechanical readiness from human-review workflow state;
+- mixed-plan/source/stale artifacts remain mechanically blocking;
+- missing/stale/attention literary reviews and post-edit stale quality remain human-review evidence, not automatic literary verdicts;
+- deterministic bounded sampling covers book position plus risk/evidence-driven chapters.
+- partial-run sampling excludes untranslated and stale-plan chapters;
+- the desktop backend exposes the same audit through a read-only Tauri command; no audit logic moves into JavaScript.
+
+Detailed research: `docs/PHASE_28_RESEARCH.md`.
+
 ### Core crates and application boundaries
 
 - **translation-core** — provider-neutral translate -> revise -> quality pipeline with deterministic EchoProvider and production OpenAIProvider, bounded oversized-passage handling, immutable structural-marker guidance, and explicit translation style profiles.

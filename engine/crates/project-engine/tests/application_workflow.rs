@@ -7,7 +7,8 @@
 
 use project_engine::application::{
     silent_sink, AdvancedAnalysisSettings, ApplicationService, ArtifactState, DecisionAction,
-    NextAction, ProjectEvent, ProjectStatus, TranslationConfig, TranslationState,
+    LiteraryReviewSettings, NextAction, PilotAuditIssueCode, PilotSampleReason, ProjectEvent,
+    ProjectStatus, TranslationConfig, TranslationState,
 };
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -911,6 +912,162 @@ fn phase27_pilot_readiness_repeated_resume_reaches_exact_completion_and_export()
         reopened_progress.completed_paragraphs,
         reopened_progress.total_paragraphs
     );
+}
+
+#[test]
+fn phase28_pilot_audit_is_text_free_position_aware_and_locally_reviewable() {
+    let service = ApplicationService;
+    let (project, _) = fresh_project("phase28-audit");
+    import_manuscript(&project, 5);
+    run_analysis(&project);
+    let approved = approve_all_pending(&project);
+    promote(&project, &approved);
+    start_echo_translation(&project, None);
+
+    let review = service
+        .review_translation(&project, &LiteraryReviewSettings::default())
+        .unwrap();
+    assert_eq!(review.reviewed_chapters, 5);
+
+    let audit = service.pilot_audit(&project, None).unwrap();
+    assert_eq!(audit.total_chapters, 5);
+    assert_eq!(audit.translated_chapters, 5);
+    assert_eq!(
+        audit.completed_source_paragraphs,
+        audit.total_source_paragraphs
+    );
+    assert!(audit.translation_complete);
+    assert!(audit.mechanically_export_ready);
+    assert_eq!(audit.literary_review_coverage_chapters, 5);
+    assert!(!audit.review_targets.is_empty());
+
+    let reasons = audit
+        .review_targets
+        .iter()
+        .flat_map(|target| target.reasons.iter())
+        .copied()
+        .collect::<std::collections::BTreeSet<_>>();
+    assert!(reasons.contains(&PilotSampleReason::EarlyBook));
+    assert!(reasons.contains(&PilotSampleReason::MiddleBook));
+    assert!(reasons.contains(&PilotSampleReason::LateBook));
+    assert!(reasons.contains(&PilotSampleReason::LongChapter));
+
+    // Privacy contract: serialized audit metadata contains identifiers and
+    // workflow state, never manuscript or translated prose.
+    let json = serde_json::to_string(&audit).unwrap();
+    assert!(!json.contains("Shirin walked into the garden of roses"));
+    assert!(!json.contains("Farhad watched from the terrace"));
+    assert!(!json.contains("A nightingale sang from the cypress tree"));
+
+    let no_targets = service.pilot_audit(&project, Some(0)).unwrap();
+    assert!(no_targets.review_targets.is_empty());
+}
+
+#[test]
+fn phase28_pilot_audit_surfaces_manual_edit_and_stale_review_without_blocking_export() {
+    let service = ApplicationService;
+    let (project, _) = fresh_project("phase28-edit");
+    import_manuscript(&project, 3);
+    run_analysis(&project);
+    let approved = approve_all_pending(&project);
+    promote(&project, &approved);
+    start_echo_translation(&project, None);
+    service
+        .review_translation(&project, &LiteraryReviewSettings::default())
+        .unwrap();
+
+    let chapter = service.get_translated_chapter(&project, 1).unwrap();
+    let paragraph_id = chapter.paragraphs[0].paragraph_id.clone();
+    let mut sink = silent_sink();
+    service
+        .apply_manual_translation_edit(
+            &project,
+            1,
+            &paragraph_id,
+            "ترجمهٔ ویرایش‌شدهٔ انسانی.",
+            Some("pilot-reviewer"),
+            &mut sink,
+        )
+        .unwrap();
+
+    let audit = service.pilot_audit(&project, None).unwrap();
+    assert!(audit.translation_complete);
+    assert!(audit.mechanically_export_ready);
+    assert!(!audit.human_review_clear);
+    assert_eq!(audit.manual_revision_chapters, 1);
+    assert_eq!(audit.literary_review_stale_chapters, 1);
+    assert!(audit.issues.iter().any(|issue| {
+        issue.code == PilotAuditIssueCode::ManualRevisionPresent
+            && issue.chapter_index == Some(1)
+            && !issue.blocking
+    }));
+    assert!(audit.issues.iter().any(|issue| {
+        issue.code == PilotAuditIssueCode::LiteraryReviewStale
+            && issue.chapter_index == Some(1)
+            && !issue.blocking
+    }));
+    let target = audit
+        .review_targets
+        .iter()
+        .find(|target| target.chapter_index == 1)
+        .unwrap();
+    assert_eq!(target.paragraph_id.as_deref(), Some(paragraph_id.as_str()));
+    assert!(target.reasons.contains(&PilotSampleReason::ManualRevision));
+    assert!(target
+        .reasons
+        .contains(&PilotSampleReason::LiteraryReviewStale));
+}
+
+#[test]
+fn phase28_partial_run_never_samples_untranslated_chapters() {
+    let service = ApplicationService;
+    let (project, _) = fresh_project("phase28-partial");
+    import_manuscript(&project, 3);
+    run_analysis(&project);
+    let approved = approve_all_pending(&project);
+    promote(&project, &approved);
+    start_echo_translation(&project, Some(1));
+
+    let audit = service.pilot_audit(&project, None).unwrap();
+    assert!(!audit.translation_complete);
+    assert!(!audit.mechanically_export_ready);
+    assert_eq!(audit.translated_chapters, 1);
+    assert!(!audit.review_targets.is_empty());
+    assert!(audit
+        .review_targets
+        .iter()
+        .all(|target| target.chapter_index == 0));
+}
+
+#[test]
+fn phase28_pilot_audit_detects_mixed_plan_artifacts_fail_closed() {
+    let service = ApplicationService;
+    let (project, _) = fresh_project("phase28-mixed");
+    import_manuscript(&project, 3);
+    run_analysis(&project);
+    let approved = approve_all_pending(&project);
+    promote(&project, &approved);
+    start_echo_translation(&project, None);
+
+    let path = project
+        .layout
+        .chapters_dir
+        .join("002-Chapter_2.chapter.json");
+    let mut value: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    value["translation_plan_fingerprint"] =
+        serde_json::Value::String("not-the-current-plan".to_string());
+    std::fs::write(&path, serde_json::to_vec_pretty(&value).unwrap()).unwrap();
+
+    let audit = service.pilot_audit(&project, None).unwrap();
+    assert!(audit.translation_complete);
+    assert!(!audit.mechanically_export_ready);
+    assert!(!audit.human_review_clear);
+    assert!(audit.issues.iter().any(|issue| {
+        issue.code == PilotAuditIssueCode::ChapterPlanMismatch
+            && issue.chapter_index == Some(1)
+            && issue.blocking
+    }));
 }
 
 #[test]

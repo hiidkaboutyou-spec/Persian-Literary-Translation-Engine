@@ -227,3 +227,18 @@ For Phase 26 changes, run the dedicated `Phase 26 Long-Span Coreference Evidence
 - Research findings about refinement granularity are advisory. Do not change the EN→FA production pipeline default until project-owned/real-pilot evidence demonstrates improvement.
 
 For Phase 27 changes, run the dedicated `Phase 27 Real-Book Pilot Readiness` workflow plus Rust/Security/Phase 18–26/Desktop/Trusted Release/Project Memory regression gates.
+
+## Phase 28 private whole-book audit invariants
+
+- Never serialize manuscript, translation, revision, Character Bible or glossary prose into the Phase-28 audit.
+- Keep mechanical export safety and human-review workflow state as separate fields; do not collapse them into a quality score or overall verdict.
+- A mechanically ready book still requires human literary judgment; an attention/stale review is evidence for review, not automatic rejection.
+- Review targets must use stable chapter/paragraph identifiers and remain bounded.
+- Sampling must preserve early/middle/late coverage and may add longest/dialogue-heavy/manual-edit/stale-review/attention/quality-stale targets.
+- Do not add LLM-as-a-judge, a cloud telemetry service, database, new provider/model or external metric to this phase without a separately measured gap and privacy/license/security review.
+- Permanent Phase-28 CI must prove text-free serialized output and run on Linux plus Apple Silicon.
+
+- Partial-run sampling must exclude untranslated and stale-plan chapters.
+- Respect `max_review_targets = 0`; do not force a minimum sample count.
+- `human_review_clear` is meaningful only for mechanically current artifacts; mixed-plan/source-invalid state must keep it false.
+- Desktop callers may invoke the audit through Tauri, but all computation remains in Rust `ApplicationService`.

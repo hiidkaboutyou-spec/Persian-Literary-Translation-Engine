@@ -280,6 +280,26 @@ Current Phase-27 work:
 
 Research and exit criteria: `docs/PHASE_27_RESEARCH.md`.
 
+### Phase 28 — Private Whole-Book Audit & Human Review Sampling — active validation
+
+Branch: `phase-28-private-whole-book-audit`; PR #114.
+
+Goal: turn Phase 27's mechanically safe real-book execution into a privacy-safe human review workflow without inventing a single automatic book-quality score.
+
+Validated Phase-28 implementation:
+
+- local deterministic audit over existing project artifacts only;
+- separate `mechanically_export_ready` and `human_review_clear` workflow dimensions;
+- no manuscript/translation prose in serialized audit output;
+- chapter/paragraph identifiers only for review targets;
+- explicit detection of missing/stale literary review, review attention, manual revisions, stale post-edit quality evidence, source/plan mismatch, and incomplete translation;
+- bounded review-target selection across early/middle/late book position, longest chapter, dialogue-heavy material, and known review/edit risk;
+- only current-plan translated chapters are eligible review targets during partial or repair runs;
+- read-only Tauri command exposes the same Rust audit boundary to the desktop product without frontend domain orchestration;
+- no new runtime dependency, model, provider, metric, analytics SDK, cloud service, or database.
+
+Research and exit criteria: `docs/PHASE_28_RESEARCH.md`.
+
 ## Next Action Rule
 
 Always finish and verify the current numbered phase before starting the next numbered phase. Supporting tooling may be added only when it leaves runtime defaults intact and has an explicit owner/failure boundary. Do not treat branch-only work as merged. When a phase changes architecture, persistence, quality, or publishing contracts, update `IMPLEMENTATION_STATUS.md`, this roadmap, engineering decisions, external-integration notes, and project-memory notes together.

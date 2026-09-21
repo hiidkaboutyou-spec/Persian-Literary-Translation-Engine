@@ -346,3 +346,19 @@ Updating this repository seed does **not** mean the user's local PMC/Obsidian va
 - Desktop Product: `35509554716`
 - Trusted Release: `35509554715`
 - Project Memory Tooling: `35509554735`
+
+## Durable Phase 28 decisions
+
+1. **No overall book-quality score** — recent literary/document-level evaluation evidence is not reliable enough to let one automatic metric or LLM judge become the authority for a novel.
+2. **Mechanical readiness and human-review state are separate** — `mechanically_export_ready` means artifact/source/plan completion is safe; `human_review_clear` only describes current review workflow coverage and staleness.
+3. **Audit output is text-free** — no source prose, translated prose, revision text, Character Bible text, glossary text, prompts, responses or secrets may appear in the serialized audit.
+4. **Review targets use stable identifiers** — chapter IDs/indexes and paragraph IDs point the local UI to text inside the project workspace without copying that text into audit/tracking artifacts.
+5. **Sampling is bounded and position-aware** — cover early/middle/late book positions plus longest/dialogue-heavy material and chapters with manual edits, stale/attention review evidence or stale post-edit quality.
+6. **Automatic review remains evidence-only** — stale/missing/attention states route work to humans; they do not decide artistic quality.
+7. **Real-book privacy boundary remains local-first** — do not send manuscript/translation text to GitHub, PMC/projectmem, Linear, CI logs/artifacts, telemetry or external evaluators merely to operate the pilot.
+8. **No new runtime dependency in Phase 28 baseline** — native Rust over existing artifacts is sufficient; no metric package, LLM judge, cloud observability, analytics SDK, database, provider or model is added.
+
+9. **Partial-run targets must be actionable** — position/content sampling may only reference chapters whose translation artifact matches the current source and translation plan. Never suggest untranslated/stale-plan chapters for translation review.
+10. **Desktop exposure stays Rust-owned** — the audit may be invoked through a read-only Tauri command, but computation remains in `ApplicationService`; do not duplicate audit/orchestration rules in JavaScript.
+11. **Zero review targets is a valid caller choice** — `max_review_targets = 0` produces no targets rather than silently forcing one.
+12. **Human-review clear is scoped to mechanically current artifacts** — mixed-plan/source-invalid books cannot report human-review-clear even if stale historical review files exist.
