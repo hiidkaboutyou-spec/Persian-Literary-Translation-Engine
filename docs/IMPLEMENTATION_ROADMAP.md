@@ -280,7 +280,7 @@ Current Phase-27 work:
 
 Research and exit criteria: `docs/PHASE_27_RESEARCH.md`.
 
-### Phase 28 — Private Whole-Book Audit & Human Review Sampling — active validation
+### Phase 28 — Private Whole-Book Audit & Human Review Sampling — canonical
 
 Branch: `phase-28-private-whole-book-audit`; PR #114.
 
@@ -300,9 +300,9 @@ Validated Phase-28 implementation:
 
 Research and exit criteria: `docs/PHASE_28_RESEARCH.md`.
 
-### Phase 29 — Human Pilot Review Ledger & Resolution Loop — stacked draft
+### Phase 29 — Human Pilot Review Ledger & Resolution Loop — canonical
 
-Branch: `phase-29-human-pilot-review-ledger`.
+PR #116; final validated head `7eb15fc9ce16f5436b7f1339b8ce62c4a0218f9a`; merge `8415f559a6bf295d39504108e40864b2c40e65e5`.
 
 Goal: turn Phase 28's bounded review targets into durable, local, human-owned review decisions without introducing an automatic book-quality score.
 
