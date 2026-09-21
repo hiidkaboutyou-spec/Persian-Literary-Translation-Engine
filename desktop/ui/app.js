@@ -175,13 +175,21 @@ function enumLabel(value) {
     .join(" ");
 }
 
-function optionalSpan(startId, endId) {
+function optionalSpan(startId, endId, label) {
   const startRaw = $(startId).value.trim();
   const endRaw = $(endId).value.trim();
-  if (!startRaw || !endRaw) return null;
+  if (!startRaw && !endRaw) return null;
+  if (!startRaw || !endRaw) {
+    throw new Error(label + " span needs both start and end offsets.");
+  }
+  const start = Number(startRaw);
+  const end = Number(endRaw);
+  if (!Number.isInteger(start) || !Number.isInteger(end) || start < 0 || end <= start) {
+    throw new Error(label + " span must use non-negative integer offsets with end greater than start.");
+  }
   return {
-    start_char: Number(startRaw),
-    end_char: Number(endRaw),
+    start_char: start,
+    end_char: end,
   };
 }
 
@@ -486,9 +494,6 @@ function renderPilotContext(targetState, chapter) {
 
   const target = targetState.target;
   const paragraphs = chapter.paragraphs || [];
-  const targetIndex = target.paragraph_id
-    ? paragraphs.findIndex((paragraph) => paragraph.paragraph_id === target.paragraph_id)
-    : (paragraphs.length ? 0 : -1);
 
   context.append(
     textNode("strong", (chapter.title || ("Chapter " + (target.chapter_index + 1))) + " · " + pilotTargetStatus(targetState)),
@@ -496,34 +501,46 @@ function renderPilotContext(targetState, chapter) {
     textNode("div", "Target ID: " + targetState.target_id, "meta")
   );
 
-  if (targetIndex < 0) {
-    context.append(textNode("div", "The current target paragraph could not be resolved in the local translated chapter. Refresh the audit before recording a decision.", "warning danger-warning"));
-    return false;
-  }
-
-  const start = Math.max(0, targetIndex - 1);
-  const end = Math.min(paragraphs.length, targetIndex + 2);
-  paragraphs.slice(start, end).forEach((paragraph, offset) => {
-    const absoluteIndex = start + offset;
+  if (!target.paragraph_id) {
+    if (!paragraphs.length) {
+      context.append(textNode("div", "The chapter-level target has no local translated paragraphs to inspect.", "warning danger-warning"));
+      return false;
+    }
     const block = document.createElement("div");
-    block.className = absoluteIndex === targetIndex
-      ? "pilot-context-paragraph selected"
-      : "pilot-context-paragraph";
+    block.className = "pilot-context-paragraph selected";
     block.append(
-      textNode(
-        "small",
-        absoluteIndex === targetIndex
-          ? "Selected paragraph"
-          : (absoluteIndex < targetIndex ? "Previous context" : "Next context")
-      ),
-      textNode("div", paragraph.source, "source-text"),
-      textNode("div", paragraph.translated, "pilot-translation-text")
+      textNode("small", "Selected chapter"),
+      textNode("div", paragraphs.map((paragraph) => paragraph.source).join("\n\n"), "source-text"),
+      textNode("div", paragraphs.map((paragraph) => paragraph.translated).join("\n\n"), "pilot-translation-text")
     );
     context.append(block);
-  });
+  } else {
+    const targetIndex = paragraphs.findIndex((paragraph) => paragraph.paragraph_id === target.paragraph_id);
+    if (targetIndex < 0) {
+      context.append(textNode("div", "The current target paragraph could not be resolved in the local translated chapter. Refresh the audit before recording a decision.", "warning danger-warning"));
+      return false;
+    }
 
-  if (!paragraphs.length) {
-    context.append(textNode("div", "The translated chapter has no paragraphs to inspect.", "empty-state"));
+    const start = Math.max(0, targetIndex - 1);
+    const end = Math.min(paragraphs.length, targetIndex + 2);
+    paragraphs.slice(start, end).forEach((paragraph, offset) => {
+      const absoluteIndex = start + offset;
+      const block = document.createElement("div");
+      block.className = absoluteIndex === targetIndex
+        ? "pilot-context-paragraph selected"
+        : "pilot-context-paragraph";
+      block.append(
+        textNode(
+          "small",
+          absoluteIndex === targetIndex
+            ? "Selected paragraph"
+            : (absoluteIndex < targetIndex ? "Previous context" : "Next context")
+        ),
+        textNode("div", paragraph.source, "source-text"),
+        textNode("div", paragraph.translated, "pilot-translation-text")
+      );
+      context.append(block);
+    });
   }
 
   const record = targetState.current_record;
@@ -635,8 +652,8 @@ async function loadPilotReview(preserveTargetId = null) {
 }
 
 function buildPilotFindings(outcome) {
-  const sourceSpan = optionalSpan("pilot-source-start", "pilot-source-end");
-  const targetSpan = optionalSpan("pilot-target-start", "pilot-target-end");
+  const sourceSpan = optionalSpan("pilot-source-start", "pilot-source-end", "Source");
+  const targetSpan = optionalSpan("pilot-target-start", "pilot-target-end", "Persian");
   const note = $("pilot-finding-note").value.trim();
   const includeFinding = Boolean(sourceSpan || targetSpan || note || outcome === "needs_revision");
   if (!includeFinding) return [];
@@ -862,6 +879,13 @@ $("record-pilot-review").addEventListener("click", async () => {
   if (!state.pilotTarget) return;
   const outcome = $("pilot-outcome").value;
   const targetId = state.pilotTarget.target_id;
+  let findings;
+  try {
+    findings = buildPilotFindings(outcome);
+  } catch (error) {
+    showNotice(errorMessage(error), "error");
+    return;
+  }
   await call("record_pilot_review", {
     projectRoot: state.projectRoot,
     maxReviewTargets: nonNegativeNumberOrNull("pilot-max-targets"),
@@ -869,7 +893,7 @@ $("record-pilot-review").addEventListener("click", async () => {
     submission: {
       reviewer: $("pilot-reviewer").value.trim(),
       outcome,
-      findings: buildPilotFindings(outcome),
+      findings,
       note: $("pilot-note").value,
     },
   });
