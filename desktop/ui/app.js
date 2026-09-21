@@ -840,6 +840,7 @@ $("run-literary-review").addEventListener("click", async () => {
     textNode("strong", "Literary review completed"),
     textNode("div", summary.reviewed_chapters + " chapter(s) reviewed · " + summary.findings + " finding(s)", "meta")
   );
+  invalidatePilotUi("Literary review evidence changed. Refresh the pilot workspace before recording another decision.");
   showNotice("Literary review completed.");
 });
 
