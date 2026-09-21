@@ -6,11 +6,15 @@ A production-grade English-to-Persian literary translation engine with a Rust co
 
 ## Canonical Main State
 
-`main` is canonical through Phase 27.
+`main` is canonical through Phase 29.
 
 Phase 26 PR #111 landed from final validated head `8418fdf4eb06252dec8a014c13e789efa7fe800e` at merge commit `5c0d4c8514b999faf786971da8541f7ea5a1b773`.
 
 Phase 27 PR #113 landed from final validated head `f75212a496d5073d249e47cb920abf1c4303eae9` at merge commit `e06182d0f6ea487d47d56ad76672e595b3b8e25a`. The final head passed the dedicated Phase 27 gate, Rust CI, Security, Phases 18–26, Desktop Product, Trusted Release, Project Memory, and Apple Silicon checks.
+
+Phase 28 PR #114 landed from final validated head `940ee71a1da8a3a8e9d35616f913ca97f43a9c17` at merge commit `12467a8052ee9a3dcaf4eb350ae705fe0086e510`.
+
+Phase 29 PR #116 landed from final validated head `7eb15fc9ce16f5436b7f1339b8ce62c4a0218f9a` at merge commit `8415f559a6bf295d39504108e40864b2c40e65e5`. The exact final head passed Phase 29, Rust CI, Security, Phases 18–28, Desktop Product, Trusted Release, Project Memory Tooling, and Apple Silicon validation.
 
 Phase 21 implementation merged through PR #100 at:
 
@@ -45,9 +49,9 @@ No new runtime dependency, provider, model stack, cloud backend, or second persi
 
 Detailed research: `docs/PHASE_27_RESEARCH.md`.
 
-### Active Phase 28 — Private Whole-Book Audit & Human Review Sampling
+### Phase 28 — Private Whole-Book Audit & Human Review Sampling — canonical
 
-Phase 28 is implemented and previously green on its feature head, but is not canonical until rebased exact-head validation and landing complete.
+Phase 28 is canonical via PR #114; final validated head `940ee71a1da8a3a8e9d35616f913ca97f43a9c17`; merge `12467a8052ee9a3dcaf4eb350ae705fe0086e510`.
 
 Measured gap after Phase 27: the engine can safely complete/resume/export a full book, but the first real-book pilot still needs a deterministic local way to identify review coverage gaps and bounded human-review targets without uploading prose or trusting whole-book automatic scores.
 
@@ -65,9 +69,9 @@ Phase-28 contract:
 
 Detailed research: `docs/PHASE_28_RESEARCH.md`.
 
-### Active stacked Phase 29 — Human Pilot Review Ledger & Resolution Loop
+### Phase 29 — Human Pilot Review Ledger & Resolution Loop — canonical
 
-Phase 29 is stacked on Phase 28 and is not canonical.
+Phase 29 is canonical via PR #116; final validated head `7eb15fc9ce16f5436b7f1339b8ce62c4a0218f9a`; merge `8415f559a6bf295d39504108e40864b2c40e65e5`.
 
 Measured gap: Phase 28 selects useful whole-book review targets but does not persist whether a human inspected a current target, found a problem, deliberately accepted a literary choice, or must re-review after a later edit.
 
