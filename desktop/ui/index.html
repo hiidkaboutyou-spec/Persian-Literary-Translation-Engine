@@ -23,6 +23,7 @@
         <button class="nav-item" data-view="canon">Canon</button>
         <button class="nav-item" data-view="editor">Translation Editor</button>
         <button class="nav-item" data-view="literary">Literary Review</button>
+        <button class="nav-item" data-view="pilot">Pilot Review</button>
         <button class="nav-item" data-view="history">History</button>
         <button class="nav-item" data-view="provider">Provider</button>
       </nav>
@@ -205,6 +206,86 @@
           </div>
           <div id="literary-output" class="list empty-state">No review loaded.</div>
         </article>
+      </section>
+
+      <section class="view" data-view-panel="pilot">
+        <article class="card">
+          <div class="card-heading">
+            <div>
+              <h2>Whole-book pilot review</h2>
+              <p>Review a bounded local sample selected by the Rust audit. Workflow completion is not a literary-quality score.</p>
+            </div>
+            <div class="button-row">
+              <label class="inline-label">Targets <input id="pilot-max-targets" type="number" min="0" max="12" value="12"></label>
+              <button id="refresh-pilot-review" class="primary" disabled>Refresh audit & queue</button>
+            </div>
+          </div>
+          <div id="pilot-summary-grid" class="snapshot-grid empty-state">Open a project to load pilot status.</div>
+          <div id="pilot-issues" class="warnings"></div>
+        </article>
+
+        <div class="grid two pilot-grid">
+          <article class="card">
+            <div class="card-heading">
+              <div><h2>Review queue</h2><p>Targets are identifiers only until you inspect their local chapter context.</p></div>
+            </div>
+            <div id="pilot-target-list" class="list empty-state">Refresh the pilot review to load targets.</div>
+          </article>
+
+          <article class="card">
+            <div class="card-heading">
+              <div><h2>Selected target</h2><p>Source and Persian text stay inside this local project workspace.</p></div>
+              <button id="open-pilot-editor" disabled>Open in editor</button>
+            </div>
+            <div id="pilot-context" class="pilot-context empty-state">Select a review target.</div>
+            <hr>
+            <div class="inline-fields">
+              <label>Reviewer<input id="pilot-reviewer" value="desktop-user"></label>
+              <label>Outcome
+                <select id="pilot-outcome">
+                  <option value="clear">Clear</option>
+                  <option value="accepted_as_is">Accepted as-is</option>
+                  <option value="needs_revision">Needs revision</option>
+                </select>
+              </label>
+            </div>
+            <label>Review note<textarea id="pilot-note" placeholder="Local reviewer note; never copied to developer memory or telemetry by the app."></textarea></label>
+
+            <details class="pilot-finding">
+              <summary>Optional focused finding</summary>
+              <div class="inline-fields">
+                <label>Dimension
+                  <select id="pilot-finding-dimension">
+                    <option value="semantic_fidelity">Semantic fidelity</option>
+                    <option value="omission_addition">Omission / addition</option>
+                    <option value="character_voice">Character voice</option>
+                    <option value="relationship_register">Relationship / register</option>
+                    <option value="persian_naturalness">Persian naturalness</option>
+                    <option value="dialogue_subtext">Dialogue / subtext</option>
+                    <option value="terminology_continuity">Terminology / continuity</option>
+                    <option value="intimacy_fidelity">Intimacy fidelity</option>
+                  </select>
+                </label>
+                <label>Severity
+                  <select id="pilot-finding-severity">
+                    <option value="advisory">Advisory</option>
+                    <option value="warning">Warning</option>
+                    <option value="critical">Critical</option>
+                  </select>
+                </label>
+              </div>
+              <label>Finding note<textarea id="pilot-finding-note" placeholder="Describe the human-observed issue or accepted literary choice."></textarea></label>
+              <div class="inline-fields">
+                <label>Source span start<input id="pilot-source-start" type="number" min="0" placeholder="optional"></label>
+                <label>Source span end<input id="pilot-source-end" type="number" min="0" placeholder="optional"></label>
+                <label>Persian span start<input id="pilot-target-start" type="number" min="0" placeholder="optional"></label>
+                <label>Persian span end<input id="pilot-target-end" type="number" min="0" placeholder="optional"></label>
+              </div>
+            </details>
+            <p class="help">Rust remains authoritative for target currentness, outcome coherence, Unicode span validation, staleness and sample completion.</p>
+            <button id="record-pilot-review" class="primary" disabled>Record human review</button>
+          </article>
+        </div>
       </section>
 
       <section class="view" data-view-panel="history">
