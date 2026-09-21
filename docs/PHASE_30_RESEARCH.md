@@ -190,7 +190,12 @@ Phase 30 becomes canonical only when:
 8. no browser persistence/network/remote frontend content is introduced;
 9. the static UI privacy/IPC contract passes;
 10. the dedicated Linux and Apple Silicon Phase-30 jobs pass;
-11. Rust/Security/Phases 18–29/Desktop/Trusted Release/Project Memory remain
-    green on the exact final head;
-12. no runtime dependency is introduced;
-13. final head/merge/run IDs are recorded after landing.
+11. the dedicated Phase-30 gate, Desktop Product, Trusted Release, Project Memory
+    and every Phase 18–29 workflow whose path contract includes the Phase-30 diff
+    are green on the exact final head;
+12. engine-only Rust CI, Security and Phase-20 publication gates remain inherited
+    from the canonical Phase-29 base only while the Phase-30 diff contains no
+    engine/Cargo/publication changes; any such change makes those exact-head gates
+    mandatory before merge;
+13. no runtime dependency is introduced;
+14. final head/merge/run IDs are recorded after landing.
