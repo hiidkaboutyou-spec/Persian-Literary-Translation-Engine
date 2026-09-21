@@ -256,3 +256,18 @@ For Phase 27 changes, run the dedicated `Phase 27 Real-Book Pilot Readiness` wor
 - `sample_review_complete` is sampled workflow state, not a quality score, export approval, or canon authority.
 - Keep all pilot-review rules in Rust `ApplicationService`; Tauri/frontend only invokes and renders them.
 - No new QE model, LLM judge, database, telemetry SDK or cloud review service without a separately measured gap and privacy/license/security review.
+
+
+## Phase 30 desktop pilot-review invariants
+
+- The Pilot Review WebView is a presentation/input surface only. Target selection, currentness, staleness, outcome validation, span validation and sample completion stay in Rust `ApplicationService`.
+- Render source, translation and reviewer-authored text only through DOM text nodes/`textContent`; never introduce `innerHTML`/`outerHTML` for project data.
+- Do not persist manuscript text, translated text, reviewer notes or pilot-review state in localStorage, sessionStorage, IndexedDB, cookies, telemetry or another frontend-owned store.
+- Do not add frontend network `fetch`, remote scripts/assets, analytics or cloud review calls to operate the pilot.
+- Preserve `max_review_targets = 0` as a valid explicit caller choice.
+- Selecting a target or recording `clear`/`accepted_as_is`/`needs_revision` must never mutate translation text.
+- Repairs must use the existing translation editor/manual revision ledger so old quality/review evidence becomes stale and requires re-review.
+- Keep `accepted_as_is` available as an explicit human literary decision; automated evidence never creates it.
+- Optional finding dimension/severity/span inputs reuse Phase-19/29 schemas; do not create a second taxonomy or duplicate Rust validation rules in JavaScript.
+- Phase 30 adds no QE model, LLM judge, automatic highlighter/rewrite, database, telemetry SDK, provider or runtime dependency.
+- For Phase 30 changes, run the dedicated `Phase 30 Pilot Review Workspace` workflow plus the existing Rust/Security/Phase/Desktop/Trusted Release/Project Memory regression gates before merge.
