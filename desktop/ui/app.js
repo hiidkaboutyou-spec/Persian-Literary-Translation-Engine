@@ -229,6 +229,7 @@ async function runTranslation(command) {
     });
     renderProgress(progress);
     await refreshSnapshot();
+    invalidatePilotUi("Translation changed. Refresh the pilot review before recording another decision.");
     showNotice(command === "start_translation" ? "Translation run completed." : "Translation resume completed.");
   } finally {
     state.translationRunning = false;
@@ -370,6 +371,7 @@ function renderChapter(chapter, focusParagraphId = null) {
         reviewer: $("reviewer-name").value.trim() || "desktop-user",
       });
       paragraph.translated = textarea.value;
+      invalidatePilotUi("Translation changed. Refresh the pilot review and inspect the target again.");
       showNotice("Manual revision saved; quality evidence is now stale until reviewed again.");
     });
     block.append(textarea, save);
@@ -431,6 +433,7 @@ function renderLiteraryEvidence(evidence) {
           findingId: finding.id,
           reviewer: $("reviewer-name").value.trim() || "desktop-user",
         });
+        invalidatePilotUi("Translation changed. Refresh the pilot review and inspect current text again.");
         showNotice("Suggested paragraph revision accepted. The old review is now stale; re-run review to verify it.");
         const refreshed = await call("get_literary_review", {
           projectRoot: state.projectRoot,
@@ -459,6 +462,21 @@ function clearPilotSelection() {
   const context = $("pilot-context");
   context.className = "pilot-context empty-state";
   context.textContent = "Select a review target.";
+}
+
+function invalidatePilotUi(message = "Refresh the pilot review to load current targets.") {
+  state.pilotSummary = null;
+  clearPilotSelection();
+
+  const grid = $("pilot-summary-grid");
+  grid.className = "snapshot-grid empty-state";
+  grid.textContent = message;
+
+  $("pilot-issues").replaceChildren();
+
+  const list = $("pilot-target-list");
+  list.className = "list empty-state";
+  list.textContent = message;
 }
 
 function renderPilotContext(targetState, chapter) {
@@ -668,9 +686,7 @@ $("pick-open-root").addEventListener("click", async () => {
   const snapshot = await call("open_project", { projectRoot: root });
   state.projectRoot = root;
   state.sourcePath = null;
-  state.pilotSummary = null;
-  state.pilotTarget = null;
-  state.pilotChapter = null;
+  invalidatePilotUi("Refresh the pilot review for this project.");
   $("source-path").textContent = "No file selected";
   setProjectEnabled(true);
   renderSnapshot(snapshot);
@@ -687,9 +703,7 @@ $("create-project").addEventListener("click", async () => {
     sourcePath: null,
   });
   state.projectRoot = root;
-  state.pilotSummary = null;
-  state.pilotTarget = null;
-  state.pilotChapter = null;
+  invalidatePilotUi("Refresh the pilot review for this project.");
   setProjectEnabled(true);
   renderSnapshot(snapshot);
   showNotice("Project created.");
@@ -712,6 +726,7 @@ $("import-source").addEventListener("click", async () => {
     sourcePath: state.sourcePath,
   });
   renderSnapshot(snapshot);
+  invalidatePilotUi("Source changed. Complete translation/review, then refresh the pilot workspace.");
   showNotice("Source imported.");
 });
 
