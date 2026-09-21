@@ -133,3 +133,15 @@ Before adopting a GitHub repository/package/model/tool:
 - Keep target identity stable across edits while source/translation/plan fingerprints define record currentness.
 - Do not make sampled-review completion an automatic export gate or overall literary-quality score.
 - No new runtime dependency is justified for this phase.
+
+
+## Phase 30 — Desktop Pilot Review Workspace
+
+- The desktop WebView may render local source/translation context for a selected pilot target, but it does not own target selection, currentness, staleness, outcome validation or sample completion.
+- Phase-28/29 `ApplicationService` + Tauri commands remain the sole review authority; JavaScript is presentation/input collection only.
+- Pilot inspection and translation mutation are separate actions. Selecting or recording a review never edits text; repairs use the existing manual revision path and therefore stale prior review evidence.
+- Preserve `accepted_as_is` as an explicit human option to avoid turning advisory automation into forced editing.
+- No new QE/LLM judge/highlighter is added to the baseline. Research showing potential QE productivity gains does not override known workflow harm from inaccurate guidance or the literary human-authority rule.
+- Book text and reviewer notes are not persisted in browser storage and are not sent over frontend network calls.
+- Pilot text is rendered through DOM text nodes/`textContent`, never `innerHTML`.
+- Tauri remains a narrow local IPC bridge under the existing restrictive CSP; Phase 30 adds no remote frontend content, analytics, database, provider, model or runtime dependency.
