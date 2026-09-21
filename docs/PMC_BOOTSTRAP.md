@@ -378,3 +378,11 @@ Updating this repository seed does **not** mean the user's local PMC/Obsidian va
 10. **Sample completion is not a book score** — `sample_review_complete` only means all current selected targets are resolved by current human records and mechanical artifacts are current.
 11. **Export and canon remain separate authorities** — Phase 29 does not auto-block/approve export and does not promote anything to Character Bible/glossary canon.
 12. **No new runtime dependency** — reuse Phase-19 dimension/severity types and native Rust persistence; no QE model, LLM judge, database, cloud review tool or telemetry SDK.
+
+
+## Phase 29 Canonical Evidence
+
+- Phase 28 canonical: PR #114, final head `940ee71a1da8a3a8e9d35616f913ca97f43a9c17`, merge `12467a8052ee9a3dcaf4eb350ae705fe0086e510`.
+- Phase 29 canonical: PR #116, final head `7eb15fc9ce16f5436b7f1339b8ce62c4a0218f9a`, merge `8415f559a6bf295d39504108e40864b2c40e65e5`.
+- Exact-head Phase 29, Rust CI, Security, Phases 18–28, Desktop Product, Trusted Release, Project Memory Tooling, and Apple Silicon validation all passed before landing.
+- The next numbered phase must begin from this canonical state and preserve the Phase 28/29 local-first, human-authority, text-free tracking boundaries.
