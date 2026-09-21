@@ -70,13 +70,16 @@ required_js = [
     'call("record_pilot_review"',
     'call("get_translated_chapter"',
     'nonNegativeNumberOrNull("pilot-max-targets")',
+    'invalidatePilotUi(',
+    'could not be resolved in the local translated chapter',
+    'Literary review evidence changed. Refresh the pilot workspace',
     'textContent',
 ]
 for needle in required_js:
     if needle not in JS:
         raise SystemExit(f"missing pilot UI contract: {needle}")
 
-for forbidden in ["innerHTML", "outerHTML", "localStorage", "sessionStorage", "indexedDB", "fetch("]:
+for forbidden in ["innerHTML", "outerHTML", "localStorage", "sessionStorage", "indexedDB", "fetch(", "console.log", "console.debug"]:
     if forbidden in JS:
         raise SystemExit(f"forbidden browser surface introduced: {forbidden}")
 
