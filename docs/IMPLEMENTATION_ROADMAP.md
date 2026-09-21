@@ -323,6 +323,26 @@ Current Phase-29 work:
 
 Research and exit criteria: `docs/PHASE_29_RESEARCH.md`.
 
+### Phase 30 — Desktop Pilot Review Workspace — active
+
+Branch: `phase-30-pilot-review-workspace`.
+
+Goal: make the canonical Phase-28/29 real-book human-review workflow usable end to end inside the local desktop product without moving domain authority into JavaScript.
+
+Current Phase-30 work:
+
+- dedicated Pilot Review navigation/view;
+- Rust-derived mechanical/sample completion summary and audit issues;
+- bounded target queue with reasons, current outcome and stale-history count;
+- local selected-target source/Persian context with neighboring paragraphs;
+- explicit human record submission through the canonical Phase-29 Tauri command;
+- optional existing dimension/severity and character-span fields;
+- direct navigation to the normal translation editor for explicit repair;
+- static privacy/IPC contract checks forbidding unsafe HTML, browser persistence, remote URLs and frontend network fetches;
+- dedicated Linux + Apple Silicon validation with no new runtime dependency.
+
+Research and exit criteria: `docs/PHASE_30_RESEARCH.md`.
+
 ## Next Action Rule
 
 Always finish and verify the current numbered phase before starting the next numbered phase. Supporting tooling may be added only when it leaves runtime defaults intact and has an explicit owner/failure boundary. Do not treat branch-only work as merged. When a phase changes architecture, persistence, quality, or publishing contracts, update `IMPLEMENTATION_STATUS.md`, this roadmap, engineering decisions, external-integration notes, and project-memory notes together.
