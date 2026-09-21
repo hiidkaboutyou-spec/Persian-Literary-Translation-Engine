@@ -123,3 +123,13 @@ Before adopting a GitHub repository/package/model/tool:
 - Bounded human-review sampling covers book position plus deterministic risk/evidence signals instead of asking one evaluator to judge the whole novel at once.
 - Existing Phase-19 literary review/alignment evidence is reused; no competing evaluator is introduced.
 - No network/model call, metric package, analytics SDK, database, cloud backend or new runtime dependency is justified for the Phase-28 baseline.
+
+## Phase 29 — Human Pilot Review Ledger & Resolution Loop
+
+- Treat sampled human review as project/editorial workflow state, not Character Bible/glossary canon and not benchmark ownership.
+- Use append-only records so manual edits invalidate earlier decisions through fingerprints rather than destructive mutation.
+- Reuse Phase-19 review dimension/severity types; do not create a competing literary-error taxonomy.
+- Store optional Unicode character spans and local human notes, but never auto-copy source/translation prose.
+- Keep target identity stable across edits while source/translation/plan fingerprints define record currentness.
+- Do not make sampled-review completion an automatic export gate or overall literary-quality score.
+- No new runtime dependency is justified for this phase.

@@ -39,6 +39,7 @@ pub struct ProjectLayout {
     pub source_dir: PathBuf,
     pub intelligence_dir: PathBuf,
     pub review_file: PathBuf,
+    pub pilot_review_file: PathBuf,
     pub characters_file: PathBuf,
     pub glossary_file: PathBuf,
     pub translation_dir: PathBuf,
@@ -57,6 +58,7 @@ impl ProjectLayout {
             source_dir: root.join("source"),
             intelligence_dir: root.join("intelligence"),
             review_file: root.join("review").join("review-ledger.json"),
+            pilot_review_file: root.join("review").join("pilot-review-ledger.json"),
             characters_file: root.join("canon").join("characters.json"),
             glossary_file: root.join("canon").join("glossary.json"),
             translation_dir: root.join("translation"),
@@ -451,6 +453,12 @@ fn history_detail(event: &ProjectEvent) -> (String, String) {
         } => (
             "manual_translation_edit".into(),
             format!("chapter={chapter_index},revision={revision_id}"),
+        ),
+        ProjectEvent::PilotReviewRecorded {
+            target_id, outcome, ..
+        } => (
+            "pilot_review_recorded".into(),
+            format!("target={target_id},outcome={outcome}"),
         ),
         ProjectEvent::ExportStarted { .. } => ("export_started".into(), "export started".into()),
         ProjectEvent::ExportCompleted { format, .. } => {

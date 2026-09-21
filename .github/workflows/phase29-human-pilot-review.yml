@@ -1,0 +1,100 @@
+name: Phase 29 Human Pilot Review Ledger
+
+on:
+  push:
+    branches:
+      - main
+      - phase-29-human-pilot-review-ledger
+    paths:
+      - 'engine/crates/project-engine/**'
+      - 'desktop/src-tauri/**'
+      - '.github/workflows/phase29-human-pilot-review.yml'
+      - 'docs/PHASE_29_RESEARCH.md'
+      - 'docs/IMPLEMENTATION_ROADMAP.md'
+      - 'docs/IMPLEMENTATION_STATUS.md'
+      - 'docs/PMC_BOOTSTRAP.md'
+      - 'AGENTS.md'
+  pull_request:
+    paths:
+      - 'engine/crates/project-engine/**'
+      - 'desktop/src-tauri/**'
+      - '.github/workflows/phase29-human-pilot-review.yml'
+      - 'docs/PHASE_29_RESEARCH.md'
+      - 'docs/IMPLEMENTATION_ROADMAP.md'
+      - 'docs/IMPLEMENTATION_STATUS.md'
+      - 'docs/PMC_BOOTSTRAP.md'
+      - 'AGENTS.md'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase29-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  human-pilot-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 2
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # reviewed stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Verify committed dependency graph
+        working-directory: engine
+        run: cargo metadata --locked --format-version 1 --no-deps > /dev/null
+
+      - name: Verify formatting
+        working-directory: engine
+        run: cargo fmt --all -- --check
+
+      - name: Clippy pilot review surfaces
+        working-directory: engine
+        run: cargo clippy --locked -p project-engine --all-targets -- -D warnings
+
+      - name: Test append-only human review workflow
+        working-directory: engine
+        run: |
+          cargo test --locked -p project-engine --test application_workflow phase29_
+          cargo test --locked -p project-engine pilot_review
+
+      - name: Prove no new runtime dependency was added
+        shell: bash
+        run: |
+          set -euo pipefail
+          base_sha=08b709ddd9146cb72bb9509add218fd6d8006d22
+          git fetch --no-tags --depth=1 origin "$base_sha"
+          git diff --exit-code "$base_sha" -- engine/Cargo.toml engine/crates/project-engine/Cargo.toml desktop/src-tauri/Cargo.toml
+
+  macos-arm64:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Verify Apple Silicon runner
+        run: test "$(uname -m)" = arm64
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # reviewed stable
+
+      - name: Compile and test human review ledger
+        working-directory: engine
+        run: |
+          cargo check --locked -p project-engine --all-targets
+          cargo test --locked -p project-engine --test application_workflow phase29_clear_records_complete_current_sample_without_copying_book_text
+          cargo test --locked -p project-engine --test application_workflow phase29_manual_edit_makes_previous_human_record_stale_without_erasing_history
+          cargo test --locked -p project-engine --test application_workflow phase29_span_validation_and_human_acceptance_are_fail_closed
+
+      - name: Compile and test Tauri review boundary
+        run: |
+          cargo check --locked --manifest-path desktop/src-tauri/Cargo.toml --all-targets
+          cargo test --locked --manifest-path desktop/src-tauri/Cargo.toml

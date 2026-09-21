@@ -14,6 +14,7 @@ use super::models::{
     TranslationRevision, VecEventSink,
 };
 use super::pilot_audit as pilot_audit_ops;
+use super::pilot_review as pilot_review_ops;
 use super::project::{
     create_project, load_history, load_manifest, open_project, save_manifest, HistorySink,
     ProjectLayout, ProjectLock,
@@ -175,6 +176,51 @@ impl ApplicationService {
             &project.layout,
             max_review_targets.unwrap_or(pilot_audit_ops::DEFAULT_MAX_REVIEW_TARGETS),
         )
+    }
+
+    /// Summarize current human decisions for the Phase-28 review sample.
+    ///
+    /// Old records remain append-only audit history and automatically become
+    /// stale when their source/translation/plan fingerprints no longer match.
+    pub fn pilot_review_summary(
+        &self,
+        project: &Project,
+        max_review_targets: Option<usize>,
+    ) -> Result<pilot_review_ops::PilotReviewSummary, ApplicationError> {
+        pilot_review_ops::review_summary(
+            &project.layout,
+            max_review_targets.unwrap_or(pilot_audit_ops::DEFAULT_MAX_REVIEW_TARGETS),
+        )
+    }
+
+    pub fn record_pilot_review(
+        &self,
+        project: &Project,
+        max_review_targets: Option<usize>,
+        target_id: &str,
+        submission: pilot_review_ops::PilotReviewSubmission,
+        sink: &mut dyn ProjectEventSink,
+    ) -> Result<pilot_review_ops::PilotReviewRecord, ApplicationError> {
+        let _lock = ProjectLock::acquire(&project.layout, "pilot-review")?;
+        let manifest = load_manifest(&project.layout)?;
+        let project_id = manifest.project_id.clone();
+        let mut sink = HistoryForwardingSink {
+            history: HistorySink::new(&project.layout, &project_id),
+            inner: sink,
+        };
+        let record = pilot_review_ops::record_review(
+            &project.layout,
+            max_review_targets.unwrap_or(pilot_audit_ops::DEFAULT_MAX_REVIEW_TARGETS),
+            target_id,
+            submission,
+            Utc::now(),
+        )?;
+        sink.emit(ProjectEvent::PilotReviewRecorded {
+            project_id: project_id.clone(),
+            target_id: record.target_id.clone(),
+            outcome: record.outcome.as_str().to_string(),
+        });
+        Ok(record)
     }
 
     // ------------------------------------------------------------------

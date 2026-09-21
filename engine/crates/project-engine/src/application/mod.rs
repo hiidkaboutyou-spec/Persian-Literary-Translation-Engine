@@ -10,6 +10,7 @@ pub mod error;
 pub mod literary_review;
 pub mod models;
 pub mod pilot_audit;
+pub mod pilot_review;
 pub mod project;
 pub mod review;
 pub mod service;
@@ -34,6 +35,11 @@ pub use models::{
 pub use pilot_audit::{
     BookPilotAudit, PilotAuditIssue, PilotAuditIssueCode, PilotReviewTarget, PilotSampleReason,
     DEFAULT_MAX_REVIEW_TARGETS, PILOT_AUDIT_SCHEMA_VERSION,
+};
+pub use pilot_review::{
+    HumanPilotFinding, PilotReviewOutcome, PilotReviewRecord, PilotReviewSubmission,
+    PilotReviewSummary, PilotReviewTargetState, ReviewCharSpan, PILOT_REVIEW_LEDGER_SCHEMA_VERSION,
+    PILOT_REVIEW_SUMMARY_SCHEMA_VERSION,
 };
 pub use service::{silent_sink, ApplicationService, Project};
 pub use translation::TranslationConfig;

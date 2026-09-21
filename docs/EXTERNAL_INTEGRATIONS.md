@@ -508,3 +508,17 @@ Recent ACL/EMNLP/EAMT research is used to shape the review workflow, not importe
 - Findings ACL 2026 paired comprehension/creativity framework: source comprehension does not imply human-level translational creativity.
 
 Decision: no external evaluator, judge, corpus or service is integrated by Phase 28. These works justify local bounded sampling plus human authority.
+
+## Phase 29 human-review research — reference only
+
+No external review runtime is integrated.
+
+Research references:
+
+- WMT 2024 Error Span Annotation (ESA): span/severity human annotation with lower burden than full MQM.
+- WMT25 General MT task: professional human evaluation used ESA for most evaluated language pairs.
+- TACL 2025 QE4PE: automatic error-highlight accuracy and real professional workflow usefulness are different problems.
+- WMT 2025 H-FALCON: document context is pervasive but does not always change human judgments.
+- EAMT 2026 Creativity Bias: automated judges can penalize creative/culturally appropriate literary solutions.
+
+Decision: Phase 29 implements a native local human ledger only. No QE model, LLM judge, remote annotation system, analytics SDK or external database is added.

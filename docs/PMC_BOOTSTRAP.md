@@ -362,3 +362,19 @@ Updating this repository seed does **not** mean the user's local PMC/Obsidian va
 10. **Desktop exposure stays Rust-owned** — the audit may be invoked through a read-only Tauri command, but computation remains in `ApplicationService`; do not duplicate audit/orchestration rules in JavaScript.
 11. **Zero review targets is a valid caller choice** — `max_review_targets = 0` produces no targets rather than silently forcing one.
 12. **Human-review clear is scoped to mechanically current artifacts** — mixed-plan/source-invalid books cannot report human-review-clear even if stale historical review files exist.
+
+
+## Durable Phase 29 decisions
+
+1. **Human review records are append-only** — later decisions append; earlier decisions remain audit history.
+2. **Current human decisions are context-conservative and fingerprint-bound** — SHA-256 fingerprints of the full chapter source and full chapter translation, plus translation-context and translation-plan fingerprints, must all match. A neighboring paragraph/context change therefore stales an earlier sign-off even when the selected paragraph text itself did not change.
+3. **Target identity and content identity are separate** — opaque target IDs identify a stable location; fingerprints decide whether a specific human record is still current.
+4. **Human authority is explicit** — only a human submission can create `clear`, `accepted_as_is` or `needs_revision`. Automated evidence never manufactures these states.
+5. **Accepted literary choices are first-class** — `accepted_as_is` exists because automated literary evidence can incorrectly penalize deliberate creative/cultural choices. It requires a note/finding and cannot coexist with a human critical finding.
+6. **Needs-revision must be meaningful** — it requires at least one warning or critical human finding.
+7. **Span offsets are Unicode character offsets** — validate against the exact current source/translation text before persistence; never store unchecked byte offsets.
+8. **The ledger does not automatically copy book prose** — engine-written fields are IDs, fingerprints, spans, outcome, reviewer label and timestamp. Human-authored notes remain local runtime data.
+9. **No silent history deletion** — bounded capacity fails closed instead of pruning old human decisions.
+10. **Sample completion is not a book score** — `sample_review_complete` only means all current selected targets are resolved by current human records and mechanical artifacts are current.
+11. **Export and canon remain separate authorities** — Phase 29 does not auto-block/approve export and does not promote anything to Character Bible/glossary canon.
+12. **No new runtime dependency** — reuse Phase-19 dimension/severity types and native Rust persistence; no QE model, LLM judge, database, cloud review tool or telemetry SDK.
