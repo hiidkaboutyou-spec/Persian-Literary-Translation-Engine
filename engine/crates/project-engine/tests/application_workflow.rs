@@ -1183,8 +1183,9 @@ fn phase29_span_validation_and_human_acceptance_are_fail_closed() {
     let (project, _) = fresh_project("phase29-spans");
     import_manuscript(&project, 1);
     run_analysis(&project);
-    let approved = approve_all_pending(&project);
-    promote(&project, &approved);
+    // Canon promotion is optional translation context, not a prerequisite for
+    // Phase-29 span/outcome validation. A one-chapter fixture may legitimately
+    // produce only literary review items, which are intentionally non-promotable.
     start_echo_translation(&project, None);
 
     let summary = service.pilot_review_summary(&project, None).unwrap();
