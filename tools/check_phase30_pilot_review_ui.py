@@ -81,7 +81,7 @@ for needle in required_js:
     if needle not in JS:
         raise SystemExit(f"missing pilot UI contract: {needle}")
 
-for forbidden in ["innerHTML", "outerHTML", "localStorage", "sessionStorage", "indexedDB", "fetch(", "console.log", "console.debug"]:
+for forbidden in ["innerHTML", "outerHTML", "localStorage", "sessionStorage", "indexedDB", "fetch(", "console."]:
     if forbidden in JS:
         raise SystemExit(f"forbidden browser surface introduced: {forbidden}")
 
