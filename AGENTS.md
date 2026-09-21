@@ -270,4 +270,4 @@ For Phase 27 changes, run the dedicated `Phase 27 Real-Book Pilot Readiness` wor
 - Keep `accepted_as_is` available as an explicit human literary decision; automated evidence never creates it.
 - Optional finding dimension/severity/span inputs reuse Phase-19/29 schemas; do not create a second taxonomy or duplicate Rust validation rules in JavaScript.
 - Phase 30 adds no QE model, LLM judge, automatic highlighter/rewrite, database, telemetry SDK, provider or runtime dependency.
-- For Phase 30 changes, run the dedicated `Phase 30 Pilot Review Workspace` workflow plus the existing Rust/Security/Phase/Desktop/Trusted Release/Project Memory regression gates before merge.
+- For Phase 30 changes, run the dedicated `Phase 30 Pilot Review Workspace` workflow plus every existing Phase/Desktop/Trusted Release/Project Memory workflow triggered by the diff. Rust CI, Security and Phase-20 publication are inherited only while the diff has no engine/Cargo/publication changes; if that scope changes, those exact-head gates are mandatory before merge.
