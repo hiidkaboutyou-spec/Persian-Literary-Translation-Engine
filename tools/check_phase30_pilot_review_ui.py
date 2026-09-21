@@ -72,6 +72,8 @@ required_js = [
     'nonNegativeNumberOrNull("pilot-max-targets")',
     'invalidatePilotUi(',
     'could not be resolved in the local translated chapter',
+    'Selected chapter',
+    'span needs both start and end offsets',
     'Literary review evidence changed. Refresh the pilot workspace',
     'textContent',
 ]
