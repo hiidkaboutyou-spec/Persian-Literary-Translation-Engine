@@ -76,7 +76,6 @@ struct BlindAssignment {
     candidate_b_system: String,
 }
 
-
 #[derive(Debug, Clone, Copy, Default)]
 struct QualificationTelemetry {
     request_count: usize,
@@ -100,7 +99,10 @@ impl<'a> ObservedProvider<'a> {
     }
 
     fn snapshot(&self) -> QualificationTelemetry {
-        *self.telemetry.lock().expect("qualification telemetry poisoned")
+        *self
+            .telemetry
+            .lock()
+            .expect("qualification telemetry poisoned")
     }
 }
 
@@ -114,7 +116,10 @@ impl TranslationProvider for ObservedProvider<'_> {
         let response = self.inner.execute(request)?;
         let elapsed_ms = started.elapsed().as_millis();
 
-        let mut telemetry = self.telemetry.lock().expect("qualification telemetry poisoned");
+        let mut telemetry = self
+            .telemetry
+            .lock()
+            .expect("qualification telemetry poisoned");
         telemetry.request_count += 1;
         telemetry.total_latency_ms = telemetry.total_latency_ms.saturating_add(elapsed_ms);
         if let Some(usage) = response.usage {
