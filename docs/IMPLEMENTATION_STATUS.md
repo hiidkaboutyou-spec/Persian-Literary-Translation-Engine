@@ -320,10 +320,26 @@ No engine/Cargo/publication dependency surface changed in Phase 30, so the previ
 
 Detailed research and completion record: `docs/PHASE_30_RESEARCH.md`.
 
+## Phase 31 — Provider Qualification & Experimental Atria Adapter — active
+
+Branch: `phase-31-provider-qualification-atria`.
+
+Implemented so far:
+
+- experimental Atria Responses provider in `translation-core`, using only documented model/API/output-limit fields;
+- `ATRIA_API_KEY` environment-only credentials and fail-closed 1..=65,536 output-token bounds;
+- explicit `qualify-provider` command using the existing rights-safe Phase-21 corpus and production literary pipeline;
+- persisted standard benchmark submission plus deterministic anchor report;
+- production admission hard-coded as not granted; human review remains required;
+- no ApplicationService/desktop provider wiring and no change to existing OpenAI/echo automatic behavior;
+- dedicated offline/Linux/Apple Silicon validation with no new dependency.
+
+Detailed research and exit criteria: `docs/PHASE_31_RESEARCH.md`.
+
 ## CLI / Desktop
 
 The canonical CLI and desktop application remain operationally independent. Phase 23 adds release evidence around them; it does not move distribution tooling into runtime code.
 
 ## Current Handoff
 
-Phase 30 is canonical. The next numbered research target is Phase 31: build a provider-qualification path and an explicit experimental Atria adapter without changing the default provider, then use the existing rights-safe Phase-21 English→Persian literary corpus plus human review to decide whether the provider is fit for any production role.
+Phase 31 is active on `phase-31-provider-qualification-atria`. The current implementation adds a research-only Atria Responses adapter and an explicit rights-safe provider qualification CLI while deliberately leaving ApplicationService/desktop/`auto` production provider selection unchanged. Offline qualification is exercised with EchoProvider; real Atria/OpenAI comparison requires explicit credentials and human blind literary review before any later production-admission proposal.
