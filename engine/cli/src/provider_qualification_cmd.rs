@@ -7,9 +7,11 @@ use std::collections::BTreeMap;
 use std::env;
 use std::fs;
 use std::path::Path;
+use std::sync::Mutex;
+use std::time::Instant;
 use translation_core::{
-    AtriaProvider, EchoProvider, OpenAIProvider, PipelineInput, TranslationPipeline,
-    TranslationProvider,
+    AtriaProvider, EchoProvider, OpenAIProvider, PipelineInput, ProviderError, ProviderRequest,
+    ProviderResponse, TranslationPipeline, TranslationProvider,
 };
 
 type Result<T> = std::result::Result<T, String>;
@@ -28,6 +30,12 @@ struct ProviderQualificationReport {
     deterministic_anchor_passed: usize,
     deterministic_anchor_total: usize,
     deterministic_anchor_pass_rate: f32,
+    provider_requests: usize,
+    usage_observed_requests: usize,
+    token_usage_complete: bool,
+    input_tokens: Option<u64>,
+    output_tokens: Option<u64>,
+    total_provider_latency_ms: u128,
     human_review_required: bool,
     production_admission: &'static str,
     notes: Vec<&'static str>,
@@ -69,6 +77,56 @@ struct BlindAssignment {
     candidate_b_system: String,
 }
 
+
+#[derive(Debug, Clone, Copy, Default)]
+struct QualificationTelemetry {
+    request_count: usize,
+    usage_observed_requests: usize,
+    input_tokens: u64,
+    output_tokens: u64,
+    total_latency_ms: u128,
+}
+
+struct ObservedProvider<'a> {
+    inner: &'a dyn TranslationProvider,
+    telemetry: Mutex<QualificationTelemetry>,
+}
+
+impl<'a> ObservedProvider<'a> {
+    fn new(inner: &'a dyn TranslationProvider) -> Self {
+        Self {
+            inner,
+            telemetry: Mutex::new(QualificationTelemetry::default()),
+        }
+    }
+
+    fn snapshot(&self) -> QualificationTelemetry {
+        *self.telemetry.lock().expect("qualification telemetry poisoned")
+    }
+}
+
+impl TranslationProvider for ObservedProvider<'_> {
+    fn name(&self) -> &str {
+        self.inner.name()
+    }
+
+    fn execute(&self, request: &ProviderRequest) -> Result<ProviderResponse, ProviderError> {
+        let started = Instant::now();
+        let response = self.inner.execute(request)?;
+        let elapsed_ms = started.elapsed().as_millis();
+
+        let mut telemetry = self.telemetry.lock().expect("qualification telemetry poisoned");
+        telemetry.request_count += 1;
+        telemetry.total_latency_ms = telemetry.total_latency_ms.saturating_add(elapsed_ms);
+        if let Some(usage) = response.usage {
+            telemetry.usage_observed_requests += 1;
+            telemetry.input_tokens = telemetry.input_tokens.saturating_add(usage.input_tokens);
+            telemetry.output_tokens = telemetry.output_tokens.saturating_add(usage.output_tokens);
+        }
+        Ok(response)
+    }
+}
+
 struct LabProvider {
     provider: Box<dyn TranslationProvider>,
     provider_name: String,
@@ -101,7 +159,7 @@ pub(crate) fn run_qualify_provider(args: &[String], format: &OutputFormat) -> Re
 
     let lab = configured_lab_provider(provider_name, flag_value(args, "--model"))?;
     let selected_cases = max_cases.min(corpus.cases.len());
-    let submission = generate_submission(
+    let (submission, telemetry) = generate_submission(
         &corpus,
         lab.provider.as_ref(),
         selected_cases,
@@ -131,6 +189,13 @@ pub(crate) fn run_qualify_provider(args: &[String], format: &OutputFormat) -> Re
         deterministic_anchor_passed: benchmark.anchor_passed,
         deterministic_anchor_total: benchmark.anchor_total,
         deterministic_anchor_pass_rate: benchmark.anchor_pass_rate,
+        provider_requests: telemetry.request_count,
+        usage_observed_requests: telemetry.usage_observed_requests,
+        token_usage_complete: telemetry.request_count > 0
+            && telemetry.usage_observed_requests == telemetry.request_count,
+        input_tokens: (telemetry.usage_observed_requests > 0).then_some(telemetry.input_tokens),
+        output_tokens: (telemetry.usage_observed_requests > 0).then_some(telemetry.output_tokens),
+        total_provider_latency_ms: telemetry.total_latency_ms,
         human_review_required: true,
         production_admission: "not_granted",
         notes: vec![
@@ -170,6 +235,20 @@ pub(crate) fn run_qualify_provider(args: &[String], format: &OutputFormat) -> Re
                 report.deterministic_anchor_total,
                 report.deterministic_anchor_pass_rate * 100.0
             );
+            println!(
+                "provider calls: {} · measured latency: {} ms",
+                report.provider_requests, report.total_provider_latency_ms
+            );
+            if let (Some(input_tokens), Some(output_tokens)) =
+                (report.input_tokens, report.output_tokens)
+            {
+                println!(
+                    "token usage: {input_tokens} input · {output_tokens} output · complete={}",
+                    report.token_usage_complete
+                );
+            } else {
+                println!("token usage: unavailable from this provider");
+            }
             println!("submission: {}", report.submission_file);
             println!("production admission: NOT GRANTED — human blind review required");
         }
@@ -414,8 +493,9 @@ fn generate_submission(
     provider: &dyn TranslationProvider,
     max_cases: usize,
     system_id: String,
-) -> Result<CandidateSubmission> {
+) -> Result<(CandidateSubmission, QualificationTelemetry)> {
     let pipeline = TranslationPipeline::default_literary_pipeline();
+    let observed = ObservedProvider::new(provider);
     let outputs = corpus
         .cases
         .iter()
@@ -427,7 +507,7 @@ fn generate_submission(
             );
             let output = pipeline
                 .execute(
-                    provider,
+                    &observed,
                     PipelineInput {
                         source_text: case.source.clone(),
                         target_language: corpus.target_language.clone(),
@@ -447,12 +527,15 @@ fn generate_submission(
         })
         .collect::<Result<Vec<_>>>()?;
 
-    Ok(CandidateSubmission {
-        schema_version: literary_evaluation_engine::SUBMISSION_SCHEMA_VERSION,
-        corpus_id: corpus.corpus_id.clone(),
-        system_id,
-        outputs,
-    })
+    Ok((
+        CandidateSubmission {
+            schema_version: literary_evaluation_engine::SUBMISSION_SCHEMA_VERSION,
+            corpus_id: corpus.corpus_id.clone(),
+            system_id,
+            outputs,
+        },
+        observed.snapshot(),
+    ))
 }
 
 fn qualification_context(before: Option<&str>, after: Option<&str>) -> String {
@@ -537,7 +620,7 @@ mod tests {
     #[test]
     fn echo_can_exercise_qualification_path_without_network() {
         let corpus = corpus();
-        let submission = generate_submission(
+        let (submission, telemetry) = generate_submission(
             &corpus,
             &EchoProvider,
             corpus.cases.len(),
@@ -547,6 +630,8 @@ mod tests {
         assert_eq!(submission.outputs.len(), 1);
         assert_eq!(submission.outputs[0].translation, "I did not answer.");
         assert!(submission.system_id.contains("default-literary-v1"));
+        assert_eq!(telemetry.request_count, 3);
+        assert_eq!(telemetry.usage_observed_requests, 0);
     }
 
     #[test]
