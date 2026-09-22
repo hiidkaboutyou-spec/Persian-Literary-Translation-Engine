@@ -12,6 +12,7 @@ const state = {
   pilotSummary: null,
   pilotTarget: null,
   pilotChapter: null,
+  pilotSelectionEpoch: 0,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -463,6 +464,7 @@ function pilotTargetStatus(targetState) {
 }
 
 function clearPilotSelection() {
+  state.pilotSelectionEpoch += 1;
   state.pilotTarget = null;
   state.pilotChapter = null;
   $("record-pilot-review").disabled = true;
@@ -557,11 +559,30 @@ function renderPilotContext(targetState, chapter) {
 }
 
 async function selectPilotTarget(targetState) {
+  const selectionEpoch = state.pilotSelectionEpoch + 1;
+  state.pilotSelectionEpoch = selectionEpoch;
   state.pilotTarget = targetState;
+  state.pilotChapter = null;
+  $("record-pilot-review").disabled = true;
+  $("open-pilot-editor").disabled = true;
+  const context = $("pilot-context");
+  context.className = "pilot-context empty-state";
+  context.textContent = "Loading selected target…";
+
+  const targetId = targetState.target_id;
   const chapter = await call("get_translated_chapter", {
     projectRoot: state.projectRoot,
     chapterIndex: targetState.target.chapter_index,
   });
+
+  if (
+    selectionEpoch !== state.pilotSelectionEpoch
+    || !state.pilotTarget
+    || state.pilotTarget.target_id !== targetId
+  ) {
+    return;
+  }
+
   state.pilotChapter = chapter;
   const inspectable = renderPilotContext(targetState, chapter);
   $("record-pilot-review").disabled = !inspectable;
@@ -876,7 +897,7 @@ $("refresh-pilot-review").addEventListener("click", async () => {
 });
 
 $("record-pilot-review").addEventListener("click", async () => {
-  if (!state.pilotTarget) return;
+  if (!state.pilotTarget || !state.pilotChapter) return;
   const outcome = $("pilot-outcome").value;
   const targetId = state.pilotTarget.target_id;
   let findings;
