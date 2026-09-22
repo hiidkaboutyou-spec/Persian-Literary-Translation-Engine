@@ -111,6 +111,14 @@ Rules:
 8. every report says `production_admission = not_granted`;
 9. human blind review remains required.
 
+### Blind A/B review package
+
+New command:
+
+`literary-engine blind-compare <corpus.json> <submission-a.json> <submission-b.json> <blind-bundle.json> <reveal-key.json>`
+
+Before packaging, both submissions must pass the existing Phase-21 corpus/completeness validation. Candidate A/B ordering is counterbalanced across cases. The reviewer bundle contains source/context, requested literary dimensions, and Candidate A/B text but no system IDs; the separate reveal key records the assignment. The command computes no winner. Keep the reveal key closed until judgments are complete.
+
 The deterministic `echo` provider exists in this command so CI can exercise the complete qualification path without credentials or network access.
 
 ## Production isolation
@@ -142,5 +150,6 @@ Phase 31 is complete when:
 8. existing OpenAI/echo automatic production behavior is unchanged;
 9. no new runtime dependency is introduced;
 10. Linux and Apple Silicon validation pass;
-11. Rust CI, Security, Phase 21 evaluation, Desktop Product, Trusted Release, and Project Memory regressions are green on the final head;
-12. Atria is not promoted to real-book translation merely because the integration compiles.
+11. a blind counterbalanced two-system review bundle can be generated without leaking system IDs into the reviewer file;
+12. Rust CI, Security, Phase 21 evaluation, Desktop Product, Trusted Release, and Project Memory regressions are green on the final head;
+13. Atria is not promoted to real-book translation merely because the integration compiles.
