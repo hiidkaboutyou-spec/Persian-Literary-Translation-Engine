@@ -21,11 +21,18 @@ pub struct ProviderRequest {
     pub context: String,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ProviderUsage {
+    pub input_tokens: u64,
+    pub output_tokens: u64,
+}
+
 #[derive(Debug, Clone)]
 pub struct ProviderResponse {
     pub text: String,
     pub provider: String,
     pub model: Option<String>,
+    pub usage: Option<ProviderUsage>,
 }
 
 #[derive(Debug, Clone)]
@@ -72,6 +79,7 @@ impl TranslationProvider for EchoProvider {
             text: request.source_text.clone(),
             provider: self.name().to_owned(),
             model: None,
+            usage: None,
         })
     }
 }
@@ -172,6 +180,16 @@ impl OpenAIProvider {
         )
     }
 
+    fn extract_usage(value: &Value) -> Option<ProviderUsage> {
+        let usage = value.get("usage")?;
+        let input_tokens = usage.get("input_tokens")?.as_u64()?;
+        let output_tokens = usage.get("output_tokens")?.as_u64()?;
+        Some(ProviderUsage {
+            input_tokens,
+            output_tokens,
+        })
+    }
+
     fn extract_output_text(value: &Value) -> Result<String, ProviderError> {
         let output = value
             .get("output")
@@ -259,11 +277,13 @@ impl TranslationProvider for OpenAIProvider {
         let value: Value = serde_json::from_str(&body)
             .map_err(|error| ProviderError::Failed(format!("invalid OpenAI JSON: {error}")))?;
         let text = Self::extract_output_text(&value)?;
+        let usage = Self::extract_usage(&value);
 
         Ok(ProviderResponse {
             text,
             provider: self.name().to_owned(),
             model: Some(self.model.clone()),
+            usage,
         })
     }
 }
@@ -476,11 +496,13 @@ impl TranslationProvider for AtriaProvider {
         let value: Value = serde_json::from_str(&body)
             .map_err(|error| ProviderError::Failed(format!("invalid Atria JSON: {error}")))?;
         let text = Self::extract_output_text(&value)?;
+        let usage = OpenAIProvider::extract_usage(&value);
 
         Ok(ProviderResponse {
             text,
             provider: self.name().to_owned(),
             model: Some(self.model.clone()),
+            usage,
         })
     }
 }
@@ -579,6 +601,23 @@ mod tests {
             .unwrap()
             .with_max_output_tokens(65_537)
             .is_err());
+    }
+
+    #[test]
+    fn responses_usage_metadata_is_parsed_when_present() {
+        let value = json!({
+            "usage": {
+                "input_tokens": 123,
+                "output_tokens": 45
+            }
+        });
+        assert_eq!(
+            OpenAIProvider::extract_usage(&value),
+            Some(ProviderUsage {
+                input_tokens: 123,
+                output_tokens: 45,
+            })
+        );
     }
 
     #[test]
