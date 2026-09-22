@@ -151,10 +151,8 @@ fn run(args: &[String]) -> Result<()> {
 }
 
 fn run_init(args: &[String]) -> Result<()> {
-    let bundle_path = positional(args, 0, &["--reviewer"])
-        .ok_or_else(|| usage().to_string())?;
-    let ledger_path = positional(args, 1, &["--reviewer"])
-        .ok_or_else(|| usage().to_string())?;
+    let bundle_path = positional(args, 0, &["--reviewer"]).ok_or_else(|| usage().to_string())?;
+    let ledger_path = positional(args, 1, &["--reviewer"]).ok_or_else(|| usage().to_string())?;
     let reviewer = flag_value(args, "--reviewer")
         .map(str::trim)
         .filter(|value| !value.is_empty())
@@ -250,9 +248,10 @@ fn run_record(args: &[String]) -> Result<()> {
 fn run_dossier(args: &[String]) -> Result<()> {
     let key_path = args.first().ok_or_else(|| usage().to_string())?;
     let dossier_path = args.get(1).ok_or_else(|| usage().to_string())?;
-    let ledger_paths = args.get(2..).filter(|paths| !paths.is_empty()).ok_or_else(|| {
-        "dossier requires at least one completed blind review ledger".to_string()
-    })?;
+    let ledger_paths = args
+        .get(2..)
+        .filter(|paths| !paths.is_empty())
+        .ok_or_else(|| "dossier requires at least one completed blind review ledger".to_string())?;
 
     let mut protected = Vec::with_capacity(ledger_paths.len() + 1);
     protected.push(key_path.as_str());
@@ -262,8 +261,8 @@ fn run_dossier(args: &[String]) -> Result<()> {
 
     let key_text = fs::read_to_string(key_path)
         .map_err(|error| format!("failed to read {key_path}: {error}"))?;
-    let key: BlindComparisonKeyInput = serde_json::from_str(&key_text)
-        .map_err(|error| format!("invalid reveal key: {error}"))?;
+    let key: BlindComparisonKeyInput =
+        serde_json::from_str(&key_text).map_err(|error| format!("invalid reveal key: {error}"))?;
     validate_key(&key)?;
 
     let ledgers = ledger_paths
@@ -387,7 +386,13 @@ fn validate_ledger(ledger: &BlindReviewLedger) -> Result<()> {
                 }
             }
             _ => {
-                if case.reason.as_deref().map(str::trim).filter(|v| !v.is_empty()).is_none() {
+                if case
+                    .reason
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|v| !v.is_empty())
+                    .is_none()
+                {
                     return Err(format!(
                         "completed case '{}' is missing a judgment reason",
                         case.case_id
@@ -553,13 +558,16 @@ fn build_dossier(
 }
 
 fn read_ledger(path: &str) -> Result<BlindReviewLedger> {
-    let text = fs::read_to_string(path)
-        .map_err(|error| format!("failed to read {path}: {error}"))?;
+    let text =
+        fs::read_to_string(path).map_err(|error| format!("failed to read {path}: {error}"))?;
     serde_json::from_str(&text).map_err(|error| format!("invalid review ledger {path}: {error}"))
 }
 
 fn write_json_atomic<T: Serialize>(path: &Path, value: &T) -> Result<()> {
-    let parent = path.parent().filter(|parent| !parent.as_os_str().is_empty()).unwrap_or_else(|| Path::new("."));
+    let parent = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
     if !parent.is_dir() {
         return Err(format!(
             "output directory does not exist: {}",
@@ -575,7 +583,12 @@ fn write_json_atomic<T: Serialize>(path: &Path, value: &T) -> Result<()> {
     let file_name = path
         .file_name()
         .and_then(|value| value.to_str())
-        .ok_or_else(|| format!("output path has no valid UTF-8 file name: {}", path.display()))?;
+        .ok_or_else(|| {
+            format!(
+                "output path has no valid UTF-8 file name: {}",
+                path.display()
+            )
+        })?;
     let temp_path = parent.join(format!(".{file_name}.{}.{}.tmp", std::process::id(), nonce));
 
     let write_result = (|| -> Result<()> {
@@ -667,7 +680,11 @@ fn ensure_unique_inputs(inputs: &[&str]) -> Result<()> {
     Ok(())
 }
 
-fn positional<'a>(args: &'a [String], wanted: usize, flags_with_values: &[&str]) -> Option<&'a str> {
+fn positional<'a>(
+    args: &'a [String],
+    wanted: usize,
+    flags_with_values: &[&str],
+) -> Option<&'a str> {
     let mut values = Vec::new();
     let mut index = 0usize;
     while index < args.len() {
