@@ -111,7 +111,10 @@ impl TranslationProvider for ObservedProvider<'_> {
         self.inner.name()
     }
 
-    fn execute(&self, request: &ProviderRequest) -> Result<ProviderResponse, ProviderError> {
+    fn execute(
+        &self,
+        request: &ProviderRequest,
+    ) -> std::result::Result<ProviderResponse, ProviderError> {
         let started = Instant::now();
         let response = self.inner.execute(request)?;
         let elapsed_ms = started.elapsed().as_millis();
