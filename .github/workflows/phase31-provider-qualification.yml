@@ -1,0 +1,109 @@
+name: Phase 31 Provider Qualification
+
+on:
+  push:
+    branches:
+      - main
+      - phase-31-provider-qualification-atria
+    paths:
+      - 'engine/crates/translation-core/**'
+      - 'engine/cli/**'
+      - 'benchmarks/phase21/**'
+      - 'docs/PHASE_31_RESEARCH.md'
+      - 'docs/IMPLEMENTATION_ROADMAP.md'
+      - 'docs/IMPLEMENTATION_STATUS.md'
+      - 'docs/ENGINEERING_DECISIONS.md'
+      - 'docs/EXTERNAL_INTEGRATIONS.md'
+      - 'docs/PMC_BOOTSTRAP.md'
+      - 'AGENTS.md'
+      - '.github/workflows/phase31-provider-qualification.yml'
+  pull_request:
+    paths:
+      - 'engine/crates/translation-core/**'
+      - 'engine/cli/**'
+      - 'benchmarks/phase21/**'
+      - 'docs/PHASE_31_RESEARCH.md'
+      - 'docs/IMPLEMENTATION_ROADMAP.md'
+      - 'docs/IMPLEMENTATION_STATUS.md'
+      - 'docs/ENGINEERING_DECISIONS.md'
+      - 'docs/EXTERNAL_INTEGRATIONS.md'
+      - 'docs/PMC_BOOTSTRAP.md'
+      - 'AGENTS.md'
+      - '.github/workflows/phase31-provider-qualification.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase31-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  provider-qualification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # reviewed stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Verify formatting
+        working-directory: engine
+        run: cargo fmt --all -- --check
+
+      - name: Test experimental Atria adapter offline
+        working-directory: engine
+        run: cargo test --locked -p translation-core atria
+
+      - name: Test provider qualification orchestration offline
+        working-directory: engine
+        run: cargo test --locked -p literary-engine qualification
+
+      - name: Exercise rights-safe qualification path without network
+        working-directory: engine
+        run: |
+          cargo run --locked -q -p literary-engine --             qualify-provider ../benchmarks/phase21/corpus-v1.json /tmp/phase31-echo-submission.json             --provider echo --max-cases 2 --format json
+          test -s /tmp/phase31-echo-submission.json
+
+      - name: Prove Phase 31 does not admit Atria to production
+        run: |
+          set -euo pipefail
+          if grep -n '"atria"' engine/crates/project-engine/src/application/translation.rs; then
+            echo "Atria must not enter the production ApplicationService selector in Phase 31" >&2
+            exit 1
+          fi
+          if grep -n '"atria"' engine/crates/project-engine/src/application/models.rs; then
+            echo "Atria must not be advertised as a production capability in Phase 31" >&2
+            exit 1
+          fi
+
+      - name: Prove no dependency manifest changed
+        run: |
+          set -euo pipefail
+          git diff --exit-code da71d2b0f9c31aa5a56bdee582934b59c4d69fbc --             engine/Cargo.toml engine/cli/Cargo.toml engine/crates/translation-core/Cargo.toml
+
+  macos-arm64:
+    runs-on: macos-15
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Verify Apple Silicon runner
+        run: test "$(uname -m)" = arm64
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # reviewed stable
+        with:
+          components: rustfmt
+
+      - name: Test provider lab on Apple Silicon
+        working-directory: engine
+        run: |
+          cargo test --locked -p translation-core atria
+          cargo test --locked -p literary-engine qualification
+          cargo run --locked -q -p literary-engine --             qualify-provider ../benchmarks/phase21/corpus-v1.json /tmp/phase31-echo-submission.json             --provider echo --max-cases 1 --format json
