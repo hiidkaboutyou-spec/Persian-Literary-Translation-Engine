@@ -75,6 +75,10 @@ required_js = [
     'Selected chapter',
     'span needs both start and end offsets',
     'Literary review evidence changed. Refresh the pilot workspace',
+    'pilotSelectionEpoch',
+    'selectionEpoch !== state.pilotSelectionEpoch',
+    'if (!state.pilotTarget || !state.pilotChapter) return;',
+    'Loading selected target…',
     'textContent',
 ]
 for needle in required_js:
