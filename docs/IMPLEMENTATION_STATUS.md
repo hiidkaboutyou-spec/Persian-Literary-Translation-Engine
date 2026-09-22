@@ -6,7 +6,7 @@ A production-grade English-to-Persian literary translation engine with a Rust co
 
 ## Canonical Main State
 
-`main` is canonical through Phase 29.
+`main` is canonical through Phase 30.
 
 Phase 26 PR #111 landed from final validated head `8418fdf4eb06252dec8a014c13e789efa7fe800e` at merge commit `5c0d4c8514b999faf786971da8541f7ea5a1b773`.
 
@@ -15,6 +15,8 @@ Phase 27 PR #113 landed from final validated head `f75212a496d5073d249e47cb920ab
 Phase 28 PR #114 landed from final validated head `940ee71a1da8a3a8e9d35616f913ca97f43a9c17` at merge commit `12467a8052ee9a3dcaf4eb350ae705fe0086e510`.
 
 Phase 29 PR #116 landed from final validated head `7eb15fc9ce16f5436b7f1339b8ce62c4a0218f9a` at merge commit `8415f559a6bf295d39504108e40864b2c40e65e5`. The exact final head passed Phase 29, Rust CI, Security, Phases 18–28, Desktop Product, Trusted Release, Project Memory Tooling, and Apple Silicon validation.
+
+Phase 30 PR #119 landed from final validated head `1608b1d49a8f2c5fb3d475db64c32901ec013657` at merge commit `8929e6befe0b2b932fbf0d3aceaf466e99a88955`. Every workflow triggered by the Phase-30 UI/docs-only diff passed on that exact head: Phases 18–19 and 21–30, Desktop Product, Trusted Release, and Project Memory Tooling. Rust CI, Security, and Phase 20 publication remained inherited from canonical Phase 29 because the Phase-30 diff changed no engine/Cargo/publication surface.
 
 Phase 21 implementation merged through PR #100 at:
 
@@ -88,9 +90,9 @@ Phase-29 contract:
 
 Detailed research: `docs/PHASE_29_RESEARCH.md`.
 
-### Active Phase 30 — Desktop Pilot Review Workspace
+### Phase 30 — Desktop Pilot Review Workspace — canonical
 
-Branch: `phase-30-pilot-review-workspace`.
+PR #119; final validated head `1608b1d49a8f2c5fb3d475db64c32901ec013657`; merge `8929e6befe0b2b932fbf0d3aceaf466e99a88955`.
 
 Measured gap after Phase 29: the Rust/Tauri backend can compute the whole-book pilot audit and persist human decisions, but the desktop frontend does not expose that workflow. A reviewer cannot complete the pilot from the product UI.
 
@@ -314,4 +316,4 @@ The canonical CLI and desktop application remain operationally independent. Phas
 
 ## Current Handoff
 
-Phase 29 is canonical and its exact completion record is persisted. Phase 30 is the active numbered phase: finish the desktop Pilot Review workspace, keep review authority in Rust, validate privacy/IPC/UI contracts on Linux and Apple Silicon, then run the full Phase 18–30/Rust/Security/Desktop/Trusted Release/Project Memory regression matrix before landing.
+Phase 30 is canonical and its exact completion record is persisted. The next numbered work should begin with provider-admission research and a rights-safe EN→FA literary qualification harness that extends the existing Phase-21 corpus. Atria Dawn is the first candidate to measure, but no new provider may enter runtime defaults until it proves a concrete gain on fidelity, omission/addition, voice/register, Persian naturalness, structural-marker preservation, reliability, privacy, and cost/operational constraints without weakening current OpenAI/Echo paths.
