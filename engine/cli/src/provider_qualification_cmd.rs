@@ -3,6 +3,7 @@ use literary_evaluation_engine::{
     evaluate_submission, CandidateOutput, CandidateSubmission, LiteraryEvaluationCorpus,
 };
 use serde::Serialize;
+use std::collections::BTreeMap;
 use std::env;
 use std::fs;
 use std::path::Path;
@@ -30,6 +31,43 @@ struct ProviderQualificationReport {
     human_review_required: bool,
     production_admission: &'static str,
     notes: Vec<&'static str>,
+}
+
+
+#[derive(Debug, Serialize)]
+struct BlindComparisonBundle {
+    schema_version: u32,
+    corpus_id: String,
+    cases: Vec<BlindComparisonCase>,
+    instructions: Vec<&'static str>,
+}
+
+#[derive(Debug, Serialize)]
+struct BlindComparisonCase {
+    case_id: String,
+    title: String,
+    source: String,
+    context_before: Option<String>,
+    context_after: Option<String>,
+    dimensions: Vec<literary_evaluation_engine::EvaluationDimension>,
+    candidate_a: String,
+    candidate_b: String,
+}
+
+#[derive(Debug, Serialize)]
+struct BlindComparisonKey {
+    schema_version: u32,
+    corpus_id: String,
+    system_one: String,
+    system_two: String,
+    assignments: Vec<BlindAssignment>,
+}
+
+#[derive(Debug, Serialize)]
+struct BlindAssignment {
+    case_id: String,
+    candidate_a_system: String,
+    candidate_b_system: String,
 }
 
 struct LabProvider {
@@ -136,6 +174,164 @@ pub(crate) fn run_qualify_provider(args: &[String], format: &OutputFormat) -> Re
     }
 
     Ok(())
+}
+
+
+pub(crate) fn run_blind_compare(args: &[String], format: &OutputFormat) -> Result<()> {
+    let corpus_path = args.first().ok_or_else(|| blind_compare_usage().to_string())?;
+    let first_path = args.get(1).ok_or_else(|| blind_compare_usage().to_string())?;
+    let second_path = args.get(2).ok_or_else(|| blind_compare_usage().to_string())?;
+    let bundle_path = args.get(3).ok_or_else(|| blind_compare_usage().to_string())?;
+    let key_path = args.get(4).ok_or_else(|| blind_compare_usage().to_string())?;
+
+    let corpus = LiteraryEvaluationCorpus::from_json(
+        &fs::read_to_string(corpus_path)
+            .map_err(|error| format!("failed to read {corpus_path}: {error}"))?,
+    )
+    .map_err(|error| format!("invalid comparison corpus: {error}"))?;
+    let first = CandidateSubmission::from_json(
+        &fs::read_to_string(first_path)
+            .map_err(|error| format!("failed to read {first_path}: {error}"))?,
+    )
+    .map_err(|error| format!("invalid first submission: {error}"))?;
+    let second = CandidateSubmission::from_json(
+        &fs::read_to_string(second_path)
+            .map_err(|error| format!("failed to read {second_path}: {error}"))?,
+    )
+    .map_err(|error| format!("invalid second submission: {error}"))?;
+
+    // Completeness/identity validation is reused from Phase 21 before blinding.
+    evaluate_submission(&corpus, &first)
+        .map_err(|error| format!("first submission is not comparable: {error}"))?;
+    evaluate_submission(&corpus, &second)
+        .map_err(|error| format!("second submission is not comparable: {error}"))?;
+
+    let (bundle, key) = build_blind_comparison(&corpus, &first, &second)?;
+    fs::write(
+        bundle_path,
+        serde_json::to_string_pretty(&bundle)
+            .map_err(|error| format!("failed to serialize blind comparison: {error}"))?,
+    )
+    .map_err(|error| format!("failed to write {bundle_path}: {error}"))?;
+    fs::write(
+        key_path,
+        serde_json::to_string_pretty(&key)
+            .map_err(|error| format!("failed to serialize comparison key: {error}"))?,
+    )
+    .map_err(|error| format!("failed to write {key_path}: {error}"))?;
+
+    match format {
+        OutputFormat::Json => println!(
+            "{}",
+            serde_json::json!({
+                "corpus_id": corpus.corpus_id,
+                "cases": bundle.cases.len(),
+                "blind_bundle": bundle_path,
+                "reveal_key": key_path,
+                "automatic_winner": null,
+                "human_review_required": true
+            })
+        ),
+        OutputFormat::Text => {
+            println!("Blind provider comparison prepared.");
+            println!("cases: {}", bundle.cases.len());
+            println!("review bundle: {bundle_path}");
+            println!("reveal key: {key_path}");
+            println!("automatic winner: none — keep the reveal key separate until review is complete");
+        }
+    }
+    Ok(())
+}
+
+fn blind_compare_usage() -> &'static str {
+    "usage: literary-engine blind-compare <corpus.json> <submission-a.json> <submission-b.json> <blind-bundle.json> <reveal-key.json> [--format json]"
+}
+
+fn build_blind_comparison(
+    corpus: &LiteraryEvaluationCorpus,
+    first: &CandidateSubmission,
+    second: &CandidateSubmission,
+) -> Result<(BlindComparisonBundle, BlindComparisonKey)> {
+    if first.corpus_id != corpus.corpus_id || second.corpus_id != corpus.corpus_id {
+        return Err("blind comparison submissions must target the same corpus".to_string());
+    }
+    if first.system_id == second.system_id {
+        return Err("blind comparison requires two distinct system_id values".to_string());
+    }
+
+    let first_outputs = first
+        .outputs
+        .iter()
+        .map(|output| (output.case_id.as_str(), output.translation.as_str()))
+        .collect::<BTreeMap<_, _>>();
+    let second_outputs = second
+        .outputs
+        .iter()
+        .map(|output| (output.case_id.as_str(), output.translation.as_str()))
+        .collect::<BTreeMap<_, _>>();
+
+    let mut cases = Vec::with_capacity(corpus.cases.len());
+    let mut assignments = Vec::with_capacity(corpus.cases.len());
+    for (index, case) in corpus.cases.iter().enumerate() {
+        let first_text = first_outputs
+            .get(case.id.as_str())
+            .ok_or_else(|| format!("first submission is missing case '{}'", case.id))?;
+        let second_text = second_outputs
+            .get(case.id.as_str())
+            .ok_or_else(|| format!("second submission is missing case '{}'", case.id))?;
+        let swap = index % 2 == 1;
+        let (candidate_a, candidate_b, a_system, b_system) = if swap {
+            (
+                (*second_text).to_string(),
+                (*first_text).to_string(),
+                second.system_id.clone(),
+                first.system_id.clone(),
+            )
+        } else {
+            (
+                (*first_text).to_string(),
+                (*second_text).to_string(),
+                first.system_id.clone(),
+                second.system_id.clone(),
+            )
+        };
+        cases.push(BlindComparisonCase {
+            case_id: case.id.clone(),
+            title: case.title.clone(),
+            source: case.source.clone(),
+            context_before: case.context_before.clone(),
+            context_after: case.context_after.clone(),
+            dimensions: case.dimensions.iter().copied().collect(),
+            candidate_a,
+            candidate_b,
+        });
+        assignments.push(BlindAssignment {
+            case_id: case.id.clone(),
+            candidate_a_system: a_system,
+            candidate_b_system: b_system,
+        });
+    }
+
+    Ok((
+        BlindComparisonBundle {
+            schema_version: 1,
+            corpus_id: corpus.corpus_id.clone(),
+            cases,
+            instructions: vec![
+                "Keep the reveal key closed until every judgment is recorded.",
+                "Compare Candidate A and Candidate B for the listed literary dimensions and overall reading quality.",
+                "Do not infer model identity from style; judge only the supplied source/context and translations.",
+                "Record ties when differences are not meaningful rather than forcing a winner.",
+            ],
+        },
+        BlindComparisonKey {
+            schema_version: 1,
+            corpus_id: corpus.corpus_id.clone(),
+            system_one: first.system_id.clone(),
+            system_two: second.system_id.clone(),
+            assignments,
+        },
+    ))
 }
 
 fn qualification_usage() -> &'static str {
@@ -335,6 +531,67 @@ mod tests {
         assert_eq!(submission.outputs.len(), 1);
         assert_eq!(submission.outputs[0].translation, "I did not answer.");
         assert!(submission.system_id.contains("default-literary-v1"));
+    }
+
+
+    #[test]
+    fn blind_comparison_counterbalances_system_labels_and_hides_ids_from_bundle() {
+        let corpus = LiteraryEvaluationCorpus {
+            cases: vec![
+                corpus().cases[0].clone(),
+                EvaluationCase {
+                    id: "case-2".into(),
+                    title: "Second".into(),
+                    source: "Wait.".into(),
+                    reference: "صبر کن.".into(),
+                    context_before: None,
+                    context_after: None,
+                    dimensions: BTreeSet::from([EvaluationDimension::Readability]),
+                    anchors: Vec::new(),
+                    contrastive_variants: Vec::new(),
+                },
+            ],
+            ..corpus()
+        };
+        let first = CandidateSubmission {
+            schema_version: literary_evaluation_engine::SUBMISSION_SCHEMA_VERSION,
+            corpus_id: corpus.corpus_id.clone(),
+            system_id: "system-one".into(),
+            outputs: vec![
+                CandidateOutput {
+                    case_id: "case-1".into(),
+                    translation: "اول".into(),
+                },
+                CandidateOutput {
+                    case_id: "case-2".into(),
+                    translation: "یک".into(),
+                },
+            ],
+        };
+        let second = CandidateSubmission {
+            schema_version: literary_evaluation_engine::SUBMISSION_SCHEMA_VERSION,
+            corpus_id: corpus.corpus_id.clone(),
+            system_id: "system-two".into(),
+            outputs: vec![
+                CandidateOutput {
+                    case_id: "case-1".into(),
+                    translation: "دوم".into(),
+                },
+                CandidateOutput {
+                    case_id: "case-2".into(),
+                    translation: "دو".into(),
+                },
+            ],
+        };
+
+        let (bundle, key) = build_blind_comparison(&corpus, &first, &second).unwrap();
+        assert_eq!(bundle.cases[0].candidate_a, "اول");
+        assert_eq!(bundle.cases[1].candidate_a, "دو");
+        let blind_json = serde_json::to_string(&bundle).unwrap();
+        assert!(!blind_json.contains("system-one"));
+        assert!(!blind_json.contains("system-two"));
+        assert_eq!(key.assignments[0].candidate_a_system, "system-one");
+        assert_eq!(key.assignments[1].candidate_a_system, "system-two");
     }
 
     #[test]
