@@ -198,6 +198,7 @@ mod tests {
                 text: request.source_text.clone(),
                 provider: self.name().to_owned(),
                 model: None,
+                usage: None,
             })
         }
     }
