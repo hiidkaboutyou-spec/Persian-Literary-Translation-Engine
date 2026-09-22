@@ -88,6 +88,26 @@ Phase-29 contract:
 
 Detailed research: `docs/PHASE_29_RESEARCH.md`.
 
+### Active Phase 30 — Desktop Pilot Review Workspace
+
+Branch: `phase-30-pilot-review-workspace`.
+
+Measured gap after Phase 29: the Rust/Tauri backend can compute the whole-book pilot audit and persist human decisions, but the desktop frontend does not expose that workflow. A reviewer cannot complete the pilot from the product UI.
+
+Phase-30 contract:
+
+- local Pilot Review navigation/view over the existing Rust-owned Phase-28/29 APIs;
+- mechanical export state and sampled-review state shown separately;
+- bounded current-target queue with reason, current/stale human record state and zero-target support;
+- source/Persian target context loaded from the local translated chapter only after explicit target selection;
+- explicit `clear`, `accepted_as_is`, and `needs_revision` submissions through `record_pilot_review`;
+- optional existing Phase-19 dimension/severity and Unicode spans, with Rust remaining authoritative for validation;
+- direct navigation to the normal translation editor; selecting/reviewing a target never auto-edits text;
+- no browser persistence, `innerHTML`, remote frontend content, network `fetch`, telemetry, model, metric, provider or new runtime dependency;
+- dedicated Linux + Apple Silicon UI/IPC/privacy validation.
+
+Research and exit criteria: `docs/PHASE_30_RESEARCH.md`.
+
 ### Core crates and application boundaries
 
 - **translation-core** — provider-neutral translate -> revise -> quality pipeline with deterministic EchoProvider and production OpenAIProvider, bounded oversized-passage handling, immutable structural-marker guidance, and explicit translation style profiles.
@@ -294,4 +314,4 @@ The canonical CLI and desktop application remain operationally independent. Phas
 
 ## Current Handoff
 
-Finish Phase-25 exact-head validation, review any remaining CI failures, and merge PR #106 only when the dedicated Phase-25 gate plus Rust CI, Security, Phases 18–24, Phase 22 Desktop, Phase 23 Trusted Release, and Project Memory Tooling are green. After merge, record the exact final head, merge SHA, successful run IDs, and the next research handoff before starting another numbered phase.
+Phase 29 is canonical and its exact completion record is persisted. Phase 30 is the active numbered phase: finish the desktop Pilot Review workspace, keep review authority in Rust, validate privacy/IPC/UI contracts on Linux and Apple Silicon, then run the full Phase 18–30/Rust/Security/Desktop/Trusted Release/Project Memory regression matrix before landing.

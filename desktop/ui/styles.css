@@ -93,6 +93,16 @@ main { padding: 24px 30px 60px; min-width: 0; }
 .source-text { white-space: pre-wrap; color: var(--muted); line-height: 1.55; margin-bottom: 8px; }
 .translation-text { min-height: 115px; direction: rtl; text-align: right; line-height: 1.8; }
 .evidence { white-space: pre-wrap; overflow: auto; max-height: 560px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 14px; font-size: 12px; }
+.pilot-grid { align-items: start; }
+.pilot-context { display: grid; gap: 10px; max-height: 650px; overflow: auto; }
+.pilot-context-paragraph { border: 1px solid var(--border); border-radius: 10px; padding: 12px; background: var(--panel-2); }
+.pilot-context-paragraph.selected { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.pilot-context-paragraph small { color: var(--muted); display: block; margin-bottom: 8px; font-weight: 650; }
+.pilot-translation-text { white-space: pre-wrap; direction: rtl; text-align: right; line-height: 1.8; margin-top: 8px; }
+.pilot-finding { margin: 14px 0; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--panel-2); }
+.pilot-finding summary { cursor: pointer; font-weight: 650; }
+.danger-warning { border-left-color: var(--danger); }
+.paragraph.pilot-focused { outline: 2px solid var(--accent); outline-offset: 5px; border-radius: 8px; }
 hr { border: 0; border-top: 1px solid var(--border); margin: 18px 0; }
 @media (max-width: 1050px) {
   .app-shell { grid-template-columns: 190px 1fr; }

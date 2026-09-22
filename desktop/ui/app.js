@@ -9,6 +9,10 @@ const state = {
   translationRunning: false,
   progressTimer: null,
   literaryEvidence: null,
+  pilotSummary: null,
+  pilotTarget: null,
+  pilotChapter: null,
+  pilotSelectionEpoch: 0,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -63,6 +67,7 @@ function setView(name) {
     canon: ["Canon", "Character voice and terminology that guide long-form continuity."],
     editor: ["Translation Editor", "Paragraph-level Persian revision with durable history."],
     literary: ["Literary Review", "Post-translation fidelity and naturalness evidence."],
+    pilot: ["Pilot Review", "Bounded whole-book sampling with explicit local human decisions."],
     history: ["History", "Bounded audit history emitted by the application layer."],
     provider: ["Provider", "Session-only provider configuration; secrets are never stored in projects."],
   };
@@ -77,11 +82,13 @@ function setProjectEnabled(enabled) {
     "start-translation", "resume-translation", "pause-translation", "export-project",
     "refresh-review", "refresh-characters", "save-character", "refresh-glossary",
     "save-glossary", "load-chapter", "run-literary-review", "load-literary-review",
-    "refresh-history"
+    "refresh-pilot-review", "refresh-history"
   ].forEach((id) => {
     $(id).disabled = !enabled;
   });
   $("import-source").disabled = !enabled || !state.sourcePath;
+  $("record-pilot-review").disabled = !enabled || !state.pilotTarget;
+  $("open-pilot-editor").disabled = !enabled || !state.pilotTarget;
 }
 
 function snapshotItem(label, value) {
@@ -154,6 +161,39 @@ function numberOrNull(id) {
   return Number.isFinite(number) && number > 0 ? Math.floor(number) : null;
 }
 
+function nonNegativeNumberOrNull(id) {
+  const value = $(id).value.trim();
+  if (!value) return null;
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? Math.floor(number) : null;
+}
+
+function enumLabel(value) {
+  return String(value || "")
+    .split("_")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function optionalSpan(startId, endId, label) {
+  const startRaw = $(startId).value.trim();
+  const endRaw = $(endId).value.trim();
+  if (!startRaw && !endRaw) return null;
+  if (!startRaw || !endRaw) {
+    throw new Error(label + " span needs both start and end offsets.");
+  }
+  const start = Number(startRaw);
+  const end = Number(endRaw);
+  if (!Number.isInteger(start) || !Number.isInteger(end) || start < 0 || end <= start) {
+    throw new Error(label + " span must use non-negative integer offsets with end greater than start.");
+  }
+  return {
+    start_char: start,
+    end_char: end,
+  };
+}
+
 function translationInput() {
   return {
     provider: $("translation-provider").value,
@@ -198,6 +238,7 @@ async function runTranslation(command) {
     });
     renderProgress(progress);
     await refreshSnapshot();
+    invalidatePilotUi("Translation changed. Refresh the pilot review before recording another decision.");
     showNotice(command === "start_translation" ? "Translation run completed." : "Translation resume completed.");
   } finally {
     state.translationRunning = false;
@@ -308,7 +349,7 @@ async function loadGlossary() {
   renderGlossary(await call("list_glossary_entries", { projectRoot: state.projectRoot }));
 }
 
-function renderChapter(chapter) {
+function renderChapter(chapter, focusParagraphId = null) {
   $("chapter-meta").replaceChildren(
     textNode("p", chapter.title + " · " + chapter.paragraphs.length + " paragraphs · style " + chapter.style_profile)
   );
@@ -318,7 +359,7 @@ function renderChapter(chapter) {
 
   chapter.paragraphs.forEach((paragraph) => {
     const block = document.createElement("div");
-    block.className = "paragraph";
+    block.className = paragraph.paragraph_id === focusParagraphId ? "paragraph pilot-focused" : "paragraph";
     block.append(textNode("div", paragraph.source, "source-text"));
     const textarea = document.createElement("textarea");
     textarea.className = "translation-text";
@@ -339,10 +380,14 @@ function renderChapter(chapter) {
         reviewer: $("reviewer-name").value.trim() || "desktop-user",
       });
       paragraph.translated = textarea.value;
+      invalidatePilotUi("Translation changed. Refresh the pilot review and inspect the target again.");
       showNotice("Manual revision saved; quality evidence is now stale until reviewed again.");
     });
     block.append(textarea, save);
     editor.append(block);
+    if (paragraph.paragraph_id === focusParagraphId) {
+      window.requestAnimationFrame(() => block.scrollIntoView({ block: "center" }));
+    }
   });
 }
 
@@ -397,6 +442,7 @@ function renderLiteraryEvidence(evidence) {
           findingId: finding.id,
           reviewer: $("reviewer-name").value.trim() || "desktop-user",
         });
+        invalidatePilotUi("Translation changed. Refresh the pilot review and inspect current text again.");
         showNotice("Suggested paragraph revision accepted. The old review is now stale; re-run review to verify it.");
         const refreshed = await call("get_literary_review", {
           projectRoot: state.projectRoot,
@@ -407,6 +453,245 @@ function renderLiteraryEvidence(evidence) {
       row.append(accept);
     }
     output.append(row);
+  });
+}
+
+function pilotTargetStatus(targetState) {
+  const record = targetState.current_record;
+  if (record) return enumLabel(record.outcome);
+  if (targetState.stale_record_count > 0) return "Needs re-review";
+  return "Not reviewed";
+}
+
+function clearPilotSelection() {
+  state.pilotSelectionEpoch += 1;
+  state.pilotTarget = null;
+  state.pilotChapter = null;
+  $("record-pilot-review").disabled = true;
+  $("open-pilot-editor").disabled = true;
+  const context = $("pilot-context");
+  context.className = "pilot-context empty-state";
+  context.textContent = "Select a review target.";
+}
+
+function invalidatePilotUi(message = "Refresh the pilot review to load current targets.") {
+  state.pilotSummary = null;
+  clearPilotSelection();
+
+  const grid = $("pilot-summary-grid");
+  grid.className = "snapshot-grid empty-state";
+  grid.textContent = message;
+
+  $("pilot-issues").replaceChildren();
+
+  const list = $("pilot-target-list");
+  list.className = "list empty-state";
+  list.textContent = message;
+}
+
+function renderPilotContext(targetState, chapter) {
+  const context = $("pilot-context");
+  context.replaceChildren();
+  context.className = "pilot-context";
+
+  const target = targetState.target;
+  const paragraphs = chapter.paragraphs || [];
+
+  context.append(
+    textNode("strong", (chapter.title || ("Chapter " + (target.chapter_index + 1))) + " · " + pilotTargetStatus(targetState)),
+    textNode("div", "Reasons: " + (target.reasons || []).map(enumLabel).join(", "), "meta"),
+    textNode("div", "Target ID: " + targetState.target_id, "meta")
+  );
+
+  if (!target.paragraph_id) {
+    if (!paragraphs.length) {
+      context.append(textNode("div", "The chapter-level target has no local translated paragraphs to inspect.", "warning danger-warning"));
+      return false;
+    }
+    const block = document.createElement("div");
+    block.className = "pilot-context-paragraph selected";
+    block.append(
+      textNode("small", "Selected chapter"),
+      textNode("div", paragraphs.map((paragraph) => paragraph.source).join("\n\n"), "source-text"),
+      textNode("div", paragraphs.map((paragraph) => paragraph.translated).join("\n\n"), "pilot-translation-text")
+    );
+    context.append(block);
+  } else {
+    const targetIndex = paragraphs.findIndex((paragraph) => paragraph.paragraph_id === target.paragraph_id);
+    if (targetIndex < 0) {
+      context.append(textNode("div", "The current target paragraph could not be resolved in the local translated chapter. Refresh the audit before recording a decision.", "warning danger-warning"));
+      return false;
+    }
+
+    const start = Math.max(0, targetIndex - 1);
+    const end = Math.min(paragraphs.length, targetIndex + 2);
+    paragraphs.slice(start, end).forEach((paragraph, offset) => {
+      const absoluteIndex = start + offset;
+      const block = document.createElement("div");
+      block.className = absoluteIndex === targetIndex
+        ? "pilot-context-paragraph selected"
+        : "pilot-context-paragraph";
+      block.append(
+        textNode(
+          "small",
+          absoluteIndex === targetIndex
+            ? "Selected paragraph"
+            : (absoluteIndex < targetIndex ? "Previous context" : "Next context")
+        ),
+        textNode("div", paragraph.source, "source-text"),
+        textNode("div", paragraph.translated, "pilot-translation-text")
+      );
+      context.append(block);
+    });
+  }
+
+  const record = targetState.current_record;
+  if (record) {
+    context.append(
+      textNode("div", "Current human record: " + enumLabel(record.outcome) + " · " + record.reviewer, "meta")
+    );
+    if (record.note) context.append(textNode("div", "Reviewer note: " + record.note, "meta"));
+  }
+  if (targetState.stale_record_count > 0) {
+    context.append(textNode("div", targetState.stale_record_count + " stale prior record(s) remain in append-only history.", "warning"));
+  }
+  return true;
+}
+
+async function selectPilotTarget(targetState) {
+  const selectionEpoch = state.pilotSelectionEpoch + 1;
+  state.pilotSelectionEpoch = selectionEpoch;
+  state.pilotTarget = targetState;
+  state.pilotChapter = null;
+  $("record-pilot-review").disabled = true;
+  $("open-pilot-editor").disabled = true;
+  const context = $("pilot-context");
+  context.className = "pilot-context empty-state";
+  context.textContent = "Loading selected target…";
+
+  const targetId = targetState.target_id;
+  const chapter = await call("get_translated_chapter", {
+    projectRoot: state.projectRoot,
+    chapterIndex: targetState.target.chapter_index,
+  });
+
+  if (
+    selectionEpoch !== state.pilotSelectionEpoch
+    || !state.pilotTarget
+    || state.pilotTarget.target_id !== targetId
+  ) {
+    return;
+  }
+
+  state.pilotChapter = chapter;
+  const inspectable = renderPilotContext(targetState, chapter);
+  $("record-pilot-review").disabled = !inspectable;
+  $("open-pilot-editor").disabled = !inspectable;
+}
+
+function renderPilotSummary(summary) {
+  state.pilotSummary = summary;
+  const audit = summary.audit;
+
+  const grid = $("pilot-summary-grid");
+  grid.replaceChildren();
+  grid.className = "snapshot-grid";
+  grid.append(
+    snapshotItem("Mechanical export", audit.mechanically_export_ready ? "Ready" : "Blocked"),
+    snapshotItem("Sample review", summary.sample_review_complete ? "Complete" : "Open"),
+    snapshotItem("Targets", String(summary.targets.length)),
+    snapshotItem("Reviewed", summary.reviewed_current + "/" + summary.targets.length),
+    snapshotItem("Resolved", String(summary.resolved_current)),
+    snapshotItem("Needs revision", String(summary.needs_revision_current)),
+    snapshotItem("Missing", String(summary.missing_current)),
+    snapshotItem("Stale records", String(summary.stale_records))
+  );
+
+  const issues = $("pilot-issues");
+  issues.replaceChildren();
+  (audit.issues || []).forEach((issue) => {
+    const location = issue.chapter_index == null ? "Book" : "Chapter " + (issue.chapter_index + 1);
+    issues.append(
+      textNode(
+        "div",
+        location + " · " + enumLabel(issue.code) + (issue.blocking ? " · blocking" : " · review"),
+        issue.blocking ? "warning danger-warning" : "warning"
+      )
+    );
+  });
+
+  const list = $("pilot-target-list");
+  list.replaceChildren();
+  if (!summary.targets.length) {
+    list.className = "list empty-state";
+    list.textContent = "No current review targets for this selection.";
+    clearPilotSelection();
+    return;
+  }
+  list.className = "list";
+
+  summary.targets.forEach((targetState) => {
+    const target = targetState.target;
+    const row = document.createElement("div");
+    row.className = "list-row";
+    row.append(
+      textNode("strong", "Chapter " + (target.chapter_index + 1) + " · " + pilotTargetStatus(targetState)),
+      textNode("div", (target.reasons || []).map(enumLabel).join(" · "), "meta"),
+      textNode("div", target.paragraph_id ? "Paragraph " + target.paragraph_id : "Chapter-level target", "meta")
+    );
+    if (targetState.stale_record_count > 0) {
+      row.append(textNode("div", targetState.stale_record_count + " stale prior record(s)", "meta"));
+    }
+    const actions = document.createElement("div");
+    actions.className = "actions";
+    const inspect = textNode("button", "Inspect");
+    inspect.addEventListener("click", () => selectPilotTarget(targetState));
+    actions.append(inspect);
+    row.append(actions);
+    list.append(row);
+  });
+}
+
+async function loadPilotReview(preserveTargetId = null) {
+  if (!state.projectRoot) return;
+  const maxReviewTargets = nonNegativeNumberOrNull("pilot-max-targets");
+  const summary = await call("get_pilot_review_summary", {
+    projectRoot: state.projectRoot,
+    maxReviewTargets,
+  });
+  renderPilotSummary(summary);
+
+  const targetId = preserveTargetId || state.pilotTarget?.target_id;
+  if (targetId) {
+    const refreshed = summary.targets.find((candidate) => candidate.target_id === targetId);
+    if (refreshed) {
+      await selectPilotTarget(refreshed);
+      return;
+    }
+  }
+  clearPilotSelection();
+}
+
+function buildPilotFindings(outcome) {
+  const sourceSpan = optionalSpan("pilot-source-start", "pilot-source-end", "Source");
+  const targetSpan = optionalSpan("pilot-target-start", "pilot-target-end", "Persian");
+  const note = $("pilot-finding-note").value.trim();
+  const includeFinding = Boolean(sourceSpan || targetSpan || note || outcome === "needs_revision");
+  if (!includeFinding) return [];
+  return [{
+    dimension: $("pilot-finding-dimension").value,
+    severity: $("pilot-finding-severity").value,
+    source_span: sourceSpan,
+    target_span: targetSpan,
+    note,
+  }];
+}
+
+function resetPilotFindingForm() {
+  $("pilot-note").value = "";
+  $("pilot-finding-note").value = "";
+  ["pilot-source-start", "pilot-source-end", "pilot-target-start", "pilot-target-end"].forEach((id) => {
+    $(id).value = "";
   });
 }
 
@@ -439,6 +724,7 @@ $("pick-open-root").addEventListener("click", async () => {
   const snapshot = await call("open_project", { projectRoot: root });
   state.projectRoot = root;
   state.sourcePath = null;
+  invalidatePilotUi("Refresh the pilot review for this project.");
   $("source-path").textContent = "No file selected";
   setProjectEnabled(true);
   renderSnapshot(snapshot);
@@ -455,6 +741,7 @@ $("create-project").addEventListener("click", async () => {
     sourcePath: null,
   });
   state.projectRoot = root;
+  invalidatePilotUi("Refresh the pilot review for this project.");
   setProjectEnabled(true);
   renderSnapshot(snapshot);
   showNotice("Project created.");
@@ -477,6 +764,7 @@ $("import-source").addEventListener("click", async () => {
     sourcePath: state.sourcePath,
   });
   renderSnapshot(snapshot);
+  invalidatePilotUi("Source changed. Complete translation/review, then refresh the pilot workspace.");
   showNotice("Source imported.");
 });
 
@@ -590,6 +878,7 @@ $("run-literary-review").addEventListener("click", async () => {
     textNode("strong", "Literary review completed"),
     textNode("div", summary.reviewed_chapters + " chapter(s) reviewed · " + summary.findings + " finding(s)", "meta")
   );
+  invalidatePilotUi("Literary review evidence changed. Refresh the pilot workspace before recording another decision.");
   showNotice("Literary review completed.");
 });
 
@@ -600,6 +889,45 @@ $("load-literary-review").addEventListener("click", async () => {
     chapterIndex,
   });
   renderLiteraryEvidence(evidence);
+});
+
+$("refresh-pilot-review").addEventListener("click", async () => {
+  await loadPilotReview();
+  showNotice("Pilot audit and human review queue refreshed.");
+});
+
+$("record-pilot-review").addEventListener("click", async () => {
+  if (!state.pilotTarget || !state.pilotChapter) return;
+  const outcome = $("pilot-outcome").value;
+  const targetId = state.pilotTarget.target_id;
+  let findings;
+  try {
+    findings = buildPilotFindings(outcome);
+  } catch (error) {
+    showNotice(errorMessage(error), "error");
+    return;
+  }
+  await call("record_pilot_review", {
+    projectRoot: state.projectRoot,
+    maxReviewTargets: nonNegativeNumberOrNull("pilot-max-targets"),
+    targetId,
+    submission: {
+      reviewer: $("pilot-reviewer").value.trim(),
+      outcome,
+      findings,
+      note: $("pilot-note").value,
+    },
+  });
+  resetPilotFindingForm();
+  await loadPilotReview(targetId);
+  showNotice("Human pilot review recorded in the local append-only ledger.");
+});
+
+$("open-pilot-editor").addEventListener("click", () => {
+  if (!state.pilotTarget || !state.pilotChapter) return;
+  $("editor-chapter-index").value = state.pilotTarget.target.chapter_index + 1;
+  setView("editor");
+  renderChapter(state.pilotChapter, state.pilotTarget.target.paragraph_id || null);
 });
 
 $("refresh-history").addEventListener("click", async () => {

@@ -386,3 +386,17 @@ Updating this repository seed does **not** mean the user's local PMC/Obsidian va
 - Phase 29 canonical: PR #116, final head `7eb15fc9ce16f5436b7f1339b8ce62c4a0218f9a`, merge `8415f559a6bf295d39504108e40864b2c40e65e5`.
 - Exact-head Phase 29, Rust CI, Security, Phases 18–28, Desktop Product, Trusted Release, Project Memory Tooling, and Apple Silicon validation all passed before landing.
 - The next numbered phase must begin from this canonical state and preserve the Phase 28/29 local-first, human-authority, text-free tracking boundaries.
+
+
+## Durable Phase 30 decisions
+
+1. **The measured gap is product access, not another evaluator** — Phase 28/29 already own target selection and human state; Phase 30 exposes them in the desktop UI.
+2. **Rust remains review authority** — frontend code must not recompute currentness, staleness, outcome coherence, span validity or sample completion.
+3. **Inspect before mutate** — target selection and human review recording do not edit text. Repair is a separate jump to the existing editor/revision ledger.
+4. **Accepted alternatives remain first-class** — `accepted_as_is` stays visible because acceptable literary alternatives must not be forced into unnecessary edits.
+5. **Local context is bounded** — show the selected paragraph and immediate neighboring context from the already-local translated chapter; do not upload it.
+6. **No browser data owner** — do not persist manuscript, translation, reviewer notes or review records in localStorage/sessionStorage/IndexedDB.
+7. **Safe rendering only** — project text uses text nodes/`textContent`; no `innerHTML`, remote frontend URL or frontend network `fetch`.
+8. **Zero targets remains valid** — the UI must preserve `max_review_targets = 0` instead of silently coercing it to one.
+9. **No new runtime dependency/integration** — no QE model, LLM judge, cloud review service, telemetry, database or provider is added.
+10. **Permanent Phase-30 checks protect the UI trust boundary** — syntax, DOM/IPC/privacy contract, existing Phase-29 authority tests and Apple Silicon Tauri validation are required.

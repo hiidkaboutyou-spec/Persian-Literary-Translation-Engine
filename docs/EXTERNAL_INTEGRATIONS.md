@@ -522,3 +522,16 @@ Research references:
 - EAMT 2026 Creativity Bias: automated judges can penalize creative/culturally appropriate literary solutions.
 
 Decision: Phase 29 implements a native local human ledger only. No QE model, LLM judge, remote annotation system, analytics SDK or external database is added.
+
+
+## Phase 30 — No New External Integration
+
+Phase 30 is a local desktop product-surface phase. It adopts no new external
+runtime integration.
+
+Research references on human post-editing/QE and Tauri security inform workflow
+and trust-boundary decisions only. They do not add a model, metric, cloud review
+service, analytics endpoint, remote frontend asset, browser persistence layer,
+database, provider, or network dependency.
+
+The canonical Phase-28/29 Rust APIs remain the only pilot-review backend.
