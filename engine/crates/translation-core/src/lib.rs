@@ -4,8 +4,8 @@ pub mod style;
 
 pub use pipeline::{PipelineInput, PipelineOutput, PipelineStage, TranslationPipeline};
 pub use provider::{
-    EchoProvider, OpenAIProvider, PassKind, ProviderError, ProviderRequest, ProviderResponse,
-    TranslationProvider,
+    AtriaProvider, EchoProvider, OpenAIProvider, PassKind, ProviderError, ProviderRequest,
+    ProviderResponse, ProviderUsage, TranslationProvider,
 };
 pub use style::{
     StyleProfileError, TranslationStyleProfile, ADULT_INTIMACY_STYLE_PROFILE_ID,

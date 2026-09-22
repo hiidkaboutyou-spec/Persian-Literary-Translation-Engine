@@ -535,3 +535,32 @@ service, analytics endpoint, remote frontend asset, browser persistence layer,
 database, provider, or network dependency.
 
 The canonical Phase-28/29 Rust APIs remain the only pilot-review backend.
+
+
+## Phase 31 — Atria Dawn Preview experimental qualification
+
+Atria is the first external provider admitted only to the provider-lab boundary, not to production book translation.
+
+Official references:
+
+- https://api.atria-asi.ai/docs
+- https://huggingface.co/internlm/Atria-Dawn-Preview
+
+Verified integration contract:
+
+- Responses endpoint: `https://api.atria-asi.ai/v1/responses`
+- model: `Atria-Dawn-Preview`
+- auth: Bearer `ATRIA_API_KEY`
+- context: 256K tokens
+- input: text only
+- output bound: `max_output_tokens` in 1..=65,536
+- rate limiting: HTTP 429 with `Retry-After`
+
+Admission boundary:
+
+- Phase 31 may call Atria only from the explicit `qualify-provider` research command on rights-safe evaluation text.
+- The project does not claim an API retention/deletion guarantee from the public documentation reviewed here; private manuscripts therefore remain excluded.
+- Atria is not listed in production capabilities and is not selected by `auto`.
+- No live API secret is stored in Git, project state, browser state, CI configuration, or developer-memory files.
+- Public agentic/coding benchmark strength is not treated as literary-translation evidence.
+- Any later production integration requires representative human-reviewed English→Persian results plus a fresh privacy/cost/failure review.

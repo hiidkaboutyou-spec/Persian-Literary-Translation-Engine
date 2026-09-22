@@ -343,11 +343,28 @@ Exact final-head successful runs: Phase 30 `35788768638`, Phase 22 Desktop `3578
 
 Research and completion record: `docs/PHASE_30_RESEARCH.md`.
 
-### Phase 31 — Provider Qualification & Experimental Atria Adapter — next research target
+### Phase 31 — Provider Qualification & Experimental Atria Adapter — active
 
-Goal: make adding a new model provider measurable and reversible before it can affect production book translation. Start from the existing Phase-21 rights-safe English→Persian literary corpus and human-authority rules; admit Atria only as an explicit experimental provider, never as the `auto` default, and require representative correctness, structural-marker, failure, privacy, latency/token-usage, and literary-evaluation evidence before any production promotion.
+Branch: `phase-31-provider-qualification-atria`.
 
-Atria's official API currently exposes an OpenAI-compatible Responses endpoint at `/v1/responses`, model ID `Atria-Dawn-Preview`, a 256K context window, text-only input, and output limits up to 65,536 tokens. Provider-specific behavior must remain isolated behind the existing provider-neutral boundary rather than masquerading as OpenAI.
+Goal: make adding a new model provider measurable and reversible before it can affect production book translation.
+
+Current Phase-31 work:
+
+- separate `AtriaProvider` behind the existing `TranslationProvider` trait;
+- documented Atria Responses endpoint/model/output-limit handling with `ATRIA_API_KEY` only;
+- no Atria wiring into ApplicationService, desktop capabilities, or `auto` provider selection;
+- explicit `qualify-provider` CLI over the rights-safe Phase-21 English→Persian literary corpus;
+- the same production literary translate → revise → quality-review pipeline is exercised during qualification;
+- partial benchmark runs are explicitly labeled and never treated as admission;
+- deterministic anchors remain evidence only and every report keeps `production_admission = not_granted`;
+- provider-call latency plus Responses input/output token usage are captured when available, with completeness reported explicitly;
+- human blind review remains mandatory for literary quality;
+- offline echo-provider qualification covers the full orchestration path in CI without secrets/network;
+- permanent Linux + Apple Silicon Phase-31 validation and a static guard against accidental production admission;
+- zero new Cargo/runtime dependency.
+
+Research and exit criteria: `docs/PHASE_31_RESEARCH.md`.
 
 ## Next Action Rule
 

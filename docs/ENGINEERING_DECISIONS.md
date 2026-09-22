@@ -145,3 +145,17 @@ Before adopting a GitHub repository/package/model/tool:
 - Book text and reviewer notes are not persisted in browser storage and are not sent over frontend network calls.
 - Pilot text is rendered through DOM text nodes/`textContent`, never `innerHTML`.
 - Tauri remains a narrow local IPC bridge under the existing restrictive CSP; Phase 30 adds no remote frontend content, analytics, database, provider, model or runtime dependency.
+
+
+## Phase 31 — Provider Qualification & Experimental Atria Adapter
+
+- New providers must earn production admission through a separate qualification path; API compatibility alone is not evidence of English→Persian literary suitability.
+- Atria stays research-only in Phase 31. Do not add it to ApplicationService provider resolution, desktop capabilities, or automatic selection.
+- Keep provider-specific wire behavior isolated. Atria uses its documented Responses endpoint and `max_output_tokens`; do not route it through OpenAI by merely changing a base URL or send undocumented OpenAI-only fields.
+- Provider qualification may send only an explicitly rights-safe corpus. Private manuscripts are outside the Phase-31 network-test boundary.
+- Exercise the same default literary three-pass pipeline during qualification so the experiment measures the model in the intended production interaction pattern.
+- Deterministic anchors, chrF/COMET-style metrics, and LLM judges are evidence channels, not literary authority. No automatic overall winner is generated.
+- Human blind review remains mandatory before any production-admission proposal, especially for Persian naturalness, character voice, register, dialogue subtext, creativity, and overall literary quality.
+- A partial qualification run is useful for smoke/cost control but cannot be represented as complete evidence.
+- Qualification reports always keep production admission false/not granted. A future promotion requires a separately reviewed phase.
+- No new Cargo/runtime dependency is justified; existing reqwest/serde_json and Phase-21 evaluation contracts are sufficient.
