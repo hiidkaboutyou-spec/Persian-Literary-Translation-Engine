@@ -323,25 +323,31 @@ Current Phase-29 work:
 
 Research and exit criteria: `docs/PHASE_29_RESEARCH.md`.
 
-### Phase 30 — Desktop Pilot Review Workspace — active
+### Phase 30 — Desktop Pilot Review Workspace — canonical
 
-Branch: `phase-30-pilot-review-workspace`.
+PR #119; final validated head `1608b1d49a8f2c5fb3d475db64c32901ec013657`; merge `8929e6befe0b2b932fbf0d3aceaf466e99a88955`.
 
-Goal: make the canonical Phase-28/29 real-book human-review workflow usable end to end inside the local desktop product without moving domain authority into JavaScript.
+Delivered:
 
-Current Phase-30 work:
-
-- dedicated Pilot Review navigation/view;
-- Rust-derived mechanical/sample completion summary and audit issues;
+- dedicated local Pilot Review navigation/view over the canonical Phase-28/29 Rust APIs;
+- separate mechanical export and sampled human-review workflow state;
 - bounded target queue with reasons, current outcome and stale-history count;
-- local selected-target source/Persian context with neighboring paragraphs;
-- explicit human record submission through the canonical Phase-29 Tauri command;
-- optional existing dimension/severity and character-span fields;
-- direct navigation to the normal translation editor for explicit repair;
-- static privacy/IPC contract checks forbidding unsafe HTML, browser persistence, remote URLs and frontend network fetches;
-- dedicated Linux + Apple Silicon validation with no new runtime dependency.
+- source/Persian target context loaded only after explicit inspection, with neighboring context;
+- explicit human `clear`, `accepted_as_is`, and `needs_revision` recording;
+- direct navigation to the existing manual revision editor with no automatic mutation;
+- safe DOM text rendering, no browser persistence, remote frontend content, telemetry, or new runtime dependency;
+- a race-safe target-inspection guard so late async chapter responses cannot bind review actions to the wrong target;
+- permanent Linux and Apple Silicon Phase-30 validation.
 
-Research and exit criteria: `docs/PHASE_30_RESEARCH.md`.
+Exact final-head successful runs: Phase 30 `35788768638`, Phase 22 Desktop `35788768662`, Phase 23 Trusted Release `35788768764`, Phase 18 `35788768599`, Phase 19 `35788768729`, Phase 21 `35788768640`, Phase 24 `35788768743`, Phase 25 `35788768722`, Phase 26 `35788768644`, Phase 27 `35788768746`, Phase 28 `35788768802`, Phase 29 `35788768735`, and Project Memory Tooling `35788768566`.
+
+Research and completion record: `docs/PHASE_30_RESEARCH.md`.
+
+### Phase 31 — Provider Qualification & Experimental Atria Adapter — next research target
+
+Goal: make adding a new model provider measurable and reversible before it can affect production book translation. Start from the existing Phase-21 rights-safe English→Persian literary corpus and human-authority rules; admit Atria only as an explicit experimental provider, never as the `auto` default, and require representative correctness, structural-marker, failure, privacy, latency/token-usage, and literary-evaluation evidence before any production promotion.
+
+Atria's official API currently exposes an OpenAI-compatible Responses endpoint at `/v1/responses`, model ID `Atria-Dawn-Preview`, a 256K context window, text-only input, and output limits up to 65,536 tokens. Provider-specific behavior must remain isolated behind the existing provider-neutral boundary rather than masquerading as OpenAI.
 
 ## Next Action Rule
 
