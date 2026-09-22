@@ -271,3 +271,18 @@ For Phase 27 changes, run the dedicated `Phase 27 Real-Book Pilot Readiness` wor
 - Optional finding dimension/severity/span inputs reuse Phase-19/29 schemas; do not create a second taxonomy or duplicate Rust validation rules in JavaScript.
 - Phase 30 adds no QE model, LLM judge, automatic highlighter/rewrite, database, telemetry SDK, provider or runtime dependency.
 - For Phase 30 changes, run the dedicated `Phase 30 Pilot Review Workspace` workflow plus every existing Phase/Desktop/Trusted Release/Project Memory workflow triggered by the diff. Rust CI, Security and Phase-20 publication are inherited only while the diff has no engine/Cargo/publication changes; if that scope changes, those exact-head gates are mandatory before merge.
+
+
+## Phase 31 provider qualification invariants
+
+- `AtriaProvider` is experimental/research-only in Phase 31. Do not add `atria` to ApplicationService provider selection, `ApplicationCapabilities.translation_providers`, desktop provider controls, or `auto`.
+- Never send a user manuscript to a new provider merely to test compatibility. The qualification command may use only a corpus whose existing schema validation marks it rights-safe.
+- Read Atria credentials only from `ATRIA_API_KEY`; never commit, persist, log, or bridge provider secrets to project memory.
+- Use Atria's documented Responses endpoint/model/output-limit contract directly; do not reuse OpenAI-specific undocumented request fields.
+- Keep Atria `max_output_tokens` within 1..=65,536 and fail closed on invalid configuration.
+- Qualification must exercise the existing default literary pipeline and save a normal Phase-21 candidate submission so evidence stays comparable.
+- Partial qualification runs must be clearly marked incomplete.
+- Deterministic anchors/reference metrics/LLM judges never grant production admission or choose an overall literary winner.
+- Human blind literary review is required before proposing any new production provider.
+- Phase 31 reports must state that production admission is not granted.
+- The dedicated Phase-31 workflow must prove the experimental adapter, offline EchoProvider qualification path, no accidental production wiring, no dependency-manifest change, and Apple Silicon compatibility.
