@@ -33,7 +33,6 @@ struct ProviderQualificationReport {
     notes: Vec<&'static str>,
 }
 
-
 #[derive(Debug, Serialize)]
 struct BlindComparisonBundle {
     schema_version: u32,
@@ -77,12 +76,11 @@ struct LabProvider {
 }
 
 pub(crate) fn run_qualify_provider(args: &[String], format: &OutputFormat) -> Result<()> {
-    let corpus_path = positional(args, 0)
-        .ok_or_else(|| qualification_usage().to_string())?;
-    let submission_path = positional(args, 1)
-        .ok_or_else(|| qualification_usage().to_string())?;
-    let provider_name = flag_value(args, "--provider")
-        .ok_or_else(|| "qualify-provider requires explicit --provider echo|openai|atria".to_string())?;
+    let corpus_path = positional(args, 0).ok_or_else(|| qualification_usage().to_string())?;
+    let submission_path = positional(args, 1).ok_or_else(|| qualification_usage().to_string())?;
+    let provider_name = flag_value(args, "--provider").ok_or_else(|| {
+        "qualify-provider requires explicit --provider echo|openai|atria".to_string()
+    })?;
 
     let corpus_text = fs::read_to_string(corpus_path)
         .map_err(|error| format!("failed to read {corpus_path}: {error}"))?;
@@ -160,7 +158,11 @@ pub(crate) fn run_qualify_provider(args: &[String], format: &OutputFormat) -> Re
                 "cases: {}/{}{}",
                 report.cases_generated,
                 report.corpus_cases,
-                if report.complete_corpus { "" } else { " (partial)" }
+                if report.complete_corpus {
+                    ""
+                } else {
+                    " (partial)"
+                }
             );
             println!(
                 "deterministic anchors: {}/{} ({:.1}%)",
@@ -176,13 +178,22 @@ pub(crate) fn run_qualify_provider(args: &[String], format: &OutputFormat) -> Re
     Ok(())
 }
 
-
 pub(crate) fn run_blind_compare(args: &[String], format: &OutputFormat) -> Result<()> {
-    let corpus_path = args.first().ok_or_else(|| blind_compare_usage().to_string())?;
-    let first_path = args.get(1).ok_or_else(|| blind_compare_usage().to_string())?;
-    let second_path = args.get(2).ok_or_else(|| blind_compare_usage().to_string())?;
-    let bundle_path = args.get(3).ok_or_else(|| blind_compare_usage().to_string())?;
-    let key_path = args.get(4).ok_or_else(|| blind_compare_usage().to_string())?;
+    let corpus_path = args
+        .first()
+        .ok_or_else(|| blind_compare_usage().to_string())?;
+    let first_path = args
+        .get(1)
+        .ok_or_else(|| blind_compare_usage().to_string())?;
+    let second_path = args
+        .get(2)
+        .ok_or_else(|| blind_compare_usage().to_string())?;
+    let bundle_path = args
+        .get(3)
+        .ok_or_else(|| blind_compare_usage().to_string())?;
+    let key_path = args
+        .get(4)
+        .ok_or_else(|| blind_compare_usage().to_string())?;
 
     let corpus = LiteraryEvaluationCorpus::from_json(
         &fs::read_to_string(corpus_path)
@@ -237,7 +248,9 @@ pub(crate) fn run_blind_compare(args: &[String], format: &OutputFormat) -> Resul
             println!("cases: {}", bundle.cases.len());
             println!("review bundle: {bundle_path}");
             println!("reveal key: {key_path}");
-            println!("automatic winner: none — keep the reveal key separate until review is complete");
+            println!(
+                "automatic winner: none — keep the reveal key separate until review is complete"
+            );
         }
     }
     Ok(())
@@ -408,7 +421,10 @@ fn generate_submission(
         .iter()
         .take(max_cases)
         .map(|case| {
-            let context = qualification_context(case.context_before.as_deref(), case.context_after.as_deref());
+            let context = qualification_context(
+                case.context_before.as_deref(),
+                case.context_after.as_deref(),
+            );
             let output = pipeline
                 .execute(
                     provider,
@@ -532,7 +548,6 @@ mod tests {
         assert_eq!(submission.outputs[0].translation, "I did not answer.");
         assert!(submission.system_id.contains("default-literary-v1"));
     }
-
 
     #[test]
     fn blind_comparison_counterbalances_system_labels_and_hides_ids_from_bundle() {
