@@ -1,0 +1,347 @@
+use crate::OutputFormat;
+use literary_evaluation_engine::{
+    evaluate_submission, CandidateOutput, CandidateSubmission, LiteraryEvaluationCorpus,
+};
+use serde::Serialize;
+use std::env;
+use std::fs;
+use std::path::Path;
+use translation_core::{
+    AtriaProvider, EchoProvider, OpenAIProvider, PipelineInput, TranslationPipeline,
+    TranslationProvider,
+};
+
+type Result<T> = std::result::Result<T, String>;
+
+#[derive(Debug, Serialize)]
+struct ProviderQualificationReport {
+    schema_version: u32,
+    corpus_id: String,
+    provider: String,
+    model: Option<String>,
+    cases_generated: usize,
+    corpus_cases: usize,
+    complete_corpus: bool,
+    pipeline: String,
+    submission_file: String,
+    deterministic_anchor_passed: usize,
+    deterministic_anchor_total: usize,
+    deterministic_anchor_pass_rate: f32,
+    human_review_required: bool,
+    production_admission: &'static str,
+    notes: Vec<&'static str>,
+}
+
+struct LabProvider {
+    provider: Box<dyn TranslationProvider>,
+    provider_name: String,
+    model: Option<String>,
+}
+
+pub(crate) fn run_qualify_provider(args: &[String], format: &OutputFormat) -> Result<()> {
+    let corpus_path = positional(args, 0)
+        .ok_or_else(|| qualification_usage().to_string())?;
+    let submission_path = positional(args, 1)
+        .ok_or_else(|| qualification_usage().to_string())?;
+    let provider_name = flag_value(args, "--provider")
+        .ok_or_else(|| "qualify-provider requires explicit --provider echo|openai|atria".to_string())?;
+
+    let corpus_text = fs::read_to_string(corpus_path)
+        .map_err(|error| format!("failed to read {corpus_path}: {error}"))?;
+    let corpus = LiteraryEvaluationCorpus::from_json(&corpus_text)
+        .map_err(|error| format!("invalid qualification corpus: {error}"))?;
+
+    let max_cases = flag_value(args, "--max-cases")
+        .map(|value| {
+            value
+                .parse::<usize>()
+                .map_err(|error| format!("invalid --max-cases '{value}': {error}"))
+        })
+        .transpose()?
+        .unwrap_or(corpus.cases.len());
+    if max_cases == 0 {
+        return Err("--max-cases must be at least 1".to_string());
+    }
+
+    let lab = configured_lab_provider(provider_name, flag_value(args, "--model"))?;
+    let selected_cases = max_cases.min(corpus.cases.len());
+    let submission = generate_submission(
+        &corpus,
+        lab.provider.as_ref(),
+        selected_cases,
+        qualification_system_id(&lab.provider_name, lab.model.as_deref()),
+    )?;
+
+    let json = serde_json::to_string_pretty(&submission)
+        .map_err(|error| format!("failed to serialize qualification submission: {error}"))?;
+    fs::write(submission_path, &json)
+        .map_err(|error| format!("failed to write {submission_path}: {error}"))?;
+
+    let mut evaluated_corpus = corpus.clone();
+    evaluated_corpus.cases.truncate(selected_cases);
+    let benchmark = evaluate_submission(&evaluated_corpus, &submission)
+        .map_err(|error| format!("qualification benchmark failed: {error}"))?;
+
+    let report = ProviderQualificationReport {
+        schema_version: 1,
+        corpus_id: corpus.corpus_id.clone(),
+        provider: lab.provider_name,
+        model: lab.model,
+        cases_generated: selected_cases,
+        corpus_cases: corpus.cases.len(),
+        complete_corpus: selected_cases == corpus.cases.len(),
+        pipeline: "default-literary-v1".to_string(),
+        submission_file: submission_path.to_string(),
+        deterministic_anchor_passed: benchmark.anchor_passed,
+        deterministic_anchor_total: benchmark.anchor_total,
+        deterministic_anchor_pass_rate: benchmark.anchor_pass_rate,
+        human_review_required: true,
+        production_admission: "not_granted",
+        notes: vec![
+            "Phase 31 qualification never changes the production provider selector.",
+            "Deterministic anchors are challenge evidence, not a literary-quality score.",
+            "Human blind review remains required before any provider can be proposed for production.",
+            "Use only rights-safe qualification corpora; do not use private manuscripts in this command.",
+        ],
+    };
+
+    match format {
+        OutputFormat::Json => println!(
+            "{}",
+            serde_json::to_string_pretty(&report)
+                .map_err(|error| format!("failed to serialize qualification report: {error}"))?
+        ),
+        OutputFormat::Text => {
+            println!("Provider qualification (research-only)");
+            println!("provider: {}", report.provider);
+            println!(
+                "model: {}",
+                report.model.as_deref().unwrap_or("none / deterministic")
+            );
+            println!(
+                "cases: {}/{}{}",
+                report.cases_generated,
+                report.corpus_cases,
+                if report.complete_corpus { "" } else { " (partial)" }
+            );
+            println!(
+                "deterministic anchors: {}/{} ({:.1}%)",
+                report.deterministic_anchor_passed,
+                report.deterministic_anchor_total,
+                report.deterministic_anchor_pass_rate * 100.0
+            );
+            println!("submission: {}", report.submission_file);
+            println!("production admission: NOT GRANTED — human blind review required");
+        }
+    }
+
+    Ok(())
+}
+
+fn qualification_usage() -> &'static str {
+    "usage: literary-engine qualify-provider <corpus.json> <submission.json> --provider echo|openai|atria [--model <id>] [--max-cases <n>] [--format json]"
+}
+
+fn configured_lab_provider(provider: &str, model: Option<&str>) -> Result<LabProvider> {
+    match provider.trim().to_ascii_lowercase().as_str() {
+        "echo" => Ok(LabProvider {
+            provider: Box::new(EchoProvider),
+            provider_name: "echo".to_string(),
+            model: None,
+        }),
+        "openai" => {
+            let configured = match model.map(str::trim).filter(|value| !value.is_empty()) {
+                Some(model) => {
+                    let api_key = env::var("OPENAI_API_KEY")
+                        .map_err(|_| "OPENAI_API_KEY is not configured".to_string())?;
+                    OpenAIProvider::new(api_key, model).map_err(|error| error.to_string())?
+                }
+                None => OpenAIProvider::from_env().map_err(|error| error.to_string())?,
+            };
+            let resolved_model = model
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(ToOwned::to_owned)
+                .or_else(|| env::var("OPENAI_MODEL").ok())
+                .or_else(|| Some("gpt-5.6".to_string()));
+            Ok(LabProvider {
+                provider: Box::new(configured),
+                provider_name: "openai".to_string(),
+                model: resolved_model,
+            })
+        }
+        "atria" => {
+            let configured = match model.map(str::trim).filter(|value| !value.is_empty()) {
+                Some(model) => {
+                    let api_key = env::var("ATRIA_API_KEY")
+                        .map_err(|_| "ATRIA_API_KEY is not configured".to_string())?;
+                    AtriaProvider::new(api_key, model).map_err(|error| error.to_string())?
+                }
+                None => AtriaProvider::from_env().map_err(|error| error.to_string())?,
+            };
+            let resolved_model = Some(configured.model().to_string());
+            Ok(LabProvider {
+                provider: Box::new(configured),
+                provider_name: "atria".to_string(),
+                model: resolved_model,
+            })
+        }
+        other => Err(format!(
+            "unsupported qualification provider '{other}'; expected echo, openai, or atria"
+        )),
+    }
+}
+
+fn qualification_system_id(provider: &str, model: Option<&str>) -> String {
+    format!(
+        "phase31:{}:{}:default-literary-v1",
+        provider,
+        model.unwrap_or("deterministic")
+    )
+}
+
+fn generate_submission(
+    corpus: &LiteraryEvaluationCorpus,
+    provider: &dyn TranslationProvider,
+    max_cases: usize,
+    system_id: String,
+) -> Result<CandidateSubmission> {
+    let pipeline = TranslationPipeline::default_literary_pipeline();
+    let outputs = corpus
+        .cases
+        .iter()
+        .take(max_cases)
+        .map(|case| {
+            let context = qualification_context(case.context_before.as_deref(), case.context_after.as_deref());
+            let output = pipeline
+                .execute(
+                    provider,
+                    PipelineInput {
+                        source_text: case.source.clone(),
+                        target_language: corpus.target_language.clone(),
+                        context,
+                    },
+                )
+                .map_err(|error| {
+                    format!(
+                        "provider qualification failed for case '{}': {error}",
+                        case.id
+                    )
+                })?;
+            Ok(CandidateOutput {
+                case_id: case.id.clone(),
+                translation: output.quality_review,
+            })
+        })
+        .collect::<Result<Vec<_>>>()?;
+
+    Ok(CandidateSubmission {
+        schema_version: literary_evaluation_engine::SUBMISSION_SCHEMA_VERSION,
+        corpus_id: corpus.corpus_id.clone(),
+        system_id,
+        outputs,
+    })
+}
+
+fn qualification_context(before: Option<&str>, after: Option<&str>) -> String {
+    let mut sections = vec![
+        "RIGHTS-SAFE PROVIDER QUALIFICATION CASE. Translate only the PASSAGE supplied by the pipeline. Context is evidence for voice, register, subtext, terminology, and continuity; do not translate the context itself."
+            .to_string(),
+    ];
+    if let Some(before) = before.filter(|value| !value.trim().is_empty()) {
+        sections.push(format!("CONTEXT BEFORE\n{before}"));
+    }
+    if let Some(after) = after.filter(|value| !value.trim().is_empty()) {
+        sections.push(format!("CONTEXT AFTER\n{after}"));
+    }
+    sections.join("\n\n")
+}
+
+fn positional(args: &[String], wanted: usize) -> Option<&str> {
+    let flags_with_values = ["--provider", "--model", "--max-cases"];
+    let mut values = Vec::new();
+    let mut index = 0usize;
+    while index < args.len() {
+        if flags_with_values.contains(&args[index].as_str()) {
+            index += 2;
+        } else if args[index].starts_with("--") {
+            index += 1;
+        } else {
+            values.push(args[index].as_str());
+            index += 1;
+        }
+    }
+    values.get(wanted).copied()
+}
+
+fn flag_value<'a>(args: &'a [String], flag: &str) -> Option<&'a str> {
+    args.windows(2)
+        .find(|pair| pair[0] == flag)
+        .map(|pair| pair[1].as_str())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use literary_evaluation_engine::{
+        AnchorExpectation, AnchorMode, CorpusProvenance, EvaluationCase, EvaluationDimension,
+        CORPUS_SCHEMA_VERSION,
+    };
+    use std::collections::BTreeSet;
+
+    fn corpus() -> LiteraryEvaluationCorpus {
+        LiteraryEvaluationCorpus {
+            schema_version: CORPUS_SCHEMA_VERSION,
+            corpus_id: "phase31-test".into(),
+            title: "Phase 31 Test".into(),
+            source_language: "en".into(),
+            target_language: "fa".into(),
+            provenance: CorpusProvenance {
+                owner: "project".into(),
+                license: "CC0-1.0".into(),
+                rights_safe: true,
+                creation_note: "synthetic".into(),
+            },
+            cases: vec![EvaluationCase {
+                id: "case-1".into(),
+                title: "Context".into(),
+                source: "I did not answer.".into(),
+                reference: "جواب ندادم.".into(),
+                context_before: Some("She waited.".into()),
+                context_after: None,
+                dimensions: BTreeSet::from([EvaluationDimension::SemanticFidelity]),
+                anchors: vec![AnchorExpectation {
+                    id: "negation".into(),
+                    dimension: EvaluationDimension::SemanticFidelity,
+                    mode: AnchorMode::AnyPresent,
+                    values: vec!["ندادم".into()],
+                    rationale: "keep polarity".into(),
+                }],
+                contrastive_variants: Vec::new(),
+            }],
+        }
+    }
+
+    #[test]
+    fn echo_can_exercise_qualification_path_without_network() {
+        let corpus = corpus();
+        let submission = generate_submission(
+            &corpus,
+            &EchoProvider,
+            corpus.cases.len(),
+            qualification_system_id("echo", None),
+        )
+        .unwrap();
+        assert_eq!(submission.outputs.len(), 1);
+        assert_eq!(submission.outputs[0].translation, "I did not answer.");
+        assert!(submission.system_id.contains("default-literary-v1"));
+    }
+
+    #[test]
+    fn qualification_context_keeps_neighbors_separate_from_passage() {
+        let context = qualification_context(Some("before"), Some("after"));
+        assert!(context.contains("CONTEXT BEFORE\nbefore"));
+        assert!(context.contains("CONTEXT AFTER\nafter"));
+        assert!(context.contains("do not translate the context itself"));
+    }
+}
