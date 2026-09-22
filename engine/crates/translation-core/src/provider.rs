@@ -268,7 +268,6 @@ impl TranslationProvider for OpenAIProvider {
     }
 }
 
-
 /// Experimental Atria Responses API provider.
 ///
 /// Phase 31 exposes this provider only to the rights-safe provider qualification
@@ -303,8 +302,7 @@ impl AtriaProvider {
         let api_key = env::var("ATRIA_API_KEY").map_err(|_| {
             ProviderError::Unavailable("ATRIA_API_KEY is not configured".to_string())
         })?;
-        let model =
-            env::var("ATRIA_MODEL").unwrap_or_else(|_| Self::DEFAULT_MODEL.to_string());
+        let model = env::var("ATRIA_MODEL").unwrap_or_else(|_| Self::DEFAULT_MODEL.to_string());
         let max_output_tokens = match env::var("ATRIA_MAX_OUTPUT_TOKENS") {
             Ok(value) if !value.trim().is_empty() => value.trim().parse::<u32>().map_err(|_| {
                 ProviderError::InvalidRequest(
@@ -356,10 +354,7 @@ impl AtriaProvider {
         self
     }
 
-    pub fn with_max_output_tokens(
-        mut self,
-        max_output_tokens: u32,
-    ) -> Result<Self, ProviderError> {
+    pub fn with_max_output_tokens(mut self, max_output_tokens: u32) -> Result<Self, ProviderError> {
         if !(1..=Self::MAX_OUTPUT_TOKENS).contains(&max_output_tokens) {
             return Err(ProviderError::InvalidRequest(format!(
                 "Atria max_output_tokens must be in 1..={}",
@@ -533,7 +528,6 @@ mod tests {
         });
         assert!(result.is_err());
     }
-
 
     #[test]
     fn atria_provider_uses_documented_responses_contract_without_openai_storage_fields() {
