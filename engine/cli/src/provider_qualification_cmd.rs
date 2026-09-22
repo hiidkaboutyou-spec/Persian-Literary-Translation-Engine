@@ -6,7 +6,6 @@ use serde::Serialize;
 use std::collections::BTreeMap;
 use std::env;
 use std::fs;
-use std::path::Path;
 use std::sync::Mutex;
 use std::time::Instant;
 use translation_core::{
@@ -371,7 +370,7 @@ fn build_blind_comparison(
         let second_text = second_outputs
             .get(case.id.as_str())
             .ok_or_else(|| format!("second submission is missing case '{}'", case.id))?;
-        let swap = index % 2 == 1;
+        let swap = !index.is_multiple_of(2);
         let (candidate_a, candidate_b, a_system, b_system) = if swap {
             (
                 (*second_text).to_string(),
@@ -446,12 +445,14 @@ fn configured_lab_provider(provider: &str, model: Option<&str>) -> Result<LabPro
                 }
                 None => OpenAIProvider::from_env().map_err(|error| error.to_string())?,
             };
-            let resolved_model = model
-                .map(str::trim)
-                .filter(|value| !value.is_empty())
-                .map(ToOwned::to_owned)
-                .or_else(|| env::var("OPENAI_MODEL").ok())
-                .or_else(|| Some("gpt-5.6".to_string()));
+            let resolved_model = Some(
+                model
+                    .map(str::trim)
+                    .filter(|value| !value.is_empty())
+                    .map(ToOwned::to_owned)
+                    .or_else(|| env::var("OPENAI_MODEL").ok())
+                    .unwrap_or_else(|| "gpt-5.6".to_string()),
+            );
             Ok(LabProvider {
                 provider: Box::new(configured),
                 provider_name: "openai".to_string(),
