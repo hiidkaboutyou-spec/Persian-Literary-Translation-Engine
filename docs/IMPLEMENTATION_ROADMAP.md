@@ -358,6 +358,7 @@ Current Phase-31 work:
 - the same production literary translate → revise → quality-review pipeline is exercised during qualification;
 - partial benchmark runs are explicitly labeled and never treated as admission;
 - deterministic anchors remain evidence only and every report keeps `production_admission = not_granted`;
+- provider-call latency plus Responses input/output token usage are captured when available, with completeness reported explicitly;
 - human blind review remains mandatory for literary quality;
 - offline echo-provider qualification covers the full orchestration path in CI without secrets/network;
 - permanent Linux + Apple Silicon Phase-31 validation and a static guard against accidental production admission;
