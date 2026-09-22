@@ -400,3 +400,12 @@ Updating this repository seed does **not** mean the user's local PMC/Obsidian va
 8. **Zero targets remains valid** — the UI must preserve `max_review_targets = 0` instead of silently coercing it to one.
 9. **No new runtime dependency/integration** — no QE model, LLM judge, cloud review service, telemetry, database or provider is added.
 10. **Permanent Phase-30 checks protect the UI trust boundary** — syntax, DOM/IPC/privacy contract, existing Phase-29 authority tests and Apple Silicon Tauri validation are required.
+
+
+## Phase 30 Canonical Evidence
+
+- Phase 30 canonical: PR #119, final validated head `1608b1d49a8f2c5fb3d475db64c32901ec013657`, merge `8929e6befe0b2b932fbf0d3aceaf466e99a88955`.
+- Exact-head triggered gates all passed before landing: Phase 18 `35788768599`, Phase 19 `35788768729`, Phase 21 `35788768640`, Desktop Product `35788768662`, Trusted Release `35788768764`, Phase 24 `35788768743`, Phase 25 `35788768722`, Phase 26 `35788768644`, Phase 27 `35788768746`, Phase 28 `35788768802`, Phase 29 `35788768735`, Phase 30 `35788768638`, and Project Memory Tooling `35788768566`.
+- Rust CI, Security, and Phase 20 publication were inherited from canonical Phase 29 under the documented scope rule because Phase 30 introduced no engine/Cargo/publication change.
+- Final audit fixed a target-selection async race before merge: stale chapter responses are rejected by selection epoch/target identity, and review/editor actions stay disabled until the selected target text is loaded.
+- The next numbered research handoff is provider admission/qualification. Extend the rights-safe Phase-21 literary corpus before adding a new runtime provider. Atria Dawn is the first candidate under investigation, not an approved/default provider.
