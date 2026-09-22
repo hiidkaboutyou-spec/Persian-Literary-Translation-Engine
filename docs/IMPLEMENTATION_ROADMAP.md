@@ -323,13 +323,13 @@ Current Phase-29 work:
 
 Research and exit criteria: `docs/PHASE_29_RESEARCH.md`.
 
-### Phase 30 — Desktop Pilot Review Workspace — active
+### Phase 30 — Desktop Pilot Review Workspace — canonical
 
-Branch: `phase-30-pilot-review-workspace`.
+PR #119; final validated head `1608b1d49a8f2c5fb3d475db64c32901ec013657`; merge `8929e6befe0b2b932fbf0d3aceaf466e99a88955`.
 
 Goal: make the canonical Phase-28/29 real-book human-review workflow usable end to end inside the local desktop product without moving domain authority into JavaScript.
 
-Current Phase-30 work:
+Delivered Phase-30 work:
 
 - dedicated Pilot Review navigation/view;
 - Rust-derived mechanical/sample completion summary and audit issues;
@@ -342,6 +342,22 @@ Current Phase-30 work:
 - dedicated Linux + Apple Silicon validation with no new runtime dependency.
 
 Research and exit criteria: `docs/PHASE_30_RESEARCH.md`.
+
+### Phase 31 — Provider Admission & Literary Qualification — research handoff
+
+Goal: extend the existing rights-safe Phase-21 evaluation surface so a new translation provider can be admitted only after measured EN→FA literary evidence, rather than because its API is compatible or its general-purpose benchmarks are strong.
+
+Research/implementation order:
+
+- reuse the project-owned rights-safe literary challenge corpus and human scorecard boundaries before creating any provider-specific runtime code;
+- add cross-provider result identity and reproducible comparison metadata without storing secrets or user manuscripts;
+- measure semantic fidelity, omission/addition, character voice, relationship/register, Persian naturalness, dialogue/subtext, terminology/continuity, structural-marker preservation, retry/error behavior, and bounded usage;
+- compare the current production path against candidate providers with the same prompts/context/style contracts where technically possible;
+- treat Atria Dawn as the first candidate under investigation, not as an approved/default provider;
+- keep provider keys session/environment-only and keep the existing OpenAI/Echo paths unchanged until an admission decision is supported by the benchmark;
+- do not let an automatic metric or LLM judge become literary approval; human review remains final authority.
+
+No candidate provider is approved by this handoff. A runtime integration requires a separate measured admission decision plus privacy, retention, licensing, rate-limit, cost, and failure-boundary review.
 
 ## Next Action Rule
 
