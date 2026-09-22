@@ -22,6 +22,7 @@ use translation_core::{
 mod advanced;
 mod benchmark_cmd;
 mod project_cmd;
+mod provider_qualification_cmd;
 mod review;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -123,6 +124,8 @@ fn usage() {
     );
     println!("  literary-engine review <sync|list|show|approve|edit|reject|defer|reopen|promote> ... [--format json]");
     println!("  literary-engine benchmark <corpus.json> <submission.json> [--format json]");
+    println!("  literary-engine qualify-provider <corpus.json> <submission.json> --provider echo|openai|atria [--model <id>] [--max-cases <n>] [--format json]");
+    println!("    qualify-provider is a rights-safe research path; it never changes the production provider selector");
     println!(
         "  literary-engine prepare <file.txt|file.md|file.docx|file.epub|file.pdf> [target-language] [--format json]"
     );
@@ -898,6 +901,7 @@ fn run() -> Result<(), String> {
         ("analyze-advanced", args) => advanced::run_analyze_advanced(args, &format),
         ("review", args) => review::run_review(args, &format),
         ("benchmark", args) => benchmark_cmd::run_benchmark(args, &format),
+        ("qualify-provider", args) => provider_qualification_cmd::run_qualify_provider(args, &format),
         ("project", args) => project_cmd::run_project(args, &format),
         ("prepare", [path]) => prepare(path, "fa", &format),
         ("prepare", [path, target]) => prepare(path, target, &format),
