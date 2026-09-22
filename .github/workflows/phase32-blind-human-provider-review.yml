@@ -1,0 +1,77 @@
+name: Phase 32 Blind Human Provider Review
+
+on:
+  push:
+    branches:
+      - phase-32-blind-human-provider-review
+    paths:
+      - "engine/cli/src/bin/literary-provider-review.rs"
+      - "engine/cli/Cargo.toml"
+      - "engine/Cargo.toml"
+      - "engine/Cargo.lock"
+      - "docs/PHASE_32_RESEARCH.md"
+      - ".github/workflows/phase32-blind-human-provider-review.yml"
+  pull_request:
+    paths:
+      - "engine/cli/src/bin/literary-provider-review.rs"
+      - "engine/cli/Cargo.toml"
+      - "engine/Cargo.toml"
+      - "engine/Cargo.lock"
+      - "docs/PHASE_32_RESEARCH.md"
+      - ".github/workflows/phase32-blind-human-provider-review.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  phase32-linux:
+    name: Phase 32 / Linux
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: engine
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Format
+        run: cargo fmt --all -- --check
+
+      - name: Unit tests
+        run: cargo test -p literary-engine --bin literary-provider-review
+
+      - name: Clippy
+        run: cargo clippy -p literary-engine --bin literary-provider-review --all-targets -- -D warnings
+
+      - name: Static production-boundary guard
+        run: |
+          set -euo pipefail
+          file="cli/src/bin/literary-provider-review.rs"
+          ! grep -Eq 'AtriaProvider|OpenAIProvider|TranslationProvider|ATRIA_API_KEY|OPENAI_API_KEY|LITERARY_ENGINE_PROVIDER' "$file"
+          grep -F 'automatic_winner: None' "$file"
+          grep -F 'production_admission: "not_granted"' "$file"
+          grep -F 'requires_explicit_admission_decision: true' "$file"
+
+  phase32-macos-arm64:
+    name: Phase 32 / macOS arm64
+    runs-on: macos-14
+    defaults:
+      run:
+        working-directory: engine
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify Apple Silicon runner
+        run: test "$(uname -m)" = "arm64"
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Unit tests
+        run: cargo test -p literary-engine --bin literary-provider-review
