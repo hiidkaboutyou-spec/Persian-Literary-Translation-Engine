@@ -199,3 +199,28 @@ Phase 30 becomes canonical only when:
     mandatory before merge;
 13. no runtime dependency is introduced;
 14. final head/merge/run IDs are recorded after landing.
+
+
+## Canonical completion
+
+Phase 30 landed through PR #119.
+
+- final validated head: `1608b1d49a8f2c5fb3d475db64c32901ec013657`
+- merge commit: `8929e6befe0b2b932fbf0d3aceaf466e99a88955`
+- dedicated Phase 30 run: `35788768638`
+- Desktop Product: `35788768662`
+- Trusted Release: `35788768764`
+- Phase 18: `35788768599`
+- Phase 19: `35788768729`
+- Phase 21: `35788768640`
+- Phase 24: `35788768743`
+- Phase 25: `35788768722`
+- Phase 26: `35788768644`
+- Phase 27: `35788768746`
+- Phase 28: `35788768802`
+- Phase 29: `35788768735`
+- Project Memory Tooling: `35788768566`
+
+### Final audit hardening
+
+The final review found a WebView async-selection race that static syntax/privacy checks did not originally detect. Rapidly selecting target B while target A's chapter request was still in flight could allow A's late response to render while the selected review identity already pointed at B. The final head adds a monotonically increasing selection epoch, disables record/editor actions while a target is loading, verifies the target ID again after the async response, discards stale responses, and requires both the selected target and loaded chapter before recording. The permanent Phase-30 checker now guards these invariants.

@@ -400,3 +400,12 @@ Updating this repository seed does **not** mean the user's local PMC/Obsidian va
 8. **Zero targets remains valid** — the UI must preserve `max_review_targets = 0` instead of silently coercing it to one.
 9. **No new runtime dependency/integration** — no QE model, LLM judge, cloud review service, telemetry, database or provider is added.
 10. **Permanent Phase-30 checks protect the UI trust boundary** — syntax, DOM/IPC/privacy contract, existing Phase-29 authority tests and Apple Silicon Tauri validation are required.
+
+
+## Phase 30 Canonical Evidence
+
+- Phase 30 canonical: PR #119, final head `1608b1d49a8f2c5fb3d475db64c32901ec013657`, merge `8929e6befe0b2b932fbf0d3aceaf466e99a88955`.
+- Exact-head Phase 30, Desktop Product, Trusted Release, Phases 18/19/21/24–29, and Project Memory Tooling all passed before landing.
+- The final pre-merge audit fixed an async target-selection race: the UI now keeps review/editor actions disabled until the exact selected target is loaded and ignores late responses from previous selections.
+- Phase 30 added no provider, model, metric, browser persistence, remote frontend content, or runtime dependency.
+- Phase 31 must preserve this local-first/human-authority boundary while qualifying any new provider behind explicit opt-in and representative evaluation.
