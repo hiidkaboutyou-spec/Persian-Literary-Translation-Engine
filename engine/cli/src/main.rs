@@ -902,7 +902,9 @@ fn run() -> Result<(), String> {
         ("analyze-advanced", args) => advanced::run_analyze_advanced(args, &format),
         ("review", args) => review::run_review(args, &format),
         ("benchmark", args) => benchmark_cmd::run_benchmark(args, &format),
-        ("qualify-provider", args) => provider_qualification_cmd::run_qualify_provider(args, &format),
+        ("qualify-provider", args) => {
+            provider_qualification_cmd::run_qualify_provider(args, &format)
+        }
         ("blind-compare", args) => provider_qualification_cmd::run_blind_compare(args, &format),
         ("project", args) => project_cmd::run_project(args, &format),
         ("prepare", [path]) => prepare(path, "fa", &format),
