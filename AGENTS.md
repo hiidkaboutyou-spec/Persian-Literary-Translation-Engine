@@ -286,3 +286,5 @@ For Phase 27 changes, run the dedicated `Phase 27 Real-Book Pilot Readiness` wor
 - Human blind literary review is required before proposing any new production provider.
 - Phase 31 reports must state that production admission is not granted.
 - The dedicated Phase-31 workflow must prove the experimental adapter, offline EchoProvider qualification path, no accidental production wiring, no dependency-manifest change, and Apple Silicon compatibility.
+
+- Qualification must measure provider-call latency and capture Responses input/output token usage when returned; absence of token telemetry must be explicit rather than silently treated as zero.
