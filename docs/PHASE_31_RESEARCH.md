@@ -108,8 +108,10 @@ Rules:
 5. candidate output is persisted in the existing submission schema;
 6. deterministic anchors are evaluated and reported;
 7. partial runs are labeled partial;
-8. every report says `production_admission = not_granted`;
-9. human blind review remains required.
+8. provider-call latency is measured and Responses token usage is aggregated when the provider reports it;
+9. reports distinguish complete token telemetry from providers/runs where usage metadata is unavailable;
+10. every report says `production_admission = not_granted`;
+11. human blind review remains required.
 
 ### Blind A/B review package
 
@@ -150,6 +152,7 @@ Phase 31 is complete when:
 8. existing OpenAI/echo automatic production behavior is unchanged;
 9. no new runtime dependency is introduced;
 10. Linux and Apple Silicon validation pass;
-11. a blind counterbalanced two-system review bundle can be generated without leaking system IDs into the reviewer file;
-12. Rust CI, Security, Phase 21 evaluation, Desktop Product, Trusted Release, and Project Memory regressions are green on the final head;
-13. Atria is not promoted to real-book translation merely because the integration compiles.
+11. live-provider qualification can report measured request latency and documented Responses input/output token usage without logging secrets or prompts;
+12. a blind counterbalanced two-system review bundle can be generated without leaking system IDs into the reviewer file;
+13. Rust CI, Security, Phase 21 evaluation, Desktop Product, Trusted Release, and Project Memory regressions are green on the final head;
+14. Atria is not promoted to real-book translation merely because the integration compiles.
