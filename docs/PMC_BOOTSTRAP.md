@@ -409,3 +409,18 @@ Updating this repository seed does **not** mean the user's local PMC/Obsidian va
 - The final pre-merge audit fixed an async target-selection race: the UI now keeps review/editor actions disabled until the exact selected target is loaded and ignores late responses from previous selections.
 - Phase 30 added no provider, model, metric, browser persistence, remote frontend content, or runtime dependency.
 - Phase 31 must preserve this local-first/human-authority boundary while qualifying any new provider behind explicit opt-in and representative evaluation.
+
+
+## Durable Phase 31 decisions
+
+1. **API compatibility is not provider admission** — Atria can implement `TranslationProvider` while remaining unavailable to the production ApplicationService.
+2. **Qualification data must be rights-safe** — use the project-owned Phase-21 corpus; never use a private manuscript merely to test a provider.
+3. **Production-like interaction, non-production authority** — qualification exercises the real three-pass literary pipeline but its output cannot alter a project, canon, checkpoint, or production provider setting.
+4. **Explicit provider only** — no implicit Atria fallback, no `auto` selection, and no desktop capability advertisement in Phase 31.
+5. **Secrets stay process-local** — `ATRIA_API_KEY` is environment-only and is never serialized.
+6. **Provider wire contracts stay isolated** — use Atria's documented Responses fields instead of disguising it as OpenAI with a base-URL substitution.
+7. **Bounds fail closed** — Atria output limits outside 1..=65,536 are rejected locally.
+8. **Automatic scores do not pick a literary winner** — deterministic anchors remain challenge evidence; human blind review remains required.
+9. **Partial runs are never admission evidence** — they are smoke/cost controls only.
+10. **Phase 31 grants no production admission** — every qualification report says so; a later phase must explicitly review any promotion.
+11. **No new runtime dependency** — existing HTTP/JSON/evaluation infrastructure is sufficient.
