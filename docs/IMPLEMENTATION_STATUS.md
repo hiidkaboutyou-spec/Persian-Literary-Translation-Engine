@@ -308,10 +308,22 @@ Phase-26 external-model admission remains gated by source/checkpoint/data licens
 
 Detailed research and exit criteria: `docs/PHASE_26_RESEARCH.md`.
 
+## Phase 30 — Desktop Pilot Review Workspace — canonical
+
+PR #119; final reviewed head `1608b1d49a8f2c5fb3d475db64c32901ec013657`; merge commit `8929e6befe0b2b932fbf0d3aceaf466e99a88955`.
+
+Delivered the end-to-end local desktop pilot-review surface on top of Phase 28/29 without moving review authority into JavaScript. The final audit also fixed an async selection race: review/editor actions remain disabled until the exact selected target chapter has loaded, and stale responses from an earlier target are discarded.
+
+Final-head successful runs: Phase 30 `35788768638`, Phase 22 Desktop `35788768662`, Phase 23 Trusted Release `35788768764`, Phase 18 `35788768599`, Phase 19 `35788768729`, Phase 21 `35788768640`, Phase 24 `35788768743`, Phase 25 `35788768722`, Phase 26 `35788768644`, Phase 27 `35788768746`, Phase 28 `35788768802`, Phase 29 `35788768735`, and Project Memory Tooling `35788768566`.
+
+No engine/Cargo/publication dependency surface changed in Phase 30, so the previously documented inherited Rust/Security/Phase-20 publication gates remained valid under the Phase-30 exit contract.
+
+Detailed research and completion record: `docs/PHASE_30_RESEARCH.md`.
+
 ## CLI / Desktop
 
 The canonical CLI and desktop application remain operationally independent. Phase 23 adds release evidence around them; it does not move distribution tooling into runtime code.
 
 ## Current Handoff
 
-Phase 29 is canonical and its exact completion record is persisted. Phase 30 is the active numbered phase: finish the desktop Pilot Review workspace, keep review authority in Rust, validate privacy/IPC/UI contracts on Linux and Apple Silicon, then run the full Phase 18–30/Rust/Security/Desktop/Trusted Release/Project Memory regression matrix before landing.
+Phase 30 is canonical. The next numbered research target is Phase 31: build a provider-qualification path and an explicit experimental Atria adapter without changing the default provider, then use the existing rights-safe Phase-21 English→Persian literary corpus plus human review to decide whether the provider is fit for any production role.
