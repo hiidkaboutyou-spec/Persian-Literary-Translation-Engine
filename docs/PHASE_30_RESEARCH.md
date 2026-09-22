@@ -199,3 +199,44 @@ Phase 30 becomes canonical only when:
     mandatory before merge;
 13. no runtime dependency is introduced;
 14. final head/merge/run IDs are recorded after landing.
+
+
+## Canonical completion record
+
+Phase 30 became canonical through PR #119.
+
+- final validated head: `1608b1d49a8f2c5fb3d475db64c32901ec013657`;
+- merge commit: `8929e6befe0b2b932fbf0d3aceaf466e99a88955`;
+- Phase 18 Context and Semantic Retrieval: `35788768599`;
+- Phase 19 Literary Review: `35788768729`;
+- Phase 21 Literary Evaluation: `35788768640`;
+- Phase 22 Desktop Product: `35788768662`;
+- Phase 23 Trusted Release: `35788768764`;
+- Phase 24 Literary Precision: `35788768743`;
+- Phase 25 Narrative Speaker Intelligence: `35788768722`;
+- Phase 26 Long-Span Coreference Evidence: `35788768644`;
+- Phase 27 Real-Book Pilot Readiness: `35788768746`;
+- Phase 28 Private Whole-Book Audit: `35788768802`;
+- Phase 29 Human Pilot Review Ledger: `35788768735`;
+- Phase 30 Pilot Review Workspace: `35788768638`;
+- Project Memory Tooling: `35788768566`.
+
+All workflows triggered by the Phase-30 diff completed successfully on the exact final head before landing. Rust CI, Security, and Phase-20 publication were not re-triggered because the final Phase-30 diff changed no engine/Cargo/publication files; their canonical Phase-29 evidence remained the inherited gate under the documented Phase-30 scope rule.
+
+### Final audit hardening
+
+Exact-head review found and fixed a frontend inspection race before landing. Rapidly selecting two pilot targets could allow an older asynchronous chapter response to overwrite the visible context after a newer target had become selected. That could visually detach the inspected prose from the target ID that would be recorded.
+
+The final head therefore:
+
+- binds each asynchronous target load to a monotonically increasing selection epoch;
+- disables recording/editor navigation until the selected target's chapter has actually loaded;
+- discards late responses when the selection epoch or target ID no longer matches;
+- requires both `pilotTarget` and `pilotChapter` before a review can be submitted;
+- permanently checks those race guards in the Phase-30 static UI contract.
+
+This preserves the Phase-30 invariant that the human decision is bound to the text actually inspected.
+
+### Next research handoff
+
+The next numbered work should qualify candidate translation providers with rights-safe EN→FA literary evidence before adding another runtime provider. Reuse/extend the Phase-21 corpus and human-review boundaries; measure fidelity, omissions/additions, voice/register, Persian naturalness, structural-marker preservation, reliability and operational constraints. Atria Dawn is the first candidate under investigation, but this record does not approve it for production or default use.
