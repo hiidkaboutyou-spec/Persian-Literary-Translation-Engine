@@ -342,10 +342,14 @@ The seven proposed developer-tool repositories were reviewed in `docs/DEVELOPER_
 
 The canonical CLI and desktop application remain operationally independent. Phase 23 adds release evidence around them; it does not move distribution tooling into runtime code.
 
+## Phase 35 — Reproducible Blind Review Dossier Verification — canonical
+
+PR #127 merged at `6b7a1af64ac68ba0db71ef5ae647ddd584d6dd22` from final validated head `8554b564266a4f56726c4e1fbd8c36ee944a5042`. All 17 triggered exact-head workflows passed, including Rust CI, Security, Phase 31/32/33 and Apple Silicon coverage. The offline `blind-review verify` command reconstructs and compares the complete dossier from local evidence, rejects aliased inputs and altered bundle bytes, writes nothing and grants no provider admission. Research: `docs/PHASE_35_RESEARCH.md`.
+
 ## Current Handoff
 
-Phase 34 is canonical. Admission assessment now rejects an incomplete or contradictory Phase-32 dossier and refuses output overwrite under concurrent creation. The seven developer-tool adoption decisions are recorded in `docs/DEVELOPER_TOOL_CANDIDATES_2026-09-23.md`. Private-book provider admission still requires verified terms, human literary evidence, and a separate explicit owner decision. The Atria adapter remains research-only.
+Phase 35 is canonical. The remaining measured integrity gap is that schema-v1 reveal keys and ledgers use FNV/corpus/case binding rather than a cryptographic exact-byte chain. Private-book provider admission still requires verified hosted-service terms, real human literary evidence and a separate explicit owner decision. Atria remains research-only.
 
-## Phase 35 — Reproducible Blind Review Dossier Verification — in progress
+## Phase 36 — Versioned Cryptographic Blind-Review Evidence Binding — in progress
 
-The CLI's offline `blind-review verify` recomputes a Phase-32 dossier from the original blind bundle, reveal key, and completed reviewer ledgers, checks the exact bundle-byte fingerprint and corpus/case identity, and compares every dossier field. It writes nothing and grants no provider admission. Synthetic regression fixtures cover changed dossier counts, recorded judgments, key assignments, and bundle bytes. Research and limits: `docs/PHASE_35_RESEARCH.md`. This stage is not canonical until exact-head CI and security gates pass and its PR is merged.
+The Phase-36 branch adds a project-owned SHA-256 helper using the repository's existing RustCrypto `sha2` dependency, emits schema-v2 reveal keys with an exact blind-bundle digest, creates schema-v2 ledgers with an independently computed digest, requires matching v2 evidence before dossier construction, and extends Phase-35 verification to recompute SHA-256 from supplied bundle bytes. Legacy schema-v1 artifacts remain readable with explicitly weaker semantics. Reviewer identity/signing and production provider authorization remain separate future decisions. Research: `docs/PHASE_36_RESEARCH.md`.
