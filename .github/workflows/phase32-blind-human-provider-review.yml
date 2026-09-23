@@ -5,18 +5,14 @@ on:
     branches:
       - phase-32-blind-human-provider-review
     paths:
-      - "engine/cli/src/bin/literary-provider-review.rs"
-      - "engine/cli/Cargo.toml"
-      - "engine/Cargo.toml"
-      - "engine/Cargo.lock"
+      - "engine/cli/src/provider_review_cmd.rs"
+      - "engine/cli/src/main.rs"
       - "docs/PHASE_32_RESEARCH.md"
       - ".github/workflows/phase32-blind-human-provider-review.yml"
   pull_request:
     paths:
-      - "engine/cli/src/bin/literary-provider-review.rs"
-      - "engine/cli/Cargo.toml"
-      - "engine/Cargo.toml"
-      - "engine/Cargo.lock"
+      - "engine/cli/src/provider_review_cmd.rs"
+      - "engine/cli/src/main.rs"
       - "docs/PHASE_32_RESEARCH.md"
       - ".github/workflows/phase32-blind-human-provider-review.yml"
 
@@ -42,19 +38,20 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Unit tests
-        run: cargo test -p literary-engine --bin literary-provider-review
+        run: cargo test --locked -p literary-engine provider_review_cmd::tests
 
       - name: Clippy
-        run: cargo clippy -p literary-engine --bin literary-provider-review --all-targets -- -D warnings
+        run: cargo clippy --locked -p literary-engine --all-targets -- -D warnings
 
       - name: Static production-boundary guard
         run: |
           set -euo pipefail
-          file="cli/src/bin/literary-provider-review.rs"
+          file="cli/src/provider_review_cmd.rs"
           ! grep -Eq 'AtriaProvider|OpenAIProvider|TranslationProvider|ATRIA_API_KEY|OPENAI_API_KEY|LITERARY_ENGINE_PROVIDER' "$file"
           grep -F 'automatic_winner: None' "$file"
           grep -F 'production_admission: "not_granted"' "$file"
           grep -F 'requires_explicit_admission_decision: true' "$file"
+          grep -F '("blind-review", args) => provider_review_cmd::run_provider_review(args)' cli/src/main.rs
 
   phase32-macos-arm64:
     name: Phase 32 / macOS arm64
@@ -74,4 +71,4 @@ jobs:
           components: rustfmt
 
       - name: Unit tests
-        run: cargo test -p literary-engine --bin literary-provider-review
+        run: cargo test --locked -p literary-engine provider_review_cmd::tests
