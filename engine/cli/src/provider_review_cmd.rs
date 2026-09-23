@@ -139,7 +139,7 @@ fn usage() -> &'static str {
         "  literary-engine blind-review verify <blind-bundle.json> <reveal-key.json> <dossier.json> <ledger.json> [ledger2.json ...]\n",
         "  literary-engine blind-review sign-ledger <ledger.json> <signature.sig> --key <ssh-key>\n",
         "  literary-engine blind-review verify-ledger-signature <ledger.json> <signature.sig> --allowed-signers <allowed_signers> [--revocations <krl-or-revoked-keys>]\n",
-        "  literary-engine blind-review verify-authenticated <blind-bundle.json> <reveal-key.json> <dossier.json> <ledger.json> <signature.sig> [ledger2.json signature2.sig ...] --allowed-signers <allowed_signers> [--revocations <krl-or-revoked-keys>]\n\n",
+        "  literary-engine blind-review verify-reviewer-authenticated <blind-bundle.json> <reveal-key.json> <dossier.json> <ledger.json> <signature.sig> [ledger2.json signature2.sig ...] --allowed-signers <allowed_signers> [--revocations <krl-or-revoked-keys>]\n\n",
         "The review ledger never receives the reveal key. Schema-2 reviewer signatures use local OpenSSH SSHSIG over the exact completed-ledger bytes. Private signing keys and verifier trust files remain external to project state. Authentication never grants production admission."
     )
 }
@@ -153,7 +153,7 @@ pub(crate) fn run_provider_review(args: &[String]) -> Result<()> {
         "verify" => run_verify(&args[1..]),
         "sign-ledger" => run_sign_ledger(&args[1..]),
         "verify-ledger-signature" => run_verify_ledger_signature(&args[1..]),
-        "verify-authenticated" => run_verify_authenticated(&args[1..]),
+        "verify-reviewer-authenticated" => run_verify_reviewer_authenticated(&args[1..]),
         "--help" | "-h" | "help" => {
             println!("{}", usage());
             Ok(())
@@ -388,7 +388,7 @@ fn run_verify_ledger_signature(args: &[String]) -> Result<()> {
     Ok(())
 }
 
-fn run_verify_authenticated(args: &[String]) -> Result<()> {
+fn run_verify_reviewer_authenticated(args: &[String]) -> Result<()> {
     let flags = ["--allowed-signers", "--revocations"];
     let bundle_path = positional(args, 0, &flags).ok_or_else(|| usage().to_string())?;
     let key_path = positional(args, 1, &flags).ok_or_else(|| usage().to_string())?;
@@ -405,7 +405,7 @@ fn run_verify_authenticated(args: &[String]) -> Result<()> {
     }
     if evidence_paths.len() < 2 || evidence_paths.len() % 2 != 0 {
         return Err(
-            "verify-authenticated requires one or more <ledger.json> <signature.sig> pairs"
+            "verify-reviewer-authenticated requires one or more <ledger.json> <signature.sig> pairs"
                 .to_string(),
         );
     }
@@ -451,7 +451,7 @@ fn run_verify_authenticated(args: &[String]) -> Result<()> {
         )?;
     }
 
-    println!("authenticated review dossier verified against exact signed schema-2 ledgers");
+    println!("reviewer-authenticated ledgers verified against supplied local evidence");
     println!("reviewer signatures: {}", ledger_bytes.len());
     println!("signature namespace: {REVIEW_SIGNATURE_NAMESPACE}");
     println!("production admission: NOT GRANTED");
@@ -1834,7 +1834,7 @@ mod tests {
         .unwrap();
 
         run_provider_review(&[
-            "verify-authenticated".into(),
+            "verify-reviewer-authenticated".into(),
             paths[0].clone(),
             paths[1].clone(),
             paths[2].clone(),
