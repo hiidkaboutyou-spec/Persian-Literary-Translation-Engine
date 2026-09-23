@@ -334,7 +334,9 @@ PR #124 merged at `08d18a0ee639339e2625de442cc4c3aa86605e1d`, from final head `f
 
 ## Phase 34 — Admission Artifact Integrity — in progress
 
-Branch: `phase-34-admission-artifact-integrity`. Close the Phase-33 output-install race so a concurrent file creation cannot be overwritten, and verify this behavior with a deterministic regression test. No provider activation or manuscript transfer is in scope.
+Branch: `phase-34-admission-artifact-integrity`. Close the Phase-33 output-install race and require a structurally complete Phase-32 dossier before governance eligibility can be assessed. Verify collision preservation and reject missing/inconsistent reviewer counts and reveal binding. No provider activation or manuscript transfer is in scope.
+
+The seven proposed developer-tool repositories were reviewed in `docs/DEVELOPER_TOOL_CANDIDATES_2026-09-23.md`; none has an installation case against a measured gap in this phase.
 
 ## CLI / Desktop
 
