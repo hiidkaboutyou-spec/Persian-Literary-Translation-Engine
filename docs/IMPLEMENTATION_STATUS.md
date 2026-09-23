@@ -6,7 +6,7 @@ A production-grade English-to-Persian literary translation engine with a Rust co
 
 ## Canonical Main State
 
-`main` is canonical through Phase 29.
+`main` is canonical through Phase 33 (PR #124, merge `08d18a0ee639339e2625de442cc4c3aa86605e1d`).
 
 Phase 26 PR #111 landed from final validated head `8418fdf4eb06252dec8a014c13e789efa7fe800e` at merge commit `5c0d4c8514b999faf786971da8541f7ea5a1b773`.
 
@@ -320,21 +320,23 @@ No engine/Cargo/publication dependency surface changed in Phase 30, so the previ
 
 Detailed research and completion record: `docs/PHASE_30_RESEARCH.md`.
 
-## Phase 31 — Provider Qualification & Experimental Atria Adapter — active
+## Phase 31 — Provider Qualification & Experimental Atria Adapter — canonical
 
-Branch: `phase-31-provider-qualification-atria`.
+PR #122 merged at `10f34055e7a4c14dcc0e2185ca8f1a3540c67e88`. Atria remains restricted to rights-safe qualification; no production provider selector or desktop wiring was added. The CLI records deterministic evidence and supports blind comparison without an automatic literary winner. Research: `docs/PHASE_31_RESEARCH.md`.
 
-Implemented so far:
+## Phase 32 — Blind Human Provider Review — canonical
 
-- experimental Atria Responses provider in `translation-core`, using only documented model/API/output-limit fields;
-- `ATRIA_API_KEY` environment-only credentials and fail-closed 1..=65,536 output-token bounds;
-- explicit `qualify-provider` command using the existing rights-safe Phase-21 corpus and production literary pipeline;
-- persisted standard benchmark submission plus deterministic anchor report;
-- production admission hard-coded as not granted; human review remains required;
-- no ApplicationService/desktop provider wiring and no change to existing OpenAI/echo automatic behavior;
-- dedicated offline/Linux/Apple Silicon validation with no new dependency.
+PR #123 merged at `6764b195d35364a1a9323244b09c18167d23a7c8`. The existing CLI now records blind human judgments and generates a separate post-review dossier. The reveal key is kept out of the reviewer ledger; the dossier grants no production admission. Research: `docs/PHASE_32_RESEARCH.md`.
 
-Detailed research and exit criteria: `docs/PHASE_31_RESEARCH.md`.
+## Phase 33 — Provider Admission Governance — canonical
+
+PR #124 merged at `08d18a0ee639339e2625de442cc4c3aa86605e1d`, from final head `fb06a2f94e1a7b8bc7d79b5a93a7fea514922da4`. Exact-head Rust CI, Security, Phase 31 and Phase 33 gates succeeded. The separate admission assessment accepts a Phase-32 dossier and governance profile; unknown or unacceptable evidence blocks eligibility. Assessment does not authorize a provider, change runtime selection, or send a manuscript. Hosted Atria data-handling terms remain unknown. Research: `docs/PHASE_33_RESEARCH.md`.
+
+## Phase 34 — Admission Artifact Integrity — in progress
+
+Branch: `phase-34-admission-artifact-integrity`. Close the Phase-33 output-install race and require a structurally complete Phase-32 dossier before governance eligibility can be assessed. Verify collision preservation and reject missing/inconsistent reviewer counts and reveal binding. No provider activation or manuscript transfer is in scope.
+
+The seven proposed developer-tool repositories were reviewed in `docs/DEVELOPER_TOOL_CANDIDATES_2026-09-23.md`; none has an installation case against a measured gap in this phase.
 
 ## CLI / Desktop
 
@@ -342,4 +344,4 @@ The canonical CLI and desktop application remain operationally independent. Phas
 
 ## Current Handoff
 
-Phase 31 is active on `phase-31-provider-qualification-atria`. The current implementation adds a research-only Atria Responses adapter and an explicit rights-safe provider qualification CLI while deliberately leaving ApplicationService/desktop/`auto` production provider selection unchanged. Offline qualification is exercised with EchoProvider; real Atria/OpenAI comparison requires explicit credentials and human blind literary review before any later production-admission proposal.
+Phase 33 is canonical; Phase 34 hardens assessment output creation against concurrent destination creation. Private-book provider admission still requires verified terms, human literary evidence, and a separate explicit owner decision. The Atria adapter remains research-only.
