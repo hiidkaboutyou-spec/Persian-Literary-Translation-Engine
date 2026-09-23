@@ -400,11 +400,16 @@ fn validate_key(key: &BlindComparisonKeyInput) -> Result<()> {
                 .as_deref()
                 .ok_or_else(|| "reveal-key schema 2 requires bundle_sha256".to_string())?;
             if !is_sha256_hex(digest) {
-                return Err("reveal-key bundle_sha256 must be 64 lowercase hexadecimal characters".to_string());
+                return Err(
+                    "reveal-key bundle_sha256 must be 64 lowercase hexadecimal characters"
+                        .to_string(),
+                );
             }
         }
         1 if key.bundle_sha256.is_some() => {
-            return Err("reveal-key schema 1 must not claim a schema-2 bundle_sha256 binding".to_string());
+            return Err(
+                "reveal-key schema 1 must not claim a schema-2 bundle_sha256 binding".to_string(),
+            );
         }
         _ => {}
     }
@@ -461,11 +466,15 @@ fn validate_ledger(ledger: &BlindReviewLedger) -> Result<()> {
                 .as_deref()
                 .ok_or_else(|| "ledger schema 2 requires bundle_sha256".to_string())?;
             if !is_sha256_hex(digest) {
-                return Err("ledger bundle_sha256 must be 64 lowercase hexadecimal characters".to_string());
+                return Err(
+                    "ledger bundle_sha256 must be 64 lowercase hexadecimal characters".to_string(),
+                );
             }
         }
         1 if ledger.bundle_sha256.is_some() => {
-            return Err("ledger schema 1 must not claim a schema-2 bundle_sha256 binding".to_string());
+            return Err(
+                "ledger schema 1 must not claim a schema-2 bundle_sha256 binding".to_string(),
+            );
         }
         _ => {}
     }
@@ -1153,7 +1162,11 @@ mod tests {
 
     #[test]
     fn schema_two_key_rejects_legacy_ledger() {
-        let mut legacy = ledger("reviewer", ReviewDecision::CandidateA, ReviewDecision::CandidateB);
+        let mut legacy = ledger(
+            "reviewer",
+            ReviewDecision::CandidateA,
+            ReviewDecision::CandidateB,
+        );
         legacy.corpus_id = "phase36-test".into();
         legacy.cases = vec![BlindReviewCase {
             case_id: "c1".into(),
@@ -1176,5 +1189,4 @@ mod tests {
         let error = build_dossier(&key, &[legacy]).unwrap_err();
         assert!(error.contains("schema-2 reveal key"));
     }
-
 }
