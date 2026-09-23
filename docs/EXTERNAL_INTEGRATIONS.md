@@ -564,3 +564,16 @@ Admission boundary:
 - No live API secret is stored in Git, project state, browser state, CI configuration, or developer-memory files.
 - Public agentic/coding benchmark strength is not treated as literary-translation evidence.
 - Any later production integration requires representative human-reviewed English→Persian results plus a fresh privacy/cost/failure review.
+
+## Phase 36 — Cryptographic evidence research, no new external service
+
+Phase 36 adds no network integration and installs no new dependency source.
+
+- RustCrypto `sha2` is reused from the existing `project-engine` dependency surface for exact-byte SHA-256 evidence binding.
+- in-toto is a design reference for digest-bound artifact metadata; no in-toto runtime is installed.
+- Sigstore/Cosign is deferred because reviewer identity would require an explicit OIDC/CA/transparency-log trust model.
+- `ed25519-dalek` is deferred because signature primitives alone do not define reviewer identity, key custody, recovery, revocation or trust roots.
+- BLAKE3 is not added; SHA-256 has sufficient performance for small review artifacts and better interoperability with common attestation formats.
+- `cargo-crev` remains optional developer research; existing Security/cargo-audit stays the enforced dependency-security gate.
+
+No manuscript text, review text, provider secret or identity credential is sent to an external service by this phase.
