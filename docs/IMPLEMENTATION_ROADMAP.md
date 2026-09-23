@@ -343,28 +343,21 @@ Exact final-head successful runs: Phase 30 `35788768638`, Phase 22 Desktop `3578
 
 Research and completion record: `docs/PHASE_30_RESEARCH.md`.
 
-### Phase 31 — Provider Qualification & Experimental Atria Adapter — active
+### Phase 31 — Provider Qualification & Experimental Atria Adapter — canonical
 
-Branch: `phase-31-provider-qualification-atria`.
+PR #122 merged at `10f34055e7a4c14dcc0e2185ca8f1a3540c67e88`. Rights-safe qualification and blind comparison remain isolated from production provider selection. Research: `docs/PHASE_31_RESEARCH.md`.
 
-Goal: make adding a new model provider measurable and reversible before it can affect production book translation.
+### Phase 32 — Blind Human Provider Review — canonical
 
-Current Phase-31 work:
+PR #123 merged at `6764b195d35364a1a9323244b09c18167d23a7c8`. Human review ledger and post-review dossier preserve the non-admission boundary. Research: `docs/PHASE_32_RESEARCH.md`.
 
-- separate `AtriaProvider` behind the existing `TranslationProvider` trait;
-- documented Atria Responses endpoint/model/output-limit handling with `ATRIA_API_KEY` only;
-- no Atria wiring into ApplicationService, desktop capabilities, or `auto` provider selection;
-- explicit `qualify-provider` CLI over the rights-safe Phase-21 English→Persian literary corpus;
-- the same production literary translate → revise → quality-review pipeline is exercised during qualification;
-- partial benchmark runs are explicitly labeled and never treated as admission;
-- deterministic anchors remain evidence only and every report keeps `production_admission = not_granted`;
-- provider-call latency plus Responses input/output token usage are captured when available, with completeness reported explicitly;
-- human blind review remains mandatory for literary quality;
-- offline echo-provider qualification covers the full orchestration path in CI without secrets/network;
-- permanent Linux + Apple Silicon Phase-31 validation and a static guard against accidental production admission;
-- zero new Cargo/runtime dependency.
+### Phase 33 — Provider Admission Governance — canonical
 
-Research and exit criteria: `docs/PHASE_31_RESEARCH.md`.
+PR #124 merged at `08d18a0ee639339e2625de442cc4c3aa86605e1d`. Unknown or unacceptable hosted-provider governance evidence blocks eligibility; an eligible assessment still cannot authorize or select a provider. Research: `docs/PHASE_33_RESEARCH.md`.
+
+### Phase 34 — Admission Artifact Integrity — in progress
+
+Make assessment output installation refuse overwrite even when another process creates the destination after the initial existence check. Assert the collision deterministically and retain the existing no-admission behavior. No production selector, provider keys, manuscript, or dependency changes.
 
 ## Next Action Rule
 
