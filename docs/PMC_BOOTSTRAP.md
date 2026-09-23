@@ -424,3 +424,16 @@ Updating this repository seed does **not** mean the user's local PMC/Obsidian va
 9. **Partial runs are never admission evidence** — they are smoke/cost controls only.
 10. **Phase 31 grants no production admission** — every qualification report says so; a later phase must explicitly review any promotion.
 11. **No new runtime dependency** — existing HTTP/JSON/evaluation infrastructure is sufficient.
+
+## Durable Phase 36 decisions
+
+1. **Exact bytes are the bound artifact** — schema-v2 evidence uses SHA-256 over the exact blind-bundle bytes written/read, not a normalized JSON interpretation.
+2. **Reveal key and reviewer ledger bind independently** — the key receives the digest when `blind-compare` writes the bundle; each ledger recomputes it from the reviewer's supplied bundle.
+3. **No v2 downgrade** — a schema-v2 reveal key requires schema-v2 ledgers with the same digest.
+4. **Legacy remains readable, not upgraded by implication** — schema-v1 artifacts keep FNV/corpus/case semantics and are never described as cryptographically authenticated.
+5. **Dossier version follows evidence strength** — only a schema-v2 key produces a schema-v2 dossier carrying `bundle_sha256`.
+6. **Verification recomputes evidence** — Phase-35 `blind-review verify` must hash the supplied bundle bytes and compare the key and ledgers before reconstructing the dossier.
+7. **Reuse existing RustCrypto** — `sha2` was already a direct `project-engine` dependency and lockfile entry; no new package source is introduced.
+8. **Hashing is not identity** — reviewer authentication/signatures remain a separate future phase with explicit enrollment, key custody/recovery/revocation and trust-root design.
+9. **Provider authority remains separate** — no automatic winner, production provider activation, private-manuscript transfer or admission is added.
+10. **Phase 35 canonical baseline** — PR #127 merged at `6b7a1af64ac68ba0db71ef5ae647ddd584d6dd22` after all triggered exact-head workflows passed.

@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::{fs, io, path::Path};
 
 pub mod application;
+pub mod artifact_integrity;
 pub mod review_store;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

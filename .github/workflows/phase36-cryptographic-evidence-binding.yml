@@ -1,0 +1,86 @@
+name: Phase 36 Cryptographic Evidence Binding
+
+on:
+  push:
+    branches:
+      - phase-36-cryptographic-evidence-binding
+    paths:
+      - "engine/crates/project-engine/src/artifact_integrity.rs"
+      - "engine/crates/project-engine/src/lib.rs"
+      - "engine/cli/src/provider_qualification_cmd.rs"
+      - "engine/cli/src/provider_review_cmd.rs"
+      - "docs/PHASE_36_RESEARCH.md"
+      - "docs/IMPLEMENTATION_STATUS.md"
+      - "docs/IMPLEMENTATION_ROADMAP.md"
+      - ".github/workflows/phase36-cryptographic-evidence-binding.yml"
+  pull_request:
+    paths:
+      - "engine/crates/project-engine/src/artifact_integrity.rs"
+      - "engine/crates/project-engine/src/lib.rs"
+      - "engine/cli/src/provider_qualification_cmd.rs"
+      - "engine/cli/src/provider_review_cmd.rs"
+      - "docs/PHASE_36_RESEARCH.md"
+      - "docs/IMPLEMENTATION_STATUS.md"
+      - "docs/IMPLEMENTATION_ROADMAP.md"
+      - ".github/workflows/phase36-cryptographic-evidence-binding.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: Phase 36 / Linux
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: engine
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # reviewed stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Format
+        run: cargo fmt --all -- --check
+
+      - name: Project artifact-integrity tests
+        run: cargo test --locked -p project-engine artifact_integrity
+
+      - name: Provider qualification and blind-review tests
+        run: |
+          cargo test --locked -p literary-engine provider_qualification_cmd::tests
+          cargo test --locked -p literary-engine provider_review_cmd::tests
+
+      - name: Clippy changed crates
+        run: cargo clippy --locked -p project-engine -p literary-engine --all-targets -- -D warnings
+
+      - name: Static non-admission guard
+        run: |
+          set -euo pipefail
+          grep -F 'automatic_winner: None' cli/src/provider_review_cmd.rs
+          grep -F 'production_admission: "not_granted"' cli/src/provider_review_cmd.rs
+          ! grep -Eq 'ATRIA_API_KEY|OPENAI_API_KEY|LITERARY_ENGINE_PROVIDER' cli/src/provider_review_cmd.rs
+
+  macos-arm64:
+    name: Phase 36 / macOS arm64
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: engine
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Verify Apple Silicon runner
+        run: test "$(uname -m)" = arm64
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # reviewed stable
+        with:
+          components: rustfmt
+
+      - name: Integrity and review tests
+        run: |
+          cargo test --locked -p project-engine artifact_integrity
+          cargo test --locked -p literary-engine provider_review_cmd::tests

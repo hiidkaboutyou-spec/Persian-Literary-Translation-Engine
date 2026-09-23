@@ -359,6 +359,31 @@ PR #124 merged at `08d18a0ee639339e2625de442cc4c3aa86605e1d`. Unknown or unaccep
 
 PR #125 merged at `ae34a07e08926e073db43db82fa04672640d1048` after all 17 exact-head workflows succeeded. Assessment output installation refuses overwrite even when another process creates the destination after the initial existence check. Validate the Phase-32 dossier identity, reviewer count, judgment partitions, per-system preference totals and reveal binding before evaluating provider eligibility. Reject incomplete or contradictory dossiers without creating an assessment. No production selector, provider keys, manuscript, or dependency changes.
 
+
+### Phase 35 — Reproducible Blind Review Dossier Verification — canonical
+
+PR #127; final validated head `8554b564266a4f56726c4e1fbd8c36ee944a5042`; squash merge `6b7a1af64ac68ba0db71ef5ae647ddd584d6dd22`.
+
+Delivered an offline `blind-review verify` path that reconstructs the complete Phase-32 dossier from the supplied blind bundle, reveal key and completed ledgers, rejects duplicate/aliased inputs, checks exact bundle-byte legacy fingerprints, and compares the full dossier value without writing or granting admission. All 17 triggered exact-head workflows succeeded before merge. Research: `docs/PHASE_35_RESEARCH.md`.
+
+### Phase 36 — Versioned Cryptographic Blind-Review Evidence Binding — in progress
+
+Branch: `phase-36-cryptographic-evidence-binding`.
+
+Goal: replace FNV-only evidence binding for newly generated review artifacts with a schema-v2 SHA-256 chain while keeping legacy v1 artifacts readable.
+
+Current scope:
+
+- reuse the already-present RustCrypto `sha2` dependency through a small `project-engine::artifact_integrity` helper; no new dependency source;
+- schema-v2 reveal keys bind the exact blind-bundle bytes with `bundle_sha256`;
+- schema-v2 ledgers independently bind the same bundle bytes;
+- schema-v2 dossiers require matching key/ledger SHA-256 and reject downgrade to legacy ledgers;
+- Phase-35 verification recomputes SHA-256 from supplied bundle bytes before accepting a v2 chain;
+- legacy v1 artifacts retain their explicitly weaker FNV/corpus/case semantics;
+- reviewer identity/signatures, provider authorization and manuscript transfer remain out of scope.
+
+Research and exit criteria: `docs/PHASE_36_RESEARCH.md`.
+
 ## Next Action Rule
 
 Always finish and verify the current numbered phase before starting the next numbered phase. Supporting tooling may be added only when it leaves runtime defaults intact and has an explicit owner/failure boundary. Do not treat branch-only work as merged. When a phase changes architecture, persistence, quality, or publishing contracts, update `IMPLEMENTATION_STATUS.md`, this roadmap, engineering decisions, external-integration notes, and project-memory notes together.
