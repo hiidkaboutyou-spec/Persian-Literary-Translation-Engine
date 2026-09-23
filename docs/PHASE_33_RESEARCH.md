@@ -75,3 +75,7 @@ Phase 33's governance core is compiled and exercised by a dedicated integration 
 4. Unknown governance evidence demonstrably blocks Atria eligibility.
 5. A provider absent from the Phase 32 dossier is rejected.
 6. Production admission remains impossible in this phase.
+
+## Follow-up: Phase 34 artifact-install race
+
+The original Phase-33 implementation checked `path.exists()` and later called `rename`. On Unix, `rename` can replace a destination created between those operations. Phase 34 installs the already synced temporary file using a same-directory exclusive hard link; if the destination appeared, installation fails without replacing it. The regression test creates the destination during serialization and checks both preservation and temporary-file cleanup. This is local filesystem integrity only; it does not grant admission or alter provider selection.
