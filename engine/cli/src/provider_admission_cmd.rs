@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::io::Write;
 use std::path::Path;
@@ -10,12 +11,26 @@ const ASSESSMENT_SCHEMA_VERSION: u32 = 1;
 #[derive(Debug, Deserialize)]
 struct ReviewDossier {
     schema_version: u32,
+    corpus_id: String,
+    bundle_fingerprint: String,
+    reviewers: Vec<String>,
+    review_ledgers: usize,
+    cases_total: usize,
+    judgments_total: usize,
+    preference_judgments: usize,
+    ties: usize,
+    deferred: usize,
+    cases_with_multiple_reviews: usize,
+    unanimous_cases: usize,
+    disagreement_cases: usize,
+    system_preference_counts: BTreeMap<String, usize>,
     system_one: String,
     system_two: String,
     automatic_winner: Option<String>,
     human_comparative_evidence_only: bool,
     production_admission: String,
     requires_explicit_admission_decision: bool,
+    reveal_binding: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -160,6 +175,41 @@ fn validate_dossier(d: &ReviewDossier) -> Result<()> {
         || d.automatic_winner.is_some()
     {
         return Err("dossier does not preserve the Phase 32 non-admission contract".into());
+    }
+    let reviewers = d.reviewers.iter().collect::<BTreeSet<_>>();
+    if d.corpus_id.trim().is_empty()
+        || d.bundle_fingerprint.trim().is_empty()
+        || d.system_one.trim().is_empty()
+        || d.system_two.trim().is_empty()
+        || d.system_one == d.system_two
+        || d.review_ledgers == 0
+        || d.cases_total == 0
+        || reviewers.len() != d.review_ledgers
+        || d.reviewers.iter().any(|reviewer| reviewer.trim().is_empty())
+        || d.reveal_binding != "phase31-key-schema-v1: corpus_id + exact case-id set; ledger bundle fingerprint binds reviewers to the same blind bundle"
+    {
+        return Err("dossier lacks complete, distinct Phase 32 review identity".into());
+    }
+    let expected_judgments = d.cases_total.checked_mul(d.review_ledgers);
+    let classified = d
+        .preference_judgments
+        .checked_add(d.ties)
+        .and_then(|v| v.checked_add(d.deferred));
+    let counted_preferences = d
+        .system_preference_counts
+        .values()
+        .try_fold(0usize, |sum, count| sum.checked_add(*count));
+    if expected_judgments != Some(d.judgments_total)
+        || classified != Some(d.judgments_total)
+        || counted_preferences != Some(d.preference_judgments)
+        || d.system_preference_counts.len() != 2
+        || !d.system_preference_counts.contains_key(&d.system_one)
+        || !d.system_preference_counts.contains_key(&d.system_two)
+        || d.cases_with_multiple_reviews > d.cases_total
+        || d.unanimous_cases.checked_add(d.disagreement_cases)
+            != Some(d.cases_with_multiple_reviews)
+    {
+        return Err("dossier has inconsistent Phase 32 review counts".into());
     }
     Ok(())
 }
