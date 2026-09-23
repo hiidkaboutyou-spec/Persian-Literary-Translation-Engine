@@ -310,20 +310,25 @@ fn run_verify(args: &[String]) -> Result<()> {
         fs::read(bundle_path).map_err(|error| format!("failed to read {bundle_path}: {error}"))?;
     let key_bytes =
         fs::read(key_path).map_err(|error| format!("failed to read {key_path}: {error}"))?;
-    let dossier_bytes = fs::read(dossier_path)
-        .map_err(|error| format!("failed to read {dossier_path}: {error}"))?;
+    let (key, bundle_sha256) =
+        validate_bundle_key_bytes(&bundle_bytes, &key_bytes, false)?;
+
     let ledger_bytes = ledger_paths
         .iter()
         .map(|path| fs::read(path).map_err(|error| format!("failed to read {path}: {error}")))
         .collect::<Result<Vec<_>>>()?;
-
-    verify_evidence_bytes(
+    let ledgers = validate_ledger_evidence(
         &bundle_bytes,
-        &key_bytes,
-        &dossier_bytes,
+        &bundle_sha256,
+        &key,
         &ledger_bytes,
         false,
     )?;
+
+    let dossier_bytes = fs::read(dossier_path)
+        .map_err(|error| format!("failed to read {dossier_path}: {error}"))?;
+    verify_dossier_bytes(&key, &ledgers, &dossier_bytes)?;
+
     println!("review dossier verified against supplied local evidence: {dossier_path}");
     println!("production admission: NOT GRANTED");
     Ok(())
@@ -422,8 +427,8 @@ fn run_verify_authenticated(args: &[String]) -> Result<()> {
         fs::read(bundle_path).map_err(|error| format!("failed to read {bundle_path}: {error}"))?;
     let key_bytes =
         fs::read(key_path).map_err(|error| format!("failed to read {key_path}: {error}"))?;
-    let dossier_bytes = fs::read(dossier_path)
-        .map_err(|error| format!("failed to read {dossier_path}: {error}"))?;
+    let (key, bundle_sha256) =
+        validate_bundle_key_bytes(&bundle_bytes, &key_bytes, true)?;
 
     let mut ledger_bytes = Vec::new();
     let mut signature_paths = Vec::new();
@@ -436,17 +441,22 @@ fn run_verify_authenticated(args: &[String]) -> Result<()> {
         signature_paths.push(evidence_paths[index + 1]);
     }
 
-    verify_evidence_bytes(
+    let ledgers = validate_ledger_evidence(
         &bundle_bytes,
-        &key_bytes,
-        &dossier_bytes,
+        &bundle_sha256,
+        &key,
         &ledger_bytes,
         true,
     )?;
+    let dossier_bytes = fs::read(dossier_path)
+        .map_err(|error| format!("failed to read {dossier_path}: {error}"))?;
+    verify_dossier_bytes(&key, &ledgers, &dossier_bytes)?;
 
-    for (bytes, signature_path) in ledger_bytes.iter().zip(signature_paths) {
-        let ledger = parse_ledger_bytes(bytes, "authenticated ledger")?;
-        validate_authenticatable_ledger(&ledger)?;
+    for ((bytes, ledger), signature_path) in ledger_bytes
+        .iter()
+        .zip(&ledgers)
+        .zip(signature_paths)
+    {
         ssh_verify_bytes(
             bytes,
             signature_path,
@@ -463,13 +473,11 @@ fn run_verify_authenticated(args: &[String]) -> Result<()> {
     Ok(())
 }
 
-fn verify_evidence_bytes(
+fn validate_bundle_key_bytes(
     bundle_bytes: &[u8],
     key_bytes: &[u8],
-    dossier_bytes: &[u8],
-    ledger_bytes: &[Vec<u8>],
     require_authenticated_schema: bool,
-) -> Result<()> {
+) -> Result<(BlindComparisonKeyInput, String)> {
     let bundle: BlindComparisonBundleInput = serde_json::from_slice(bundle_bytes)
         .map_err(|error| format!("invalid blind comparison bundle: {error}"))?;
     validate_bundle(&bundle)?;
@@ -500,16 +508,28 @@ fn verify_evidence_bytes(
         return Err("reveal-key SHA-256 differs from the supplied blind bundle".into());
     }
 
+    Ok((key, bundle_sha256))
+}
+
+fn validate_ledger_evidence(
+    bundle_bytes: &[u8],
+    bundle_sha256: &str,
+    key: &BlindComparisonKeyInput,
+    ledger_bytes: &[Vec<u8>],
+    require_authenticated_schema: bool,
+) -> Result<Vec<BlindReviewLedger>> {
     let ledgers = ledger_bytes
         .iter()
         .enumerate()
         .map(|(index, bytes)| parse_ledger_bytes(bytes, &format!("ledger {}", index + 1)))
         .collect::<Result<Vec<_>>>()?;
+
     if require_authenticated_schema {
         for ledger in &ledgers {
             validate_authenticatable_ledger(ledger)?;
         }
     }
+
     if ledgers
         .iter()
         .any(|ledger| ledger.bundle_fingerprint != fingerprint(bundle_bytes))
@@ -518,7 +538,7 @@ fn verify_evidence_bytes(
     }
     if ledgers.iter().any(|ledger| {
         ledger.schema_version == LEDGER_SCHEMA_VERSION
-            && ledger.bundle_sha256.as_deref() != Some(bundle_sha256.as_str())
+            && ledger.bundle_sha256.as_deref() != Some(bundle_sha256)
     }) {
         return Err("review ledger SHA-256 differs from the supplied blind bundle".into());
     }
@@ -530,7 +550,15 @@ fn verify_evidence_bytes(
         return Err("schema-2 reveal key requires schema-2 review ledgers".into());
     }
 
-    let expected = serde_json::to_value(build_dossier(&key, &ledgers)?)
+    Ok(ledgers)
+}
+
+fn verify_dossier_bytes(
+    key: &BlindComparisonKeyInput,
+    ledgers: &[BlindReviewLedger],
+    dossier_bytes: &[u8],
+) -> Result<()> {
+    let expected = serde_json::to_value(build_dossier(key, ledgers)?)
         .map_err(|error| format!("failed to reconstruct dossier: {error}"))?;
     let actual: serde_json::Value = serde_json::from_slice(dossier_bytes)
         .map_err(|error| format!("invalid review dossier: {error}"))?;
