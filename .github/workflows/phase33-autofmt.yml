@@ -1,0 +1,27 @@
+name: Phase 33 Autofmt
+on:
+  push:
+    branches: [phase-33-provider-admission-governance]
+permissions:
+  contents: write
+jobs:
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase-33-provider-admission-governance
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - name: Format Phase 33 Rust
+        working-directory: engine
+        run: cargo fmt --all
+      - name: Commit formatting if needed
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add engine/cli/src/provider_admission_cmd.rs engine/cli/tests/phase33_provider_admission.rs
+          git commit -m "style(phase33): apply rustfmt"
+          git push origin HEAD:phase-33-provider-admission-governance
