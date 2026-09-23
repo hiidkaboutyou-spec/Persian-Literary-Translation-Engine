@@ -355,9 +355,9 @@ PR #123 merged at `6764b195d35364a1a9323244b09c18167d23a7c8`. Human review ledge
 
 PR #124 merged at `08d18a0ee639339e2625de442cc4c3aa86605e1d`. Unknown or unacceptable hosted-provider governance evidence blocks eligibility; an eligible assessment still cannot authorize or select a provider. Research: `docs/PHASE_33_RESEARCH.md`.
 
-### Phase 34 — Admission Artifact Integrity — in progress
+### Phase 34 — Admission Evidence & Artifact Integrity — canonical
 
-Make assessment output installation refuse overwrite even when another process creates the destination after the initial existence check. Validate the Phase-32 dossier identity, reviewer count, judgment partitions, per-system preference totals and reveal binding before evaluating provider eligibility. Reject incomplete or contradictory dossiers without creating an assessment. No production selector, provider keys, manuscript, or dependency changes.
+PR #125 merged at `ae34a07e08926e073db43db82fa04672640d1048` after all 17 exact-head workflows succeeded. Assessment output installation refuses overwrite even when another process creates the destination after the initial existence check. Validate the Phase-32 dossier identity, reviewer count, judgment partitions, per-system preference totals and reveal binding before evaluating provider eligibility. Reject incomplete or contradictory dossiers without creating an assessment. No production selector, provider keys, manuscript, or dependency changes.
 
 ## Next Action Rule
 

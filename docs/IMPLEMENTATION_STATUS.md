@@ -6,7 +6,7 @@ A production-grade English-to-Persian literary translation engine with a Rust co
 
 ## Canonical Main State
 
-`main` is canonical through Phase 33 (PR #124, merge `08d18a0ee639339e2625de442cc4c3aa86605e1d`).
+`main` is canonical through Phase 34 (PR #125, merge `ae34a07e08926e073db43db82fa04672640d1048`).
 
 Phase 26 PR #111 landed from final validated head `8418fdf4eb06252dec8a014c13e789efa7fe800e` at merge commit `5c0d4c8514b999faf786971da8541f7ea5a1b773`.
 
@@ -332,9 +332,9 @@ PR #123 merged at `6764b195d35364a1a9323244b09c18167d23a7c8`. The existing CLI n
 
 PR #124 merged at `08d18a0ee639339e2625de442cc4c3aa86605e1d`, from final head `fb06a2f94e1a7b8bc7d79b5a93a7fea514922da4`. Exact-head Rust CI, Security, Phase 31 and Phase 33 gates succeeded. The separate admission assessment accepts a Phase-32 dossier and governance profile; unknown or unacceptable evidence blocks eligibility. Assessment does not authorize a provider, change runtime selection, or send a manuscript. Hosted Atria data-handling terms remain unknown. Research: `docs/PHASE_33_RESEARCH.md`.
 
-## Phase 34 — Admission Artifact Integrity — in progress
+## Phase 34 — Admission Evidence & Artifact Integrity — canonical
 
-Branch: `phase-34-admission-artifact-integrity`. Close the Phase-33 output-install race and require a structurally complete Phase-32 dossier before governance eligibility can be assessed. Verify collision preservation and reject missing/inconsistent reviewer counts and reveal binding. No provider activation or manuscript transfer is in scope.
+PR #125 merged at `ae34a07e08926e073db43db82fa04672640d1048` from final validated head `d2d5f21afd647dd10ec88553c2b9d8d6f3b50bad`. All 17 triggered exact-head workflows passed, including Phase 33, Rust CI, Security, desktop Apple Silicon and Trusted Release. Close the Phase-33 output-install race and require a structurally complete Phase-32 dossier before governance eligibility can be assessed. Verify collision preservation and reject missing/inconsistent reviewer counts and reveal binding. No provider activation or manuscript transfer is in scope.
 
 The seven proposed developer-tool repositories were reviewed in `docs/DEVELOPER_TOOL_CANDIDATES_2026-09-23.md`; none has an installation case against a measured gap in this phase.
 
@@ -344,4 +344,4 @@ The canonical CLI and desktop application remain operationally independent. Phas
 
 ## Current Handoff
 
-Phase 33 is canonical; Phase 34 hardens assessment output creation against concurrent destination creation. Private-book provider admission still requires verified terms, human literary evidence, and a separate explicit owner decision. The Atria adapter remains research-only.
+Phase 34 is canonical. Admission assessment now rejects an incomplete or contradictory Phase-32 dossier and refuses output overwrite under concurrent creation. The seven developer-tool adoption decisions are recorded in `docs/DEVELOPER_TOOL_CANDIDATES_2026-09-23.md`. Private-book provider admission still requires verified terms, human literary evidence, and a separate explicit owner decision. The Atria adapter remains research-only.
