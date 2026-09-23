@@ -4,7 +4,6 @@ use std::env;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::ExitCode;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 type Result<T> = std::result::Result<T, String>;
@@ -123,20 +122,10 @@ struct ProviderReviewDossier {
 }
 
 fn usage() -> &'static str {
-    "Usage:\n  literary-provider-review init <blind-bundle.json> <ledger.json> --reviewer <id>\n  literary-provider-review record <ledger.json> <case-id> <a|b|tie|defer> --reason <text> [--adequacy-note <text>] [--voice-note <text>] [--culture-note <text>] [--continuity-note <text>]\n  literary-provider-review dossier <reveal-key.json> <dossier.json> <ledger.json> [ledger2.json ...]\n\nThe review ledger never receives the reveal key. Dossier generation requires complete ledgers and never grants production admission."
+    "Usage:\n  literary-engine blind-review init <blind-bundle.json> <ledger.json> --reviewer <id>\n  literary-engine blind-review record <ledger.json> <case-id> <a|b|tie|defer> --reason <text> [--adequacy-note <text>] [--voice-note <text>] [--culture-note <text>] [--continuity-note <text>]\n  literary-engine blind-review dossier <reveal-key.json> <dossier.json> <ledger.json> [ledger2.json ...]\n\nThe review ledger never receives the reveal key. Dossier generation requires complete ledgers and never grants production admission."
 }
 
-fn main() -> ExitCode {
-    match run(&env::args().skip(1).collect::<Vec<_>>()) {
-        Ok(()) => ExitCode::SUCCESS,
-        Err(error) => {
-            eprintln!("error: {error}");
-            ExitCode::FAILURE
-        }
-    }
-}
-
-fn run(args: &[String]) -> Result<()> {
+pub(crate) fn run_provider_review(args: &[String]) -> Result<()> {
     let command = args.first().map(String::as_str).unwrap_or_default();
     match command {
         "init" => run_init(&args[1..]),
