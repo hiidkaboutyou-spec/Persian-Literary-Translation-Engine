@@ -376,7 +376,7 @@ The documentation-only canonical handoff PR #129 then merged at `b8c9f17d2323f1f
 
 Research: `docs/PHASE_36_RESEARCH.md`.
 
-### Phase 37 — Authenticated Reviewer Evidence with Offline SSHSIG — in progress
+### Phase 37 — Authenticated Reviewer Ledger Evidence with Offline SSHSIG — in progress
 
 Branch: `phase-37-authenticated-reviewer-evidence`.
 
@@ -389,11 +389,13 @@ Current scope:
 - verifier-controlled OpenSSH `allowed_signers` trust root mapped to the ledger reviewer principal;
 - optional KRL/revoked-key enforcement;
 - private signing keys, trust roots and revocation files remain external to project state;
-- authenticated end-to-end verification reuses the same in-memory ledger bytes for SHA-256/dossier checks and SSHSIG verification;
+- reviewer-authenticated verification reuses the same in-memory ledger bytes for Phase-36 SHA-256/dossier consistency checks and SSHSIG verification;
 - legacy v1 evidence remains supported by the existing unsigned verification path but cannot claim authenticated status;
 - no new Rust/Python/npm package, provider, production selector or manuscript-transfer capability.
 
 Research and exit criteria: `docs/PHASE_37_RESEARCH.md`.
+
+Next measured frontier: Phase 38 reveal-authority provenance. The hidden reveal-key mapping is not authenticated by reviewer ledger signatures, so do not claim end-to-end evidence authenticity until its creation/reveal authority has an independently verifiable provenance mechanism that preserves blindness.
 
 ## Next Action Rule
 
