@@ -12,8 +12,7 @@ type Result<T> = std::result::Result<T, String>;
 
 const LEDGER_SCHEMA_VERSION: u32 = 2;
 const DOSSIER_SCHEMA_VERSION: u32 = 2;
-const REVIEW_SIGNATURE_NAMESPACE: &str =
-    "blind-review@persian-literary-translation-engine";
+const REVIEW_SIGNATURE_NAMESPACE: &str = "blind-review@persian-literary-translation-engine";
 
 #[derive(Debug, Deserialize)]
 struct BlindComparisonBundleInput {
@@ -311,8 +310,8 @@ fn run_verify(args: &[String]) -> Result<()> {
         fs::read(bundle_path).map_err(|error| format!("failed to read {bundle_path}: {error}"))?;
     let key_bytes =
         fs::read(key_path).map_err(|error| format!("failed to read {key_path}: {error}"))?;
-    let dossier_bytes =
-        fs::read(dossier_path).map_err(|error| format!("failed to read {dossier_path}: {error}"))?;
+    let dossier_bytes = fs::read(dossier_path)
+        .map_err(|error| format!("failed to read {dossier_path}: {error}"))?;
     let ledger_bytes = ledger_paths
         .iter()
         .map(|path| fs::read(path).map_err(|error| format!("failed to read {path}: {error}")))
@@ -334,8 +333,7 @@ fn run_sign_ledger(args: &[String]) -> Result<()> {
     let flags = ["--key"];
     let ledger_path = positional(args, 0, &flags).ok_or_else(|| usage().to_string())?;
     let signature_path = positional(args, 1, &flags).ok_or_else(|| usage().to_string())?;
-    let key_path = strict_flag_value(args, "--key", true)?
-        .expect("required flag validated above");
+    let key_path = strict_flag_value(args, "--key", true)?.expect("required flag validated above");
 
     ensure_output_distinct(signature_path, &[ledger_path, key_path])?;
     ensure_unique_inputs(&[ledger_path, key_path])?;
@@ -363,8 +361,8 @@ fn run_verify_ledger_signature(args: &[String]) -> Result<()> {
     let flags = ["--allowed-signers", "--revocations"];
     let ledger_path = positional(args, 0, &flags).ok_or_else(|| usage().to_string())?;
     let signature_path = positional(args, 1, &flags).ok_or_else(|| usage().to_string())?;
-    let allowed_signers = strict_flag_value(args, "--allowed-signers", true)?
-        .expect("required flag validated above");
+    let allowed_signers =
+        strict_flag_value(args, "--allowed-signers", true)?.expect("required flag validated above");
     let revocations = strict_flag_value(args, "--revocations", false)?;
 
     let mut inputs = vec![ledger_path, signature_path, allowed_signers];
@@ -424,8 +422,8 @@ fn run_verify_authenticated(args: &[String]) -> Result<()> {
         fs::read(bundle_path).map_err(|error| format!("failed to read {bundle_path}: {error}"))?;
     let key_bytes =
         fs::read(key_path).map_err(|error| format!("failed to read {key_path}: {error}"))?;
-    let dossier_bytes =
-        fs::read(dossier_path).map_err(|error| format!("failed to read {dossier_path}: {error}"))?;
+    let dossier_bytes = fs::read(dossier_path)
+        .map_err(|error| format!("failed to read {dossier_path}: {error}"))?;
 
     let mut ledger_bytes = Vec::new();
     let mut signature_paths = Vec::new();
@@ -474,8 +472,8 @@ fn verify_evidence_bytes(
         .map_err(|error| format!("invalid blind comparison bundle: {error}"))?;
     validate_bundle(&bundle)?;
 
-    let key: BlindComparisonKeyInput =
-        serde_json::from_slice(key_bytes).map_err(|error| format!("invalid reveal key: {error}"))?;
+    let key: BlindComparisonKeyInput = serde_json::from_slice(key_bytes)
+        .map_err(|error| format!("invalid reveal key: {error}"))?;
     validate_key(&key)?;
     if require_authenticated_schema && key.schema_version != 2 {
         return Err("authenticated verification requires a schema-2 reveal key".to_string());
@@ -568,14 +566,16 @@ fn validate_authenticatable_ledger(ledger: &BlindReviewLedger) -> Result<()> {
 fn validate_reviewer_principal(reviewer: &str) -> Result<()> {
     let trimmed = reviewer.trim();
     if reviewer != trimmed {
-        return Err("authenticated reviewer principal must not contain leading or trailing whitespace".to_string());
+        return Err(
+            "authenticated reviewer principal must not contain leading or trailing whitespace"
+                .to_string(),
+        );
     }
     if reviewer.is_empty() || reviewer.len() > 128 {
         return Err("authenticated reviewer principal must contain 1..=128 bytes".to_string());
     }
     if !reviewer.bytes().all(|byte| {
-        byte.is_ascii_alphanumeric()
-            || matches!(byte, b'.' | b'_' | b'@' | b'+' | b'-' | b':')
+        byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'@' | b'+' | b'-' | b':')
     }) {
         return Err(
             "authenticated reviewer principal may contain only ASCII letters, digits, '.', '_', '@', '+', '-', or ':'"
@@ -623,10 +623,7 @@ fn ssh_sign_bytes(bytes: &[u8], key_path: &str) -> Result<Vec<u8>> {
             bounded_command_error(&output.stderr)
         ));
     }
-    if !output
-        .stdout
-        .starts_with(b"-----BEGIN SSH SIGNATURE-----")
-    {
+    if !output.stdout.starts_with(b"-----BEGIN SSH SIGNATURE-----") {
         return Err("ssh-keygen returned an unexpected reviewer signature format".to_string());
     }
     Ok(output.stdout)
@@ -738,8 +735,12 @@ fn write_bytes_new_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
                 path.display()
             )
         })?;
-        fs::remove_file(&temp_path)
-            .map_err(|error| format!("failed to remove {} after install: {error}", temp_path.display()))?;
+        fs::remove_file(&temp_path).map_err(|error| {
+            format!(
+                "failed to remove {} after install: {error}",
+                temp_path.display()
+            )
+        })?;
         Ok(())
     })();
 
@@ -1707,7 +1708,10 @@ mod tests {
             .arg(&key)
             .status()
             .expect("ssh-keygen should start");
-        assert!(status.success(), "test reviewer key generation should succeed");
+        assert!(
+            status.success(),
+            "test reviewer key generation should succeed"
+        );
 
         let public_text = fs::read_to_string(&public_key).unwrap();
         let mut fields = public_text.split_whitespace();
@@ -1725,8 +1729,7 @@ mod tests {
 
         let dir = tempdir().unwrap();
         let reviewer = "reviewer@example.test";
-        let (signing_key, public_key, allowed_signers) =
-            generate_test_signer(dir.path(), reviewer);
+        let (signing_key, public_key, allowed_signers) = generate_test_signer(dir.path(), reviewer);
         let wrong_allowed = dir.path().join("wrong_allowed_signers");
         let public_text = fs::read_to_string(&public_key).unwrap();
         let mut fields = public_text.split_whitespace();
@@ -1828,11 +1831,7 @@ mod tests {
         .unwrap();
 
         let original_ledger = fs::read(&ledger_path).unwrap();
-        fs::write(
-            &ledger_path,
-            [original_ledger.as_slice(), b"\n"].concat(),
-        )
-        .unwrap();
+        fs::write(&ledger_path, [original_ledger.as_slice(), b"\n"].concat()).unwrap();
         let tampered = run_provider_review(&[
             "verify-ledger-signature".into(),
             paths[3].clone(),
@@ -1934,5 +1933,4 @@ mod tests {
             .unwrap_err()
             .contains("only once"));
     }
-
 }
