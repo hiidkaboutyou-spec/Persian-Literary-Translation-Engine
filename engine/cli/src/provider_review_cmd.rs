@@ -394,8 +394,8 @@ fn run_verify_authenticated(args: &[String]) -> Result<()> {
     let bundle_path = positional(args, 0, &flags).ok_or_else(|| usage().to_string())?;
     let key_path = positional(args, 1, &flags).ok_or_else(|| usage().to_string())?;
     let dossier_path = positional(args, 2, &flags).ok_or_else(|| usage().to_string())?;
-    let allowed_signers = strict_flag_value(args, "--allowed-signers", true)?
-        .expect("required flag validated above");
+    let allowed_signers =
+        strict_flag_value(args, "--allowed-signers", true)?.expect("required flag validated above");
     let revocations = strict_flag_value(args, "--revocations", false)?;
 
     let mut evidence_paths = Vec::new();
