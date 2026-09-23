@@ -1189,4 +1189,89 @@ mod tests {
         let error = build_dossier(&key, &[legacy]).unwrap_err();
         assert!(error.contains("schema-2 reveal key"));
     }
+
+    #[test]
+    fn schema_two_evidence_chain_verifies_exact_bundle_bytes() {
+        let dir = tempdir().unwrap();
+        let bundle = dir.path().join("bundle.json");
+        let key = dir.path().join("key.json");
+        let ledger = dir.path().join("ledger.json");
+        let dossier = dir.path().join("dossier.json");
+        let bundle_bytes =
+            br#"{"schema_version":1,"corpus_id":"phase36-e2e","cases":[{"case_id":"c1"}]}"#;
+        fs::write(&bundle, bundle_bytes).unwrap();
+        let digest = sha256_hex(bundle_bytes);
+        fs::write(
+            &key,
+            serde_json::json!({
+                "schema_version": 2,
+                "corpus_id": "phase36-e2e",
+                "bundle_sha256": digest,
+                "system_one": "one",
+                "system_two": "two",
+                "assignments": [{
+                    "case_id": "c1",
+                    "candidate_a_system": "one",
+                    "candidate_b_system": "two"
+                }]
+            })
+            .to_string(),
+        )
+        .unwrap();
+
+        let bundle_path = bundle.to_string_lossy().into_owned();
+        let key_path = key.to_string_lossy().into_owned();
+        let ledger_path = ledger.to_string_lossy().into_owned();
+        let dossier_path = dossier.to_string_lossy().into_owned();
+
+        run_provider_review(&[
+            "init".into(),
+            bundle_path.clone(),
+            ledger_path.clone(),
+            "--reviewer".into(),
+            "reviewer".into(),
+        ])
+        .unwrap();
+        run_provider_review(&[
+            "record".into(),
+            ledger_path.clone(),
+            "c1".into(),
+            "a".into(),
+            "--reason".into(),
+            "Synthetic reason".into(),
+        ])
+        .unwrap();
+        run_provider_review(&[
+            "dossier".into(),
+            key_path.clone(),
+            dossier_path.clone(),
+            ledger_path.clone(),
+        ])
+        .unwrap();
+        run_provider_review(&[
+            "verify".into(),
+            bundle_path.clone(),
+            key_path.clone(),
+            dossier_path.clone(),
+            ledger_path.clone(),
+        ])
+        .unwrap();
+
+        let dossier_json: serde_json::Value =
+            serde_json::from_slice(&fs::read(&dossier).unwrap()).unwrap();
+        assert_eq!(dossier_json["schema_version"], 2);
+        assert_eq!(dossier_json["bundle_sha256"], sha256_hex(bundle_bytes));
+
+        fs::write(&bundle, [bundle_bytes.as_slice(), b"\n"].concat()).unwrap();
+        let error = run_provider_review(&[
+            "verify".into(),
+            bundle_path,
+            key_path,
+            dossier_path,
+            ledger_path,
+        ])
+        .unwrap_err();
+        assert!(error.contains("reveal-key SHA-256 differs"));
+    }
+
 }
