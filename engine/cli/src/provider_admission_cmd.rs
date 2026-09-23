@@ -245,8 +245,11 @@ fn write_json_atomic<T: Serialize>(path: &Path, value: &T) -> Result<()> {
             .and_then(|_| f.write_all(b"\n"))
             .and_then(|_| f.sync_all())
             .map_err(|e| format!("failed to persist assessment: {e}"))?;
-        fs::rename(&tmp, path)
-            .map_err(|e| format!("failed to atomically install assessment: {e}"))?;
+        // rename replaces an existing destination on Unix. A same-directory hard link
+        // installs the fully synced file only if the destination is still absent.
+        fs::hard_link(&tmp, path)
+            .map_err(|e| format!("failed to install assessment without overwrite: {e}"))?;
+        let _ = fs::remove_file(&tmp);
         Ok(())
     })();
     if result.is_err() {
@@ -267,6 +270,30 @@ fn fingerprint(bytes: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde::Serializer;
+
+    #[test]
+    fn assessment_install_does_not_replace_file_created_after_initial_check() {
+        struct CreateDestination<'a>(&'a Path);
+        impl Serialize for CreateDestination<'_> {
+            fn serialize<S: Serializer>(
+                &self,
+                serializer: S,
+            ) -> std::result::Result<S::Ok, S::Error> {
+                fs::write(self.0, b"existing owner data").map_err(serde::ser::Error::custom)?;
+                serializer.serialize_str("new assessment")
+            }
+        }
+        let dir = std::env::temp_dir().join(format!("admission-install-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let output = dir.join("assessment.json");
+        let _ = fs::remove_file(&output);
+        let err = write_json_atomic(&output, &CreateDestination(&output)).unwrap_err();
+        assert!(err.contains("without overwrite"));
+        assert_eq!(fs::read(&output).unwrap(), b"existing owner data");
+        assert_eq!(fs::read_dir(&dir).unwrap().count(), 1);
+        fs::remove_dir_all(dir).unwrap();
+    }
     fn item(status: EvidenceStatus) -> EvidenceItem {
         EvidenceItem {
             status,
