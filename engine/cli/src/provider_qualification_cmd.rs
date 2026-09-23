@@ -751,8 +751,7 @@ mod tests {
         .unwrap();
 
         let bundle_bytes = fs::read(&bundle_path).unwrap();
-        let key: serde_json::Value =
-            serde_json::from_slice(&fs::read(&key_path).unwrap()).unwrap();
+        let key: serde_json::Value = serde_json::from_slice(&fs::read(&key_path).unwrap()).unwrap();
         assert_eq!(key["schema_version"], 2);
         assert_eq!(key["bundle_sha256"], sha256_hex(&bundle_bytes));
         assert_ne!(
