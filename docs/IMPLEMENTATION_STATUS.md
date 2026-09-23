@@ -345,3 +345,7 @@ The canonical CLI and desktop application remain operationally independent. Phas
 ## Current Handoff
 
 Phase 34 is canonical. Admission assessment now rejects an incomplete or contradictory Phase-32 dossier and refuses output overwrite under concurrent creation. The seven developer-tool adoption decisions are recorded in `docs/DEVELOPER_TOOL_CANDIDATES_2026-09-23.md`. Private-book provider admission still requires verified terms, human literary evidence, and a separate explicit owner decision. The Atria adapter remains research-only.
+
+## Phase 35 — Reproducible Blind Review Dossier Verification — in progress
+
+The CLI's offline `blind-review verify` recomputes a Phase-32 dossier from the original blind bundle, reveal key, and completed reviewer ledgers, checks the exact bundle-byte fingerprint and corpus/case identity, and compares every dossier field. It writes nothing and grants no provider admission. Synthetic regression fixtures cover changed dossier counts, recorded judgments, key assignments, and bundle bytes. Research and limits: `docs/PHASE_35_RESEARCH.md`. This stage is not canonical until exact-head CI and security gates pass and its PR is merged.

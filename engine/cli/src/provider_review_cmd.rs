@@ -122,7 +122,7 @@ struct ProviderReviewDossier {
 }
 
 fn usage() -> &'static str {
-    "Usage:\n  literary-engine blind-review init <blind-bundle.json> <ledger.json> --reviewer <id>\n  literary-engine blind-review record <ledger.json> <case-id> <a|b|tie|defer> --reason <text> [--adequacy-note <text>] [--voice-note <text>] [--culture-note <text>] [--continuity-note <text>]\n  literary-engine blind-review dossier <reveal-key.json> <dossier.json> <ledger.json> [ledger2.json ...]\n\nThe review ledger never receives the reveal key. Dossier generation requires complete ledgers and never grants production admission."
+    "Usage:\n  literary-engine blind-review init <blind-bundle.json> <ledger.json> --reviewer <id>\n  literary-engine blind-review record <ledger.json> <case-id> <a|b|tie|defer> --reason <text> [--adequacy-note <text>] [--voice-note <text>] [--culture-note <text>] [--continuity-note <text>]\n  literary-engine blind-review dossier <reveal-key.json> <dossier.json> <ledger.json> [ledger2.json ...]\n  literary-engine blind-review verify <blind-bundle.json> <reveal-key.json> <dossier.json> <ledger.json> [ledger2.json ...]\n\nThe review ledger never receives the reveal key. Verification reconstructs the dossier from local inputs without writing an artifact or granting production admission."
 }
 
 pub(crate) fn run_provider_review(args: &[String]) -> Result<()> {
@@ -131,6 +131,7 @@ pub(crate) fn run_provider_review(args: &[String]) -> Result<()> {
         "init" => run_init(&args[1..]),
         "record" => run_record(&args[1..]),
         "dossier" => run_dossier(&args[1..]),
+        "verify" => run_verify(&args[1..]),
         "--help" | "-h" | "help" => {
             println!("{}", usage());
             Ok(())
@@ -269,6 +270,67 @@ fn run_dossier(args: &[String]) -> Result<()> {
         dossier.unanimous_cases, dossier.disagreement_cases
     );
     println!("automatic winner: none");
+    println!("production admission: NOT GRANTED");
+    Ok(())
+}
+
+fn run_verify(args: &[String]) -> Result<()> {
+    let [bundle_path, key_path, dossier_path, ledger_paths @ ..] = args else {
+        return Err(usage().to_string());
+    };
+    if ledger_paths.is_empty() {
+        return Err("verify requires at least one completed blind review ledger".into());
+    }
+    ensure_unique_inputs(&args.iter().map(String::as_str).collect::<Vec<_>>())?;
+
+    let bundle_bytes =
+        fs::read(bundle_path).map_err(|error| format!("failed to read {bundle_path}: {error}"))?;
+    let bundle: BlindComparisonBundleInput = serde_json::from_slice(&bundle_bytes)
+        .map_err(|error| format!("invalid blind comparison bundle: {error}"))?;
+    validate_bundle(&bundle)?;
+
+    let key_bytes =
+        fs::read(key_path).map_err(|error| format!("failed to read {key_path}: {error}"))?;
+    let key: BlindComparisonKeyInput = serde_json::from_slice(&key_bytes)
+        .map_err(|error| format!("invalid reveal key: {error}"))?;
+    validate_key(&key)?;
+    let bundle_cases = bundle
+        .cases
+        .iter()
+        .map(|case| case.case_id.as_str())
+        .collect::<BTreeSet<_>>();
+    let key_cases = key
+        .assignments
+        .iter()
+        .map(|case| case.case_id.as_str())
+        .collect::<BTreeSet<_>>();
+    if bundle.corpus_id != key.corpus_id || bundle_cases != key_cases {
+        return Err("blind bundle and reveal key have different corpus or case ids".into());
+    }
+
+    let ledgers = ledger_paths
+        .iter()
+        .map(|path| read_ledger(path))
+        .collect::<Result<Vec<_>>>()?;
+    if ledgers
+        .iter()
+        .any(|ledger| ledger.bundle_fingerprint != fingerprint(&bundle_bytes))
+    {
+        return Err("review ledger fingerprint differs from the supplied blind bundle".into());
+    }
+    let expected = serde_json::to_value(build_dossier(&key, &ledgers)?)
+        .map_err(|error| format!("failed to reconstruct dossier: {error}"))?;
+    let actual_bytes = fs::read(dossier_path)
+        .map_err(|error| format!("failed to read {dossier_path}: {error}"))?;
+    let actual: serde_json::Value = serde_json::from_slice(&actual_bytes)
+        .map_err(|error| format!("invalid review dossier: {error}"))?;
+    if expected != actual {
+        return Err(
+            "review dossier differs from the supplied blind bundle, reveal key and completed ledgers"
+                .into(),
+        );
+    }
+    println!("review dossier verified against supplied local evidence: {dossier_path}");
     println!("production admission: NOT GRANTED");
     Ok(())
 }
@@ -845,5 +907,130 @@ mod tests {
     fn fingerprint_is_stable_and_sensitive() {
         assert_eq!(fingerprint(b"same"), fingerprint(b"same"));
         assert_ne!(fingerprint(b"same"), fingerprint(b"different"));
+    }
+
+    #[test]
+    fn verify_reconstructs_dossier_and_rejects_changed_evidence() {
+        let dir = tempdir().unwrap();
+        let bundle = dir.path().join("bundle.json");
+        let key = dir.path().join("key.json");
+        let ledger = dir.path().join("ledger.json");
+        let dossier = dir.path().join("dossier.json");
+        let paths =
+            [&bundle, &key, &dossier, &ledger].map(|path| path.to_string_lossy().into_owned());
+        fs::write(
+            &bundle,
+            r#"{"schema_version":1,"corpus_id":"synthetic","cases":[{"case_id":"c1"}]}"#,
+        )
+        .unwrap();
+        fs::write(
+            &key,
+            r#"{"schema_version":1,"corpus_id":"synthetic","system_one":"one","system_two":"two","assignments":[{"case_id":"c1","candidate_a_system":"one","candidate_b_system":"two"}]}"#,
+        )
+        .unwrap();
+        run_provider_review(&[
+            "init".into(),
+            paths[0].clone(),
+            paths[3].clone(),
+            "--reviewer".into(),
+            "reviewer".into(),
+        ])
+        .unwrap();
+        run_provider_review(&[
+            "record".into(),
+            paths[3].clone(),
+            "c1".into(),
+            "a".into(),
+            "--reason".into(),
+            "Synthetic reason".into(),
+        ])
+        .unwrap();
+        run_provider_review(&[
+            "dossier".into(),
+            paths[1].clone(),
+            paths[2].clone(),
+            paths[3].clone(),
+        ])
+        .unwrap();
+        let verify = || {
+            run_provider_review(&[
+                "verify".into(),
+                paths[0].clone(),
+                paths[1].clone(),
+                paths[2].clone(),
+                paths[3].clone(),
+            ])
+        };
+        verify().unwrap();
+
+        let original_dossier = fs::read(&dossier).unwrap();
+        let mut changed: serde_json::Value = serde_json::from_slice(&original_dossier).unwrap();
+        changed["system_preference_counts"]["one"] = serde_json::json!(0);
+        changed["system_preference_counts"]["two"] = serde_json::json!(1);
+        fs::write(&dossier, serde_json::to_vec(&changed).unwrap()).unwrap();
+        assert!(verify().unwrap_err().contains("differs"));
+        fs::write(&dossier, &original_dossier).unwrap();
+
+        let original_ledger = fs::read(&ledger).unwrap();
+        let mut changed: serde_json::Value = serde_json::from_slice(&original_ledger).unwrap();
+        changed["cases"][0]["decision"] = serde_json::json!("candidate_b");
+        fs::write(&ledger, serde_json::to_vec(&changed).unwrap()).unwrap();
+        assert!(verify().unwrap_err().contains("differs"));
+        fs::write(&ledger, &original_ledger).unwrap();
+
+        let original_key = fs::read(&key).unwrap();
+        let mut changed: serde_json::Value = serde_json::from_slice(&original_key).unwrap();
+        changed["assignments"][0]["candidate_a_system"] = serde_json::json!("two");
+        changed["assignments"][0]["candidate_b_system"] = serde_json::json!("one");
+        fs::write(&key, serde_json::to_vec(&changed).unwrap()).unwrap();
+        assert!(verify().unwrap_err().contains("differs"));
+        fs::write(&key, &original_key).unwrap();
+
+        let original_bundle = fs::read(&bundle).unwrap();
+        fs::write(&bundle, [original_bundle.as_slice(), b"\n"].concat()).unwrap();
+        assert!(verify().unwrap_err().contains("fingerprint differs"));
+        fs::write(&bundle, &original_bundle).unwrap();
+        verify().unwrap();
+    }
+
+    #[test]
+    fn verify_rejects_duplicate_paths_and_mismatched_bundle_key() {
+        let dir = tempdir().unwrap();
+        let bundle = dir.path().join("bundle.json");
+        let key = dir.path().join("key.json");
+        let dossier = dir.path().join("dossier.json");
+        let ledger = dir.path().join("ledger.json");
+        fs::write(
+            &bundle,
+            r#"{"schema_version":1,"corpus_id":"synthetic","cases":[{"case_id":"c1"}]}"#,
+        )
+        .unwrap();
+        fs::write(
+            &key,
+            r#"{"schema_version":1,"corpus_id":"synthetic","system_one":"one","system_two":"two","assignments":[{"case_id":"c2","candidate_a_system":"one","candidate_b_system":"two"}]}"#,
+        )
+        .unwrap();
+        let paths =
+            [&bundle, &key, &dossier, &ledger].map(|path| path.to_string_lossy().into_owned());
+        let args = [
+            "verify".into(),
+            paths[0].clone(),
+            paths[1].clone(),
+            paths[2].clone(),
+            paths[3].clone(),
+        ];
+        assert!(run_provider_review(&args)
+            .unwrap_err()
+            .contains("different corpus or case ids"));
+        let alias_args = [
+            "verify".into(),
+            paths[0].clone(),
+            paths[1].clone(),
+            paths[2].clone(),
+            paths[2].clone(),
+        ];
+        assert!(run_provider_review(&alias_args)
+            .unwrap_err()
+            .contains("duplicate input"));
     }
 }
