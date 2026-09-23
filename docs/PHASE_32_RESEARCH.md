@@ -14,9 +14,11 @@ These papers do **not** prove that a provider is suitable for this project or fo
 
 ## Phase 32 design
 
+Phase 32 is integrated as `literary-engine blind-review ...` rather than as a second Cargo binary. This preserves the established `cargo run -p literary-engine -- ...` contract used by Phase 31 and leaves Cargo dependency manifests unchanged.
+
 ### Blind review ledger
 
-`literary-provider-review init` consumes only the Phase 31 blind bundle. It does not accept the reveal key. The resulting ledger contains:
+`literary-engine blind-review init` consumes only the Phase 31 blind bundle. It does not accept the reveal key. The resulting ledger contains:
 
 - corpus id;
 - fingerprint of the exact blind-bundle bytes;
@@ -26,7 +28,7 @@ These papers do **not** prove that a provider is suitable for this project or fo
 
 ### Judgment recording
 
-`literary-provider-review record` records one of:
+`literary-engine blind-review record` records one of:
 
 - Candidate A;
 - Candidate B;
@@ -37,7 +39,7 @@ Every judgment requires a non-empty reason. Optional notes may be recorded for a
 
 ### Reveal and dossier
 
-`literary-provider-review dossier` is the only command that consumes the Phase 31 reveal key. It requires complete ledgers, rejects duplicate reviewer ledgers, requires all ledgers to share the same blind-bundle fingerprint, verifies exact case-id agreement with the reveal key, and then maps A/B preferences to the underlying system ids.
+`literary-engine blind-review dossier` is the only command that consumes the Phase 31 reveal key. It requires complete ledgers, rejects duplicate reviewer ledgers, requires all ledgers to share the same blind-bundle fingerprint, verifies exact case-id agreement with the reveal key, and then maps A/B preferences to the underlying system ids.
 
 The dossier reports preference counts, ties, deferrals, and multi-reviewer agreement/disagreement. It intentionally emits:
 
@@ -56,7 +58,7 @@ A preference count is evidence, not authority to change production configuration
 - New outputs fail closed on collisions with protected input files.
 - Dossier generation rejects duplicate input paths so the same ledger cannot be counted twice under different CLI positions.
 - Writes use a same-directory temporary file and rename, reducing partial-ledger corruption risk.
-- No new runtime dependency is introduced.
+- No new runtime dependency or Cargo manifest change is introduced.
 
 ## Known binding limitation inherited from Phase 31
 
