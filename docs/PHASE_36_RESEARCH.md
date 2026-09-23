@@ -57,6 +57,10 @@ Upstream: https://github.com/crev-dev/cargo-crev
 
 The existing FNV fingerprint is retained in v2 ledgers/dossiers only for backward compatibility and continuity diagnostics; it is not treated as cryptographic evidence.
 
+### Security limit
+
+SHA-256 here is an unkeyed integrity binding, not an authenticity proof. It detects drift or substitution when at least one bound artifact/digest is independently trusted, but an actor able to rewrite the bundle, reveal key, all ledgers, and dossier together could recompute every digest. Phase 36 therefore must not claim reviewer identity, non-repudiation, trusted timestamping, or resistance to coordinated artifact replacement. Those properties require a separately designed signature/trust-root or append-only evidence model.
+
 ## Dependency decision
 
 No new package is installed. The best-fit GitHub library, RustCrypto `sha2`, is already directly present in `project-engine` and revision-resolved in `Cargo.lock`. Reusing it avoids a new supply-chain edge while still replacing the measured integrity gap.
