@@ -357,7 +357,7 @@ PR #124 merged at `08d18a0ee639339e2625de442cc4c3aa86605e1d`. Unknown or unaccep
 
 ### Phase 34 — Admission Artifact Integrity — in progress
 
-Make assessment output installation refuse overwrite even when another process creates the destination after the initial existence check. Assert the collision deterministically and retain the existing no-admission behavior. No production selector, provider keys, manuscript, or dependency changes.
+Make assessment output installation refuse overwrite even when another process creates the destination after the initial existence check. Validate the Phase-32 dossier identity, reviewer count, judgment partitions, per-system preference totals and reveal binding before evaluating provider eligibility. Reject incomplete or contradictory dossiers without creating an assessment. No production selector, provider keys, manuscript, or dependency changes.
 
 ## Next Action Rule
 
