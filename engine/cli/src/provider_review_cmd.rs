@@ -427,11 +427,13 @@ fn run_verify_authenticated(args: &[String]) -> Result<()> {
 
     let mut ledger_bytes = Vec::new();
     let mut signature_paths = Vec::new();
-    for pair in evidence_paths.chunks_exact(2) {
+    for index in (0..evidence_paths.len()).step_by(2) {
+        let ledger_path = evidence_paths[index];
         ledger_bytes.push(
-            fs::read(pair[0]).map_err(|error| format!("failed to read {}: {error}", pair[0]))?,
+            fs::read(ledger_path)
+                .map_err(|error| format!("failed to read {ledger_path}: {error}"))?,
         );
-        signature_paths.push(pair[1]);
+        signature_paths.push(evidence_paths[index + 1]);
     }
 
     verify_evidence_bytes(
