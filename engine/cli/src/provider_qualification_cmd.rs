@@ -706,6 +706,62 @@ mod tests {
     }
 
     #[test]
+    fn blind_compare_writes_key_bound_to_exact_bundle_bytes() {
+        use tempfile::tempdir;
+
+        let dir = tempdir().unwrap();
+        let corpus_path = dir.path().join("corpus.json");
+        let first_path = dir.path().join("first.json");
+        let second_path = dir.path().join("second.json");
+        let bundle_path = dir.path().join("bundle.json");
+        let key_path = dir.path().join("key.json");
+        let corpus = corpus();
+        let first = CandidateSubmission {
+            schema_version: literary_evaluation_engine::SUBMISSION_SCHEMA_VERSION,
+            corpus_id: corpus.corpus_id.clone(),
+            system_id: "system-one".into(),
+            outputs: vec![CandidateOutput {
+                case_id: "case-1".into(),
+                translation: "اول".into(),
+            }],
+        };
+        let second = CandidateSubmission {
+            schema_version: literary_evaluation_engine::SUBMISSION_SCHEMA_VERSION,
+            corpus_id: corpus.corpus_id.clone(),
+            system_id: "system-two".into(),
+            outputs: vec![CandidateOutput {
+                case_id: "case-1".into(),
+                translation: "دوم".into(),
+            }],
+        };
+        fs::write(&corpus_path, serde_json::to_vec_pretty(&corpus).unwrap()).unwrap();
+        fs::write(&first_path, serde_json::to_vec_pretty(&first).unwrap()).unwrap();
+        fs::write(&second_path, serde_json::to_vec_pretty(&second).unwrap()).unwrap();
+
+        run_blind_compare(
+            &[
+                corpus_path.to_string_lossy().into_owned(),
+                first_path.to_string_lossy().into_owned(),
+                second_path.to_string_lossy().into_owned(),
+                bundle_path.to_string_lossy().into_owned(),
+                key_path.to_string_lossy().into_owned(),
+            ],
+            &OutputFormat::Json,
+        )
+        .unwrap();
+
+        let bundle_bytes = fs::read(&bundle_path).unwrap();
+        let key: serde_json::Value =
+            serde_json::from_slice(&fs::read(&key_path).unwrap()).unwrap();
+        assert_eq!(key["schema_version"], 2);
+        assert_eq!(key["bundle_sha256"], sha256_hex(&bundle_bytes));
+        assert_ne!(
+            key["bundle_sha256"],
+            sha256_hex(&[bundle_bytes.as_slice(), b"\n"].concat())
+        );
+    }
+
+    #[test]
     fn qualification_context_keeps_neighbors_separate_from_passage() {
         let context = qualification_context(Some("before"), Some("after"));
         assert!(context.contains("CONTEXT BEFORE\nbefore"));
