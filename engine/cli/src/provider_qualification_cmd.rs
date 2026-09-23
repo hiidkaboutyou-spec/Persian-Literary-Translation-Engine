@@ -2,6 +2,7 @@ use crate::OutputFormat;
 use literary_evaluation_engine::{
     evaluate_submission, CandidateOutput, CandidateSubmission, LiteraryEvaluationCorpus,
 };
+use project_engine::artifact_integrity::sha256_hex;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::env;
@@ -64,6 +65,7 @@ struct BlindComparisonCase {
 struct BlindComparisonKey {
     schema_version: u32,
     corpus_id: String,
+    bundle_sha256: String,
     system_one: String,
     system_two: String,
     assignments: Vec<BlindAssignment>,
@@ -303,13 +305,12 @@ pub(crate) fn run_blind_compare(args: &[String], format: &OutputFormat) -> Resul
     evaluate_submission(&corpus, &second)
         .map_err(|error| format!("second submission is not comparable: {error}"))?;
 
-    let (bundle, key) = build_blind_comparison(&corpus, &first, &second)?;
-    fs::write(
-        bundle_path,
-        serde_json::to_string_pretty(&bundle)
-            .map_err(|error| format!("failed to serialize blind comparison: {error}"))?,
-    )
-    .map_err(|error| format!("failed to write {bundle_path}: {error}"))?;
+    let (bundle, mut key) = build_blind_comparison(&corpus, &first, &second)?;
+    let bundle_json = serde_json::to_string_pretty(&bundle)
+        .map_err(|error| format!("failed to serialize blind comparison: {error}"))?;
+    key.bundle_sha256 = sha256_hex(bundle_json.as_bytes());
+    fs::write(bundle_path, &bundle_json)
+        .map_err(|error| format!("failed to write {bundle_path}: {error}"))?;
     fs::write(
         key_path,
         serde_json::to_string_pretty(&key)
@@ -424,8 +425,9 @@ fn build_blind_comparison(
             ],
         },
         BlindComparisonKey {
-            schema_version: 1,
+            schema_version: 2,
             corpus_id: corpus.corpus_id.clone(),
+            bundle_sha256: String::new(),
             system_one: first.system_id.clone(),
             system_two: second.system_id.clone(),
             assignments,
