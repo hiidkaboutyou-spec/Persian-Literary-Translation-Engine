@@ -1,3 +1,4 @@
+use project_engine::artifact_integrity::{is_sha256_hex, sha256_hex};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::env;
@@ -8,8 +9,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 type Result<T> = std::result::Result<T, String>;
 
-const LEDGER_SCHEMA_VERSION: u32 = 1;
-const DOSSIER_SCHEMA_VERSION: u32 = 1;
+const LEDGER_SCHEMA_VERSION: u32 = 2;
+const DOSSIER_SCHEMA_VERSION: u32 = 2;
 
 #[derive(Debug, Deserialize)]
 struct BlindComparisonBundleInput {
@@ -27,6 +28,8 @@ struct BlindComparisonCaseInput {
 struct BlindComparisonKeyInput {
     schema_version: u32,
     corpus_id: String,
+    #[serde(default)]
+    bundle_sha256: Option<String>,
     system_one: String,
     system_two: String,
     assignments: Vec<BlindAssignmentInput>,
@@ -80,6 +83,8 @@ struct BlindReviewLedger {
     schema_version: u32,
     corpus_id: String,
     bundle_fingerprint: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    bundle_sha256: Option<String>,
     reviewer: String,
     cases: Vec<BlindReviewCase>,
     instructions: Vec<String>,
@@ -100,6 +105,8 @@ struct ProviderReviewDossier {
     schema_version: u32,
     corpus_id: String,
     bundle_fingerprint: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    bundle_sha256: Option<String>,
     reviewers: Vec<String>,
     review_ledgers: usize,
     cases_total: usize,
@@ -159,6 +166,7 @@ fn run_init(args: &[String]) -> Result<()> {
         schema_version: LEDGER_SCHEMA_VERSION,
         corpus_id: bundle.corpus_id,
         bundle_fingerprint: fingerprint(bundle_text.as_bytes()),
+        bundle_sha256: Some(sha256_hex(bundle_text.as_bytes())),
         reviewer: reviewer.to_string(),
         cases: bundle
             .cases
@@ -308,6 +316,11 @@ fn run_verify(args: &[String]) -> Result<()> {
         return Err("blind bundle and reveal key have different corpus or case ids".into());
     }
 
+    let bundle_sha256 = sha256_hex(&bundle_bytes);
+    if key.schema_version == 2 && key.bundle_sha256.as_deref() != Some(bundle_sha256.as_str()) {
+        return Err("reveal-key SHA-256 differs from the supplied blind bundle".into());
+    }
+
     let ledgers = ledger_paths
         .iter()
         .map(|path| read_ledger(path))
@@ -317,6 +330,19 @@ fn run_verify(args: &[String]) -> Result<()> {
         .any(|ledger| ledger.bundle_fingerprint != fingerprint(&bundle_bytes))
     {
         return Err("review ledger fingerprint differs from the supplied blind bundle".into());
+    }
+    if ledgers.iter().any(|ledger| {
+        ledger.schema_version == LEDGER_SCHEMA_VERSION
+            && ledger.bundle_sha256.as_deref() != Some(bundle_sha256.as_str())
+    }) {
+        return Err("review ledger SHA-256 differs from the supplied blind bundle".into());
+    }
+    if key.schema_version == 2
+        && ledgers
+            .iter()
+            .any(|ledger| ledger.schema_version != LEDGER_SCHEMA_VERSION)
+    {
+        return Err("schema-2 reveal key requires schema-2 review ledgers".into());
     }
     let expected = serde_json::to_value(build_dossier(&key, &ledgers)?)
         .map_err(|error| format!("failed to reconstruct dossier: {error}"))?;
@@ -361,11 +387,26 @@ fn validate_bundle(bundle: &BlindComparisonBundleInput) -> Result<()> {
 }
 
 fn validate_key(key: &BlindComparisonKeyInput) -> Result<()> {
-    if key.schema_version != 1 {
+    if !matches!(key.schema_version, 1 | 2) {
         return Err(format!(
-            "unsupported reveal-key schema {}; expected 1",
+            "unsupported reveal-key schema {}; expected 1 or 2",
             key.schema_version
         ));
+    }
+    match key.schema_version {
+        2 => {
+            let digest = key
+                .bundle_sha256
+                .as_deref()
+                .ok_or_else(|| "reveal-key schema 2 requires bundle_sha256".to_string())?;
+            if !is_sha256_hex(digest) {
+                return Err("reveal-key bundle_sha256 must be 64 lowercase hexadecimal characters".to_string());
+            }
+        }
+        1 if key.bundle_sha256.is_some() => {
+            return Err("reveal-key schema 1 must not claim a schema-2 bundle_sha256 binding".to_string());
+        }
+        _ => {}
     }
     if key.corpus_id.trim().is_empty() {
         return Err("reveal key corpus_id is empty".to_string());
@@ -407,11 +448,26 @@ fn validate_key(key: &BlindComparisonKeyInput) -> Result<()> {
 }
 
 fn validate_ledger(ledger: &BlindReviewLedger) -> Result<()> {
-    if ledger.schema_version != LEDGER_SCHEMA_VERSION {
+    if !matches!(ledger.schema_version, 1 | LEDGER_SCHEMA_VERSION) {
         return Err(format!(
-            "unsupported ledger schema {}; expected {LEDGER_SCHEMA_VERSION}",
+            "unsupported ledger schema {}; expected 1 or {LEDGER_SCHEMA_VERSION}",
             ledger.schema_version
         ));
+    }
+    match ledger.schema_version {
+        LEDGER_SCHEMA_VERSION => {
+            let digest = ledger
+                .bundle_sha256
+                .as_deref()
+                .ok_or_else(|| "ledger schema 2 requires bundle_sha256".to_string())?;
+            if !is_sha256_hex(digest) {
+                return Err("ledger bundle_sha256 must be 64 lowercase hexadecimal characters".to_string());
+            }
+        }
+        1 if ledger.bundle_sha256.is_some() => {
+            return Err("ledger schema 1 must not claim a schema-2 bundle_sha256 binding".to_string());
+        }
+        _ => {}
     }
     if ledger.corpus_id.trim().is_empty()
         || ledger.bundle_fingerprint.trim().is_empty()
@@ -474,6 +530,11 @@ fn build_dossier(
     let first = &ledgers[0];
     validate_ledger(first)?;
     let expected_fingerprint = first.bundle_fingerprint.clone();
+    let expected_sha256 = if key.schema_version == 2 {
+        key.bundle_sha256.clone()
+    } else {
+        None
+    };
     let mut reviewers = BTreeSet::new();
     let mut decisions_by_case: BTreeMap<String, Vec<ReviewDecision>> = BTreeMap::new();
     let mut preference_counts = BTreeMap::from([
@@ -498,6 +559,16 @@ fn build_dossier(
                 "ledger for reviewer '{}' was created from a different blind bundle",
                 ledger.reviewer
             ));
+        }
+        if let Some(expected_sha256) = expected_sha256.as_deref() {
+            if ledger.schema_version != LEDGER_SCHEMA_VERSION
+                || ledger.bundle_sha256.as_deref() != Some(expected_sha256)
+            {
+                return Err(format!(
+                    "ledger for reviewer '{}' is not bound to the schema-2 reveal key bundle SHA-256",
+                    ledger.reviewer
+                ));
+            }
         }
         if !reviewers.insert(ledger.reviewer.clone()) {
             return Err(format!(
@@ -577,9 +648,14 @@ fn build_dossier(
     }
 
     Ok(ProviderReviewDossier {
-        schema_version: DOSSIER_SCHEMA_VERSION,
+        schema_version: if key.schema_version == 2 {
+            DOSSIER_SCHEMA_VERSION
+        } else {
+            1
+        },
         corpus_id: key.corpus_id.clone(),
         bundle_fingerprint: expected_fingerprint,
+        bundle_sha256: expected_sha256.clone(),
         reviewers: reviewers.into_iter().collect(),
         review_ledgers: ledgers.len(),
         cases_total: expected_case_ids.len(),
@@ -597,7 +673,11 @@ fn build_dossier(
         human_comparative_evidence_only: true,
         production_admission: "not_granted",
         requires_explicit_admission_decision: true,
-        reveal_binding: "phase31-key-schema-v1: corpus_id + exact case-id set; ledger bundle fingerprint binds reviewers to the same blind bundle",
+        reveal_binding: if key.schema_version == 2 {
+            "phase36-key-schema-v2: SHA-256 binds the exact blind-bundle bytes to the reveal key and schema-2 ledgers"
+        } else {
+            "legacy-phase31-key-schema-v1: corpus_id + exact case-id set; FNV ledger fingerprint only"
+        },
         notes: vec![
             "Preference counts summarize recorded human comparative judgments; they are not an automatic provider-selection decision.",
             "Ties and deferrals remain first-class evidence and are not forced into a winner.",
@@ -783,6 +863,7 @@ mod tests {
         BlindComparisonKeyInput {
             schema_version: 1,
             corpus_id: "phase32-test".into(),
+            bundle_sha256: None,
             system_one: "system-one".into(),
             system_two: "system-two".into(),
             assignments: vec![
@@ -805,6 +886,7 @@ mod tests {
             schema_version: 1,
             corpus_id: "phase32-test".into(),
             bundle_fingerprint: "fnv1a64-same".into(),
+            bundle_sha256: None,
             reviewer: reviewer.into(),
             cases: vec![
                 BlindReviewCase {
@@ -1033,4 +1115,66 @@ mod tests {
             .unwrap_err()
             .contains("duplicate input"));
     }
+
+    #[test]
+    fn schema_two_key_requires_matching_sha256_bound_ledgers() {
+        let digest = sha256_hex(b"bundle");
+        let key = BlindComparisonKeyInput {
+            schema_version: 2,
+            corpus_id: "phase36-test".into(),
+            bundle_sha256: Some(digest.clone()),
+            system_one: "one".into(),
+            system_two: "two".into(),
+            assignments: vec![BlindAssignmentInput {
+                case_id: "c1".into(),
+                candidate_a_system: "one".into(),
+                candidate_b_system: "two".into(),
+            }],
+        };
+        let ledger = BlindReviewLedger {
+            schema_version: 2,
+            corpus_id: "phase36-test".into(),
+            bundle_fingerprint: "fnv1a64-legacy".into(),
+            bundle_sha256: Some(digest),
+            reviewer: "reviewer".into(),
+            cases: vec![BlindReviewCase {
+                case_id: "c1".into(),
+                decision: ReviewDecision::CandidateA,
+                reason: Some("reason".into()),
+                notes: CriterionNotes::default(),
+            }],
+            instructions: Vec::new(),
+        };
+        let dossier = build_dossier(&key, &[ledger]).unwrap();
+        assert_eq!(dossier.schema_version, 2);
+        assert!(dossier.bundle_sha256.is_some());
+        assert!(dossier.reveal_binding.contains("SHA-256"));
+    }
+
+    #[test]
+    fn schema_two_key_rejects_legacy_ledger() {
+        let mut legacy = ledger("reviewer", ReviewDecision::CandidateA, ReviewDecision::CandidateB);
+        legacy.corpus_id = "phase36-test".into();
+        legacy.cases = vec![BlindReviewCase {
+            case_id: "c1".into(),
+            decision: ReviewDecision::CandidateA,
+            reason: Some("reason".into()),
+            notes: CriterionNotes::default(),
+        }];
+        let key = BlindComparisonKeyInput {
+            schema_version: 2,
+            corpus_id: "phase36-test".into(),
+            bundle_sha256: Some(sha256_hex(b"bundle")),
+            system_one: "one".into(),
+            system_two: "two".into(),
+            assignments: vec![BlindAssignmentInput {
+                case_id: "c1".into(),
+                candidate_a_system: "one".into(),
+                candidate_b_system: "two".into(),
+            }],
+        };
+        let error = build_dossier(&key, &[legacy]).unwrap_err();
+        assert!(error.contains("schema-2 reveal key"));
+    }
+
 }
