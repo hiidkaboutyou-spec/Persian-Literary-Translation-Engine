@@ -1,0 +1,77 @@
+name: Phase 32 Integrate CLI Once
+
+on:
+  push:
+    branches:
+      - phase-32-blind-human-provider-review
+    paths:
+      - ".github/workflows/phase32-integrate-cli-once.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  integrate-cli-once:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase-32-blind-human-provider-review
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Move review tool behind the existing literary-engine CLI
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          old = Path("engine/cli/src/bin/literary-provider-review.rs")
+          new = Path("engine/cli/src/provider_review_cmd.rs")
+          text = old.read_text()
+          text = text.replace("use std::process::ExitCode;\n", "")
+          start = text.index("fn main() -> ExitCode {")
+          end = text.index("fn run(args: &[String]) -> Result<()> {", start)
+          text = text[:start] + text[end:]
+          text = text.replace(
+              "fn run(args: &[String]) -> Result<()> {",
+              "pub(crate) fn run_provider_review(args: &[String]) -> Result<()> {",
+              1,
+          )
+          text = text.replace("literary-provider-review", "literary-engine blind-review")
+          new.write_text(text)
+          old.unlink()
+
+          main = Path("engine/cli/src/main.rs")
+          main_text = main.read_text()
+          marker = "mod provider_qualification_cmd;\n"
+          replacement = marker + "mod provider_review_cmd;\n"
+          if "mod provider_review_cmd;" not in main_text:
+              main_text = main_text.replace(marker, replacement, 1)
+
+          usage_marker = '    println!("  literary-engine blind-compare <corpus.json> <submission-a.json> <submission-b.json> <blind-bundle.json> <reveal-key.json> [--format json]");\n'
+          usage_add = usage_marker + '    println!("  literary-engine blind-review <init|record|dossier> ...");\n'
+          if "literary-engine blind-review <init|record|dossier>" not in main_text:
+              main_text = main_text.replace(usage_marker, usage_add, 1)
+
+          dispatch_marker = '        ("blind-compare", args) => provider_qualification_cmd::run_blind_compare(args, &format),\n'
+          dispatch_add = dispatch_marker + '        ("blind-review", args) => provider_review_cmd::run_provider_review(args),\n'
+          if '("blind-review", args)' not in main_text:
+              main_text = main_text.replace(dispatch_marker, dispatch_add, 1)
+
+          main.write_text(main_text)
+          PY
+
+      - name: Format workspace
+        working-directory: engine
+        run: cargo fmt --all
+
+      - name: Commit CLI integration
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add engine/cli/src/main.rs engine/cli/src/provider_review_cmd.rs engine/cli/src/bin/literary-provider-review.rs
+          git commit -m "fix: integrate Phase 32 review into existing CLI"
+          git push origin HEAD:phase-32-blind-human-provider-review
