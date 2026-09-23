@@ -596,7 +596,7 @@ Approved boundary:
 - a signing key path may refer to an OpenSSH private key or an agent-backed public-key reference supported by OpenSSH;
 - OpenSSH availability is required only for the explicit authentication commands and the dedicated Phase-37 validation workflow;
 - normal translation, review recording, dossier creation, desktop operation, publishing and legacy unsigned verification remain independent of OpenSSH signing;
-- signature success is reviewer-evidence authenticity only and never implies literary approval, provider privacy safety or production admission.
+- signature success authenticates the exact reviewer-ledger bytes for the enrolled principal only; it does not authenticate reveal-key assignment provenance and never implies literary approval, provider privacy safety or production admission.
 
 No Cargo/Python/npm dependency is added for this boundary.
 
