@@ -1,4 +1,4 @@
-name: Phase 37 Authenticated Reviewer Evidence
+name: Phase 37 Reviewer Ledger Authentication
 
 on:
   push:
