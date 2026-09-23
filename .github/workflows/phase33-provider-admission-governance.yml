@@ -1,0 +1,61 @@
+name: Phase 33 Provider Admission Governance
+
+on:
+  push:
+    branches:
+      - phase-33-provider-admission-governance
+    paths:
+      - "engine/cli/src/provider_admission_cmd.rs"
+      - "engine/cli/tests/phase33_provider_admission.rs"
+      - "docs/PHASE_33_RESEARCH.md"
+      - ".github/workflows/phase33-provider-admission-governance.yml"
+  pull_request:
+    paths:
+      - "engine/cli/src/provider_admission_cmd.rs"
+      - "engine/cli/tests/phase33_provider_admission.rs"
+      - "docs/PHASE_33_RESEARCH.md"
+      - ".github/workflows/phase33-provider-admission-governance.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  phase33-linux:
+    name: Phase 33 / Linux
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Admission governance tests
+        run: cargo test --locked -p literary-engine --test phase33_provider_admission
+      - name: Existing blind-review regression
+        run: cargo test --locked -p literary-engine provider_review_cmd::tests
+      - name: Static fail-closed guard
+        run: |
+          set -euo pipefail
+          file="cli/src/provider_admission_cmd.rs"
+          grep -F 'production_admission: "not_granted"' "$file"
+          grep -F 'requires_explicit_owner_authorization: true' "$file"
+          grep -F 'selector_changed: false' "$file"
+          ! grep -Eq 'AtriaProvider|OpenAIProvider|TranslationProvider|ATRIA_API_KEY|OPENAI_API_KEY|LITERARY_ENGINE_PROVIDER' "$file"
+
+  phase33-macos-arm64:
+    name: Phase 33 / macOS arm64
+    runs-on: macos-14
+    defaults:
+      run:
+        working-directory: engine
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Apple Silicon runner
+        run: test "$(uname -m)" = "arm64"
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Admission governance tests
+        run: cargo test --locked -p literary-engine --test phase33_provider_admission
