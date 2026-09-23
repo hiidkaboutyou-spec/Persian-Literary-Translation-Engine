@@ -358,7 +358,7 @@ Phase 36 is canonical. The next measured gap is reviewer authenticity: a coordin
 
 Private-book provider admission remains blocked on separate evidence: verified hosted-provider data-handling terms, representative real human English→Persian literary review, and an explicit owner authorization. Atria remains research-only.
 
-## Phase 37 — Authenticated Reviewer Evidence with Offline SSHSIG — in progress
+## Phase 37 — Authenticated Reviewer Ledger Evidence with Offline SSHSIG — in progress
 
 Branch: `phase-37-authenticated-reviewer-evidence`.
 
@@ -370,7 +370,9 @@ Phase 37 adds an optional local OpenSSH SSHSIG boundary for completed schema-v2 
 - optionally enforce OpenSSH KRL/revoked-key files;
 - require schema-v2 evidence for authenticated verification; legacy artifacts are never silently upgraded;
 - keep private keys, trust roots and revocation state outside project persistence;
-- perform full authenticated dossier reconstruction from the same in-memory ledger bytes that are signature-checked;
+- perform Phase-36 dossier consistency reconstruction from the same in-memory ledger bytes that are signature-checked, while making clear that only reviewer ledgers—not reveal-key assignment provenance—are authenticated;
 - add no Cargo/Python/npm dependency and make no provider-selection/admission change.
 
 Research, threat model, privacy boundary and exit criteria: `docs/PHASE_37_RESEARCH.md`.
+
+Known remaining evidence gap: the reveal key's Candidate A/B → system mapping is a separate authority artifact and is not authenticated by Phase 37. Phase 38 should design reveal-authority provenance without leaking the hidden mapping during blind review.
