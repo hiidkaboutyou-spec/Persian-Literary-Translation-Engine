@@ -159,3 +159,14 @@ Before adopting a GitHub repository/package/model/tool:
 - A partial qualification run is useful for smoke/cost control but cannot be represented as complete evidence.
 - Qualification reports always keep production admission false/not granted. A future promotion requires a separately reviewed phase.
 - No new Cargo/runtime dependency is justified; existing reqwest/serde_json and Phase-21 evaluation contracts are sufficient.
+
+## Phase 36 — Versioned Cryptographic Blind-Review Evidence Binding
+
+- Treat exact blind-bundle bytes as the integrity subject for provider-review evidence.
+- New reveal keys and new ledgers use schema v2 with lowercase SHA-256; legacy schema v1 remains readable but is explicitly weaker.
+- A schema-v2 reveal key may not be paired with a schema-v1 ledger. This prevents silent downgrade after a cryptographic binding exists.
+- Keep the historical FNV fingerprint only for compatibility/diagnostics; never describe it as cryptographic authentication.
+- Reuse the repository's existing RustCrypto `sha2` dependency through a small project-owned helper instead of adding another hashing package.
+- Hashing proves byte integrity, not reviewer identity. Signatures, enrollment, key custody, revocation and trust roots require a later threat-modelled design.
+- Sigstore/Cosign and Ed25519 are research candidates for that later identity layer, not Phase-36 dependencies.
+- Production provider selection, provider authorization, private-manuscript transfer and automatic literary winner selection remain unchanged.
