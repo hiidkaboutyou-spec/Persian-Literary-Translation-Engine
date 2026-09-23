@@ -685,7 +685,7 @@ fn build_dossier(
         reveal_binding: if key.schema_version == 2 {
             "phase36-key-schema-v2: SHA-256 binds the exact blind-bundle bytes to the reveal key and schema-2 ledgers"
         } else {
-            "legacy-phase31-key-schema-v1: corpus_id + exact case-id set; FNV ledger fingerprint only"
+            "phase31-key-schema-v1: corpus_id + exact case-id set; ledger bundle fingerprint binds reviewers to the same blind bundle"
         },
         notes: vec![
             "Preference counts summarize recorded human comparative judgments; they are not an automatic provider-selection decision.",
@@ -930,6 +930,11 @@ mod tests {
         assert_eq!(dossier.system_preference_counts["system-two"], 1);
         assert!(dossier.automatic_winner.is_none());
         assert_eq!(dossier.production_admission, "not_granted");
+        assert_eq!(
+            dossier.reveal_binding,
+            "phase31-key-schema-v1: corpus_id + exact case-id set; ledger bundle fingerprint binds reviewers to the same blind bundle"
+        );
+        assert!(dossier.bundle_sha256.is_none());
     }
 
     #[test]
