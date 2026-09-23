@@ -1,4 +1,4 @@
-# Phase 37 — Authenticated Reviewer Evidence with Offline SSHSIG
+# Phase 37 — Authenticated Reviewer Ledger Evidence with Offline SSHSIG
 
 Date: 2026-09-23
 
@@ -18,11 +18,11 @@ The outcome is deliberately narrow:
 
 ### Properties Phase 37 is intended to add
 
-Phase 37 addresses the Phase-36 coordinated-rewrite gap **when the verifier independently protects the trust root**.
+Phase 37 closes the **review-ledger authorship and substitution slice** of the Phase-36 coordinated-rewrite gap when the verifier independently protects the reviewer trust root. It does not authenticate the separate reveal-key assignment authority.
 
 An attacker who changes any signed ledger byte, including JSON whitespace, reviewer notes or a recorded decision, cannot keep the existing signature valid. An attacker who substitutes another signing key cannot pass verification unless that key is independently authorized for the same principal in the verifier-controlled allowed-signers file.
 
-The authenticated end-to-end command also retains Phase 36 checks for:
+The reviewer-authenticated verification command also retains the Phase-36 consistency checks for:
 
 - exact blind-bundle SHA-256;
 - schema-v2 key/ledger binding;
@@ -41,6 +41,7 @@ The authenticated end-to-end command also retains Phase 36 checks for:
 - Provider privacy/retention safety.
 - Production provider authorization.
 - Human literary approval beyond the judgments explicitly present in the signed ledger.
+- Authenticity of the reveal key's Candidate A/B → system mapping. The reveal key is a separate authority artifact; today it is hash-bound to the bundle but is not signed or otherwise independently authenticated.
 
 ## Selected authenticity boundary: OpenSSH SSHSIG
 
@@ -104,7 +105,7 @@ The signature covers the **exact bytes read from the completed ledger file**. Ph
 
 This matters because a signature over a reconstructed object could accidentally authenticate a representation different from the evidence file. Exact-byte signing ensures that any byte-level mutation invalidates the signature.
 
-The full authenticated verification path reads each ledger once, uses those same in-memory bytes for Phase-36 evidence checks and SSHSIG verification, and therefore avoids a sign/verify time-of-check/time-of-use gap between separate ledger reads.
+The full reviewer-authenticated verification path reads each ledger once, uses those same in-memory bytes for Phase-36 evidence checks and SSHSIG verification, and therefore avoids a sign/verify time-of-check/time-of-use gap between separate ledger reads.
 
 ## CLI surface
 
@@ -116,14 +117,14 @@ literary-engine blind-review verify-ledger-signature \
   --allowed-signers <allowed_signers> \
   [--revocations <krl-or-revoked-keys>]
 
-literary-engine blind-review verify-authenticated \
+literary-engine blind-review verify-reviewer-authenticated \
   <blind-bundle.json> <reveal-key.json> <dossier.json> \
   <ledger.json> <signature.sig> [ledger2.json signature2.sig ...] \
   --allowed-signers <allowed_signers> \
   [--revocations <krl-or-revoked-keys>]
 ```
 
-The existing `blind-review verify` remains unchanged in meaning and continues to support legacy evidence. `verify-authenticated` intentionally requires a schema-v2 reveal key and schema-v2 ledgers; legacy v1 evidence is never silently upgraded to authenticated status.
+The existing `blind-review verify` remains unchanged in meaning and continues to support legacy evidence. `verify-reviewer-authenticated` intentionally requires a schema-v2 reveal key and schema-v2 ledgers; legacy v1 evidence is never silently upgraded to reviewer-authenticated status. Passing this command authenticates the supplied reviewer ledger signatures while checking the dossier/reveal key for Phase-36 consistency; it does **not** claim that the reveal-key mapping itself has an authenticated origin.
 
 Signature creation refuses to overwrite an existing signature path so a previous evidence artifact is not silently replaced.
 
@@ -173,11 +174,11 @@ Permanent Phase-37 CI must prove on Linux and Apple Silicon macOS:
 3. All provider-review unit/regression tests succeed.
 4. A real temporary Ed25519 test key can sign exact schema-v2 ledger bytes.
 5. The matching allowed-signers principal verifies.
-6. Full authenticated dossier verification succeeds using the signed bytes.
+6. Full reviewer-authenticated verification succeeds using the signed ledger bytes while retaining Phase-36 dossier consistency checks.
 7. A one-byte/whitespace ledger change invalidates the signature.
 8. A key enrolled under the wrong principal is rejected.
 9. A KRL-revoked key is rejected.
-10. Legacy schema-v1 ledgers are rejected by authenticated verification.
+10. Legacy schema-v1 ledgers are rejected by reviewer-authenticated verification.
 11. Unsafe reviewer-principal strings are rejected.
 12. Clippy succeeds for the CLI target.
 13. Existing non-admission guards remain present.
@@ -207,4 +208,4 @@ Phase 37 is canonical only when:
 
 ## Next frontier after Phase 37
 
-After reviewer authenticity is canonical, the next provider-admission work must return to the unresolved product evidence rather than adding more cryptography: obtain authoritative hosted-provider data-handling terms, collect representative real human English→Persian literary evidence under the now-authenticated local review process, and require a separate explicit owner authorization before any private-book production activation.
+After reviewer-ledger authenticity is canonical, the next measured evidence gap is **reveal-authority provenance**. Phase 38 should design a way to authenticate the hidden reveal-key mapping at creation/reveal time without weakening blindness. A plain public hash of the reveal key is not automatically sufficient because its system identifiers/assignment space may be low entropy and guessable. Candidate approaches include an organizer signature kept with the hidden reveal material, or another commitment/provenance mechanism with an explicit authority, custody, revocation and privacy model. Only after that boundary is solved should provider-admission work return to authoritative hosted-provider data-handling terms, representative real human English→Persian literary evidence, and explicit owner authorization for any private-book production activation.
