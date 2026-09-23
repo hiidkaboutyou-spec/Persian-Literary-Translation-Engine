@@ -79,3 +79,7 @@ Phase 33's governance core is compiled and exercised by a dedicated integration 
 ## Follow-up: Phase 34 artifact-install race
 
 The original Phase-33 implementation checked `path.exists()` and later called `rename`. On Unix, `rename` can replace a destination created between those operations. Phase 34 installs the already synced temporary file using a same-directory exclusive hard link; if the destination appeared, installation fails without replacing it. The regression test creates the destination during serialization and checks both preservation and temporary-file cleanup. This is local filesystem integrity only; it does not grant admission or alter provider selection.
+
+## Follow-up: Phase 34 dossier completeness
+
+Phase 33 initially checked only the non-admission flags and provider IDs. Those fields alone do not establish that the Phase-32 review dossier contains any completed human judgments: an incomplete hand-authored JSON document could appear eligible if the governance profile claimed acceptable terms. Phase 34 requires the existing Phase-32 dossier's corpus/bundle identity, distinct reviewers, positive review/case counts, exact judgment partition, system preference totals, and reveal-binding marker to be present and internally consistent. Counterexamples are covered with rights-safe synthetic fixtures. These structural checks do not authenticate reviewer identity or independently verify the original ledger; an assessment still cannot authorize production use.
