@@ -1273,5 +1273,4 @@ mod tests {
         .unwrap_err();
         assert!(error.contains("reveal-key SHA-256 differs"));
     }
-
 }
