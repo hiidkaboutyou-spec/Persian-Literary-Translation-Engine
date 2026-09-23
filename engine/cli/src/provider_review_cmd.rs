@@ -334,10 +334,8 @@ fn run_sign_ledger(args: &[String]) -> Result<()> {
     let flags = ["--key"];
     let ledger_path = positional(args, 0, &flags).ok_or_else(|| usage().to_string())?;
     let signature_path = positional(args, 1, &flags).ok_or_else(|| usage().to_string())?;
-    let key_path = flag_value(args, "--key")
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .ok_or_else(|| "sign-ledger requires a non-empty --key path".to_string())?;
+    let key_path = strict_flag_value(args, "--key", true)?
+        .expect("required flag validated above");
 
     ensure_output_distinct(signature_path, &[ledger_path, key_path])?;
     ensure_unique_inputs(&[ledger_path, key_path])?;
@@ -352,7 +350,7 @@ fn run_sign_ledger(args: &[String]) -> Result<()> {
     let ledger = parse_ledger_bytes(&ledger_bytes, ledger_path)?;
     validate_authenticatable_ledger(&ledger)?;
     let signature = ssh_sign_bytes(&ledger_bytes, key_path)?;
-    write_bytes_atomic(Path::new(signature_path), &signature)?;
+    write_bytes_new_atomic(Path::new(signature_path), &signature)?;
 
     println!("review ledger signature written: {signature_path}");
     println!("reviewer principal: {}", ledger.reviewer);
@@ -365,16 +363,12 @@ fn run_verify_ledger_signature(args: &[String]) -> Result<()> {
     let flags = ["--allowed-signers", "--revocations"];
     let ledger_path = positional(args, 0, &flags).ok_or_else(|| usage().to_string())?;
     let signature_path = positional(args, 1, &flags).ok_or_else(|| usage().to_string())?;
-    let allowed_signers = flag_value(args, "--allowed-signers")
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .ok_or_else(|| {
-            "verify-ledger-signature requires a non-empty --allowed-signers path".to_string()
-        })?;
-    let revocations = optional_flag(args, "--revocations");
+    let allowed_signers = strict_flag_value(args, "--allowed-signers", true)?
+        .expect("required flag validated above");
+    let revocations = strict_flag_value(args, "--revocations", false)?;
 
     let mut inputs = vec![ledger_path, signature_path, allowed_signers];
-    if let Some(path) = revocations.as_deref() {
+    if let Some(path) = revocations {
         inputs.push(path);
     }
     ensure_unique_inputs(&inputs)?;
@@ -388,7 +382,7 @@ fn run_verify_ledger_signature(args: &[String]) -> Result<()> {
         signature_path,
         allowed_signers,
         &ledger.reviewer,
-        revocations.as_deref(),
+        revocations,
     )?;
 
     println!("reviewer signature verified: {}", ledger.reviewer);
@@ -402,13 +396,9 @@ fn run_verify_authenticated(args: &[String]) -> Result<()> {
     let bundle_path = positional(args, 0, &flags).ok_or_else(|| usage().to_string())?;
     let key_path = positional(args, 1, &flags).ok_or_else(|| usage().to_string())?;
     let dossier_path = positional(args, 2, &flags).ok_or_else(|| usage().to_string())?;
-    let allowed_signers = flag_value(args, "--allowed-signers")
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .ok_or_else(|| {
-            "verify-authenticated requires a non-empty --allowed-signers path".to_string()
-        })?;
-    let revocations = optional_flag(args, "--revocations");
+    let allowed_signers = strict_flag_value(args, "--allowed-signers", true)?
+        .expect("required flag validated above");
+    let revocations = strict_flag_value(args, "--revocations", false)?;
 
     let mut evidence_paths = Vec::new();
     let mut index = 3usize;
@@ -425,7 +415,7 @@ fn run_verify_authenticated(args: &[String]) -> Result<()> {
 
     let mut all_inputs = vec![bundle_path, key_path, dossier_path, allowed_signers];
     all_inputs.extend(evidence_paths.iter().copied());
-    if let Some(path) = revocations.as_deref() {
+    if let Some(path) = revocations {
         all_inputs.push(path);
     }
     ensure_unique_inputs(&all_inputs)?;
@@ -462,7 +452,7 @@ fn run_verify_authenticated(args: &[String]) -> Result<()> {
             signature_path,
             allowed_signers,
             &ledger.reviewer,
-            revocations.as_deref(),
+            revocations,
         )?;
     }
 
@@ -576,7 +566,10 @@ fn validate_authenticatable_ledger(ledger: &BlindReviewLedger) -> Result<()> {
 }
 
 fn validate_reviewer_principal(reviewer: &str) -> Result<()> {
-    let reviewer = reviewer.trim();
+    let trimmed = reviewer.trim();
+    if reviewer != trimmed {
+        return Err("authenticated reviewer principal must not contain leading or trailing whitespace".to_string());
+    }
     if reviewer.is_empty() || reviewer.len() > 128 {
         return Err("authenticated reviewer principal must contain 1..=128 bytes".to_string());
     }
@@ -703,7 +696,7 @@ fn bounded_command_error(stderr: &[u8]) -> String {
     trimmed.chars().take(600).collect()
 }
 
-fn write_bytes_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
+fn write_bytes_new_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
     let parent = path
         .parent()
         .filter(|parent| !parent.as_os_str().is_empty())
@@ -739,13 +732,14 @@ fn write_bytes_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
             .map_err(|error| format!("failed to write {}: {error}", temp_path.display()))?;
         file.sync_all()
             .map_err(|error| format!("failed to sync {}: {error}", temp_path.display()))?;
-        fs::rename(&temp_path, path).map_err(|error| {
+        fs::hard_link(&temp_path, path).map_err(|error| {
             format!(
-                "failed to atomically replace {} with {}: {error}",
-                path.display(),
-                temp_path.display()
+                "failed to atomically install new evidence {} without overwrite: {error}",
+                path.display()
             )
         })?;
+        fs::remove_file(&temp_path)
+            .map_err(|error| format!("failed to remove {} after install: {error}", temp_path.display()))?;
         Ok(())
     })();
 
@@ -1212,6 +1206,34 @@ fn ensure_unique_inputs(inputs: &[&str]) -> Result<()> {
         }
     }
     Ok(())
+}
+
+fn strict_flag_value<'a>(
+    args: &'a [String],
+    flag: &str,
+    required: bool,
+) -> Result<Option<&'a str>> {
+    let positions = args
+        .iter()
+        .enumerate()
+        .filter_map(|(index, value)| (value == flag).then_some(index))
+        .collect::<Vec<_>>();
+    if positions.len() > 1 {
+        return Err(format!("{flag} may be provided only once"));
+    }
+    let Some(index) = positions.first().copied() else {
+        if required {
+            return Err(format!("{flag} is required"));
+        }
+        return Ok(None);
+    };
+    let value = args
+        .get(index + 1)
+        .map(String::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty() && !value.starts_with("--"))
+        .ok_or_else(|| format!("{flag} requires a non-empty path value"))?;
+    Ok(Some(value))
 }
 
 fn positional<'a>(
@@ -1882,12 +1904,35 @@ mod tests {
             .unwrap_err()
             .contains("principal"));
 
+        current.reviewer = " reviewer@example.test".into();
+        assert!(validate_authenticatable_ledger(&current)
+            .unwrap_err()
+            .contains("leading or trailing whitespace"));
+
         current.reviewer = "reviewer@example.test".into();
         current.cases[0].decision = ReviewDecision::Pending;
         current.cases[0].reason = None;
         assert!(validate_authenticatable_ledger(&current)
             .unwrap_err()
             .contains("completed ledger"));
+    }
+
+    #[test]
+    fn security_sensitive_flags_reject_missing_and_duplicate_values() {
+        let missing = vec!["--revocations".to_string()];
+        assert!(strict_flag_value(&missing, "--revocations", false)
+            .unwrap_err()
+            .contains("requires a non-empty path value"));
+
+        let duplicate = vec![
+            "--allowed-signers".to_string(),
+            "one".to_string(),
+            "--allowed-signers".to_string(),
+            "two".to_string(),
+        ];
+        assert!(strict_flag_value(&duplicate, "--allowed-signers", true)
+            .unwrap_err()
+            .contains("only once"));
     }
 
 }
