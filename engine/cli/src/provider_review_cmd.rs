@@ -283,14 +283,14 @@ fn run_verify(args: &[String]) -> Result<()> {
     }
     ensure_unique_inputs(&args.iter().map(String::as_str).collect::<Vec<_>>())?;
 
-    let bundle_bytes = fs::read(bundle_path)
-        .map_err(|error| format!("failed to read {bundle_path}: {error}"))?;
+    let bundle_bytes =
+        fs::read(bundle_path).map_err(|error| format!("failed to read {bundle_path}: {error}"))?;
     let bundle: BlindComparisonBundleInput = serde_json::from_slice(&bundle_bytes)
         .map_err(|error| format!("invalid blind comparison bundle: {error}"))?;
     validate_bundle(&bundle)?;
 
-    let key_bytes = fs::read(key_path)
-        .map_err(|error| format!("failed to read {key_path}: {error}"))?;
+    let key_bytes =
+        fs::read(key_path).map_err(|error| format!("failed to read {key_path}: {error}"))?;
     let key: BlindComparisonKeyInput = serde_json::from_slice(&key_bytes)
         .map_err(|error| format!("invalid reveal key: {error}"))?;
     validate_key(&key)?;
@@ -679,7 +679,6 @@ fn fingerprint(bytes: &[u8]) -> String {
     format!("fnv1a64-{hash:016x}")
 }
 
-
 fn normalized_path(path: &str) -> Result<PathBuf> {
     let path = Path::new(path);
     if path.exists() {
@@ -917,7 +916,8 @@ mod tests {
         let key = dir.path().join("key.json");
         let ledger = dir.path().join("ledger.json");
         let dossier = dir.path().join("dossier.json");
-        let paths = [&bundle, &key, &dossier, &ledger].map(|path| path.to_string_lossy().into_owned());
+        let paths =
+            [&bundle, &key, &dossier, &ledger].map(|path| path.to_string_lossy().into_owned());
         fs::write(
             &bundle,
             r#"{"schema_version":1,"corpus_id":"synthetic","cases":[{"case_id":"c1"}]}"#,
@@ -1010,7 +1010,8 @@ mod tests {
             r#"{"schema_version":1,"corpus_id":"synthetic","system_one":"one","system_two":"two","assignments":[{"case_id":"c2","candidate_a_system":"one","candidate_b_system":"two"}]}"#,
         )
         .unwrap();
-        let paths = [&bundle, &key, &dossier, &ledger].map(|path| path.to_string_lossy().into_owned());
+        let paths =
+            [&bundle, &key, &dossier, &ledger].map(|path| path.to_string_lossy().into_owned());
         let args = [
             "verify".into(),
             paths[0].clone(),
