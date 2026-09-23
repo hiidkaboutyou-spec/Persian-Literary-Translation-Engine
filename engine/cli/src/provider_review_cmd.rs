@@ -310,20 +310,14 @@ fn run_verify(args: &[String]) -> Result<()> {
         fs::read(bundle_path).map_err(|error| format!("failed to read {bundle_path}: {error}"))?;
     let key_bytes =
         fs::read(key_path).map_err(|error| format!("failed to read {key_path}: {error}"))?;
-    let (key, bundle_sha256) =
-        validate_bundle_key_bytes(&bundle_bytes, &key_bytes, false)?;
+    let (key, bundle_sha256) = validate_bundle_key_bytes(&bundle_bytes, &key_bytes, false)?;
 
     let ledger_bytes = ledger_paths
         .iter()
         .map(|path| fs::read(path).map_err(|error| format!("failed to read {path}: {error}")))
         .collect::<Result<Vec<_>>>()?;
-    let ledgers = validate_ledger_evidence(
-        &bundle_bytes,
-        &bundle_sha256,
-        &key,
-        &ledger_bytes,
-        false,
-    )?;
+    let ledgers =
+        validate_ledger_evidence(&bundle_bytes, &bundle_sha256, &key, &ledger_bytes, false)?;
 
     let dossier_bytes = fs::read(dossier_path)
         .map_err(|error| format!("failed to read {dossier_path}: {error}"))?;
@@ -427,8 +421,7 @@ fn run_verify_authenticated(args: &[String]) -> Result<()> {
         fs::read(bundle_path).map_err(|error| format!("failed to read {bundle_path}: {error}"))?;
     let key_bytes =
         fs::read(key_path).map_err(|error| format!("failed to read {key_path}: {error}"))?;
-    let (key, bundle_sha256) =
-        validate_bundle_key_bytes(&bundle_bytes, &key_bytes, true)?;
+    let (key, bundle_sha256) = validate_bundle_key_bytes(&bundle_bytes, &key_bytes, true)?;
 
     let mut ledger_bytes = Vec::new();
     let mut signature_paths = Vec::new();
@@ -441,21 +434,13 @@ fn run_verify_authenticated(args: &[String]) -> Result<()> {
         signature_paths.push(evidence_paths[index + 1]);
     }
 
-    let ledgers = validate_ledger_evidence(
-        &bundle_bytes,
-        &bundle_sha256,
-        &key,
-        &ledger_bytes,
-        true,
-    )?;
+    let ledgers =
+        validate_ledger_evidence(&bundle_bytes, &bundle_sha256, &key, &ledger_bytes, true)?;
     let dossier_bytes = fs::read(dossier_path)
         .map_err(|error| format!("failed to read {dossier_path}: {error}"))?;
     verify_dossier_bytes(&key, &ledgers, &dossier_bytes)?;
 
-    for ((bytes, ledger), signature_path) in ledger_bytes
-        .iter()
-        .zip(&ledgers)
-        .zip(signature_paths)
+    for ((bytes, ledger), signature_path) in ledger_bytes.iter().zip(&ledgers).zip(signature_paths)
     {
         ssh_verify_bytes(
             bytes,
