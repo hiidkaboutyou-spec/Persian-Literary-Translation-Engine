@@ -5,12 +5,15 @@ use std::env;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 type Result<T> = std::result::Result<T, String>;
 
 const LEDGER_SCHEMA_VERSION: u32 = 2;
 const DOSSIER_SCHEMA_VERSION: u32 = 2;
+const REVIEW_SIGNATURE_NAMESPACE: &str =
+    "blind-review@persian-literary-translation-engine";
 
 #[derive(Debug, Deserialize)]
 struct BlindComparisonBundleInput {
@@ -129,7 +132,17 @@ struct ProviderReviewDossier {
 }
 
 fn usage() -> &'static str {
-    "Usage:\n  literary-engine blind-review init <blind-bundle.json> <ledger.json> --reviewer <id>\n  literary-engine blind-review record <ledger.json> <case-id> <a|b|tie|defer> --reason <text> [--adequacy-note <text>] [--voice-note <text>] [--culture-note <text>] [--continuity-note <text>]\n  literary-engine blind-review dossier <reveal-key.json> <dossier.json> <ledger.json> [ledger2.json ...]\n  literary-engine blind-review verify <blind-bundle.json> <reveal-key.json> <dossier.json> <ledger.json> [ledger2.json ...]\n\nThe review ledger never receives the reveal key. Verification reconstructs the dossier from local inputs without writing an artifact or granting production admission."
+    concat!(
+        "Usage:\n",
+        "  literary-engine blind-review init <blind-bundle.json> <ledger.json> --reviewer <id>\n",
+        "  literary-engine blind-review record <ledger.json> <case-id> <a|b|tie|defer> --reason <text> [--adequacy-note <text>] [--voice-note <text>] [--culture-note <text>] [--continuity-note <text>]\n",
+        "  literary-engine blind-review dossier <reveal-key.json> <dossier.json> <ledger.json> [ledger2.json ...]\n",
+        "  literary-engine blind-review verify <blind-bundle.json> <reveal-key.json> <dossier.json> <ledger.json> [ledger2.json ...]\n",
+        "  literary-engine blind-review sign-ledger <ledger.json> <signature.sig> --key <ssh-key>\n",
+        "  literary-engine blind-review verify-ledger-signature <ledger.json> <signature.sig> --allowed-signers <allowed_signers> [--revocations <krl-or-revoked-keys>]\n",
+        "  literary-engine blind-review verify-authenticated <blind-bundle.json> <reveal-key.json> <dossier.json> <ledger.json> <signature.sig> [ledger2.json signature2.sig ...] --allowed-signers <allowed_signers> [--revocations <krl-or-revoked-keys>]\n\n",
+        "The review ledger never receives the reveal key. Schema-2 reviewer signatures use local OpenSSH SSHSIG over the exact completed-ledger bytes. Private signing keys and verifier trust files remain external to project state. Authentication never grants production admission."
+    )
 }
 
 pub(crate) fn run_provider_review(args: &[String]) -> Result<()> {
@@ -139,6 +152,9 @@ pub(crate) fn run_provider_review(args: &[String]) -> Result<()> {
         "record" => run_record(&args[1..]),
         "dossier" => run_dossier(&args[1..]),
         "verify" => run_verify(&args[1..]),
+        "sign-ledger" => run_sign_ledger(&args[1..]),
+        "verify-ledger-signature" => run_verify_ledger_signature(&args[1..]),
+        "verify-authenticated" => run_verify_authenticated(&args[1..]),
         "--help" | "-h" | "help" => {
             println!("{}", usage());
             Ok(())
@@ -293,15 +309,188 @@ fn run_verify(args: &[String]) -> Result<()> {
 
     let bundle_bytes =
         fs::read(bundle_path).map_err(|error| format!("failed to read {bundle_path}: {error}"))?;
-    let bundle: BlindComparisonBundleInput = serde_json::from_slice(&bundle_bytes)
+    let key_bytes =
+        fs::read(key_path).map_err(|error| format!("failed to read {key_path}: {error}"))?;
+    let dossier_bytes =
+        fs::read(dossier_path).map_err(|error| format!("failed to read {dossier_path}: {error}"))?;
+    let ledger_bytes = ledger_paths
+        .iter()
+        .map(|path| fs::read(path).map_err(|error| format!("failed to read {path}: {error}")))
+        .collect::<Result<Vec<_>>>()?;
+
+    verify_evidence_bytes(
+        &bundle_bytes,
+        &key_bytes,
+        &dossier_bytes,
+        &ledger_bytes,
+        false,
+    )?;
+    println!("review dossier verified against supplied local evidence: {dossier_path}");
+    println!("production admission: NOT GRANTED");
+    Ok(())
+}
+
+fn run_sign_ledger(args: &[String]) -> Result<()> {
+    let flags = ["--key"];
+    let ledger_path = positional(args, 0, &flags).ok_or_else(|| usage().to_string())?;
+    let signature_path = positional(args, 1, &flags).ok_or_else(|| usage().to_string())?;
+    let key_path = flag_value(args, "--key")
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| "sign-ledger requires a non-empty --key path".to_string())?;
+
+    ensure_output_distinct(signature_path, &[ledger_path, key_path])?;
+    ensure_unique_inputs(&[ledger_path, key_path])?;
+    if Path::new(signature_path).exists() {
+        return Err(format!(
+            "signature output already exists: {signature_path}; choose a new path so prior evidence is not silently replaced"
+        ));
+    }
+
+    let ledger_bytes =
+        fs::read(ledger_path).map_err(|error| format!("failed to read {ledger_path}: {error}"))?;
+    let ledger = parse_ledger_bytes(&ledger_bytes, ledger_path)?;
+    validate_authenticatable_ledger(&ledger)?;
+    let signature = ssh_sign_bytes(&ledger_bytes, key_path)?;
+    write_bytes_atomic(Path::new(signature_path), &signature)?;
+
+    println!("review ledger signature written: {signature_path}");
+    println!("reviewer principal: {}", ledger.reviewer);
+    println!("signature namespace: {REVIEW_SIGNATURE_NAMESPACE}");
+    println!("production admission: NOT GRANTED");
+    Ok(())
+}
+
+fn run_verify_ledger_signature(args: &[String]) -> Result<()> {
+    let flags = ["--allowed-signers", "--revocations"];
+    let ledger_path = positional(args, 0, &flags).ok_or_else(|| usage().to_string())?;
+    let signature_path = positional(args, 1, &flags).ok_or_else(|| usage().to_string())?;
+    let allowed_signers = flag_value(args, "--allowed-signers")
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| {
+            "verify-ledger-signature requires a non-empty --allowed-signers path".to_string()
+        })?;
+    let revocations = optional_flag(args, "--revocations");
+
+    let mut inputs = vec![ledger_path, signature_path, allowed_signers];
+    if let Some(path) = revocations.as_deref() {
+        inputs.push(path);
+    }
+    ensure_unique_inputs(&inputs)?;
+
+    let ledger_bytes =
+        fs::read(ledger_path).map_err(|error| format!("failed to read {ledger_path}: {error}"))?;
+    let ledger = parse_ledger_bytes(&ledger_bytes, ledger_path)?;
+    validate_authenticatable_ledger(&ledger)?;
+    ssh_verify_bytes(
+        &ledger_bytes,
+        signature_path,
+        allowed_signers,
+        &ledger.reviewer,
+        revocations.as_deref(),
+    )?;
+
+    println!("reviewer signature verified: {}", ledger.reviewer);
+    println!("signature namespace: {REVIEW_SIGNATURE_NAMESPACE}");
+    println!("production admission: NOT GRANTED");
+    Ok(())
+}
+
+fn run_verify_authenticated(args: &[String]) -> Result<()> {
+    let flags = ["--allowed-signers", "--revocations"];
+    let bundle_path = positional(args, 0, &flags).ok_or_else(|| usage().to_string())?;
+    let key_path = positional(args, 1, &flags).ok_or_else(|| usage().to_string())?;
+    let dossier_path = positional(args, 2, &flags).ok_or_else(|| usage().to_string())?;
+    let allowed_signers = flag_value(args, "--allowed-signers")
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| {
+            "verify-authenticated requires a non-empty --allowed-signers path".to_string()
+        })?;
+    let revocations = optional_flag(args, "--revocations");
+
+    let mut evidence_paths = Vec::new();
+    let mut index = 3usize;
+    while let Some(value) = positional(args, index, &flags) {
+        evidence_paths.push(value);
+        index += 1;
+    }
+    if evidence_paths.len() < 2 || evidence_paths.len() % 2 != 0 {
+        return Err(
+            "verify-authenticated requires one or more <ledger.json> <signature.sig> pairs"
+                .to_string(),
+        );
+    }
+
+    let mut all_inputs = vec![bundle_path, key_path, dossier_path, allowed_signers];
+    all_inputs.extend(evidence_paths.iter().copied());
+    if let Some(path) = revocations.as_deref() {
+        all_inputs.push(path);
+    }
+    ensure_unique_inputs(&all_inputs)?;
+
+    let bundle_bytes =
+        fs::read(bundle_path).map_err(|error| format!("failed to read {bundle_path}: {error}"))?;
+    let key_bytes =
+        fs::read(key_path).map_err(|error| format!("failed to read {key_path}: {error}"))?;
+    let dossier_bytes =
+        fs::read(dossier_path).map_err(|error| format!("failed to read {dossier_path}: {error}"))?;
+
+    let mut ledger_bytes = Vec::new();
+    let mut signature_paths = Vec::new();
+    for pair in evidence_paths.chunks_exact(2) {
+        ledger_bytes.push(
+            fs::read(pair[0]).map_err(|error| format!("failed to read {}: {error}", pair[0]))?,
+        );
+        signature_paths.push(pair[1]);
+    }
+
+    verify_evidence_bytes(
+        &bundle_bytes,
+        &key_bytes,
+        &dossier_bytes,
+        &ledger_bytes,
+        true,
+    )?;
+
+    for (bytes, signature_path) in ledger_bytes.iter().zip(signature_paths) {
+        let ledger = parse_ledger_bytes(bytes, "authenticated ledger")?;
+        validate_authenticatable_ledger(&ledger)?;
+        ssh_verify_bytes(
+            bytes,
+            signature_path,
+            allowed_signers,
+            &ledger.reviewer,
+            revocations.as_deref(),
+        )?;
+    }
+
+    println!("authenticated review dossier verified against exact signed schema-2 ledgers");
+    println!("reviewer signatures: {}", ledger_bytes.len());
+    println!("signature namespace: {REVIEW_SIGNATURE_NAMESPACE}");
+    println!("production admission: NOT GRANTED");
+    Ok(())
+}
+
+fn verify_evidence_bytes(
+    bundle_bytes: &[u8],
+    key_bytes: &[u8],
+    dossier_bytes: &[u8],
+    ledger_bytes: &[Vec<u8>],
+    require_authenticated_schema: bool,
+) -> Result<()> {
+    let bundle: BlindComparisonBundleInput = serde_json::from_slice(bundle_bytes)
         .map_err(|error| format!("invalid blind comparison bundle: {error}"))?;
     validate_bundle(&bundle)?;
 
-    let key_bytes =
-        fs::read(key_path).map_err(|error| format!("failed to read {key_path}: {error}"))?;
-    let key: BlindComparisonKeyInput = serde_json::from_slice(&key_bytes)
-        .map_err(|error| format!("invalid reveal key: {error}"))?;
+    let key: BlindComparisonKeyInput =
+        serde_json::from_slice(key_bytes).map_err(|error| format!("invalid reveal key: {error}"))?;
     validate_key(&key)?;
+    if require_authenticated_schema && key.schema_version != 2 {
+        return Err("authenticated verification requires a schema-2 reveal key".to_string());
+    }
+
     let bundle_cases = bundle
         .cases
         .iter()
@@ -316,18 +505,24 @@ fn run_verify(args: &[String]) -> Result<()> {
         return Err("blind bundle and reveal key have different corpus or case ids".into());
     }
 
-    let bundle_sha256 = sha256_hex(&bundle_bytes);
+    let bundle_sha256 = sha256_hex(bundle_bytes);
     if key.schema_version == 2 && key.bundle_sha256.as_deref() != Some(bundle_sha256.as_str()) {
         return Err("reveal-key SHA-256 differs from the supplied blind bundle".into());
     }
 
-    let ledgers = ledger_paths
+    let ledgers = ledger_bytes
         .iter()
-        .map(|path| read_ledger(path))
+        .enumerate()
+        .map(|(index, bytes)| parse_ledger_bytes(bytes, &format!("ledger {}", index + 1)))
         .collect::<Result<Vec<_>>>()?;
+    if require_authenticated_schema {
+        for ledger in &ledgers {
+            validate_authenticatable_ledger(ledger)?;
+        }
+    }
     if ledgers
         .iter()
-        .any(|ledger| ledger.bundle_fingerprint != fingerprint(&bundle_bytes))
+        .any(|ledger| ledger.bundle_fingerprint != fingerprint(bundle_bytes))
     {
         return Err("review ledger fingerprint differs from the supplied blind bundle".into());
     }
@@ -344,11 +539,10 @@ fn run_verify(args: &[String]) -> Result<()> {
     {
         return Err("schema-2 reveal key requires schema-2 review ledgers".into());
     }
+
     let expected = serde_json::to_value(build_dossier(&key, &ledgers)?)
         .map_err(|error| format!("failed to reconstruct dossier: {error}"))?;
-    let actual_bytes = fs::read(dossier_path)
-        .map_err(|error| format!("failed to read {dossier_path}: {error}"))?;
-    let actual: serde_json::Value = serde_json::from_slice(&actual_bytes)
+    let actual: serde_json::Value = serde_json::from_slice(dossier_bytes)
         .map_err(|error| format!("invalid review dossier: {error}"))?;
     if expected != actual {
         return Err(
@@ -356,9 +550,209 @@ fn run_verify(args: &[String]) -> Result<()> {
                 .into(),
         );
     }
-    println!("review dossier verified against supplied local evidence: {dossier_path}");
-    println!("production admission: NOT GRANTED");
     Ok(())
+}
+
+fn parse_ledger_bytes(bytes: &[u8], label: &str) -> Result<BlindReviewLedger> {
+    serde_json::from_slice(bytes).map_err(|error| format!("invalid review ledger {label}: {error}"))
+}
+
+fn validate_authenticatable_ledger(ledger: &BlindReviewLedger) -> Result<()> {
+    validate_ledger(ledger)?;
+    if ledger.schema_version != LEDGER_SCHEMA_VERSION {
+        return Err("reviewer authentication requires a schema-2 review ledger".to_string());
+    }
+    if let Some(pending) = ledger
+        .cases
+        .iter()
+        .find(|case| case.decision == ReviewDecision::Pending)
+    {
+        return Err(format!(
+            "reviewer authentication requires a completed ledger; case '{}' is still pending",
+            pending.case_id
+        ));
+    }
+    validate_reviewer_principal(&ledger.reviewer)
+}
+
+fn validate_reviewer_principal(reviewer: &str) -> Result<()> {
+    let reviewer = reviewer.trim();
+    if reviewer.is_empty() || reviewer.len() > 128 {
+        return Err("authenticated reviewer principal must contain 1..=128 bytes".to_string());
+    }
+    if !reviewer.bytes().all(|byte| {
+        byte.is_ascii_alphanumeric()
+            || matches!(byte, b'.' | b'_' | b'@' | b'+' | b'-' | b':')
+    }) {
+        return Err(
+            "authenticated reviewer principal may contain only ASCII letters, digits, '.', '_', '@', '+', '-', or ':'"
+                .to_string(),
+        );
+    }
+    Ok(())
+}
+
+fn ssh_sign_bytes(bytes: &[u8], key_path: &str) -> Result<Vec<u8>> {
+    let mut child = Command::new("ssh-keygen")
+        .args([
+            "-Y",
+            "sign",
+            "-f",
+            key_path,
+            "-n",
+            REVIEW_SIGNATURE_NAMESPACE,
+        ])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|error| {
+            format!(
+                "failed to start ssh-keygen for reviewer signing; install OpenSSH or configure PATH: {error}"
+            )
+        })?;
+
+    let mut stdin = child
+        .stdin
+        .take()
+        .ok_or_else(|| "failed to open ssh-keygen signing stdin".to_string())?;
+    stdin
+        .write_all(bytes)
+        .map_err(|error| format!("failed to stream ledger bytes to ssh-keygen: {error}"))?;
+    drop(stdin);
+
+    let output = child
+        .wait_with_output()
+        .map_err(|error| format!("failed to wait for ssh-keygen signing: {error}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "ssh-keygen reviewer signing failed: {}",
+            bounded_command_error(&output.stderr)
+        ));
+    }
+    if !output
+        .stdout
+        .starts_with(b"-----BEGIN SSH SIGNATURE-----")
+    {
+        return Err("ssh-keygen returned an unexpected reviewer signature format".to_string());
+    }
+    Ok(output.stdout)
+}
+
+fn ssh_verify_bytes(
+    bytes: &[u8],
+    signature_path: &str,
+    allowed_signers: &str,
+    reviewer: &str,
+    revocations: Option<&str>,
+) -> Result<()> {
+    let mut command = Command::new("ssh-keygen");
+    command.args([
+        "-Y",
+        "verify",
+        "-f",
+        allowed_signers,
+        "-I",
+        reviewer,
+        "-n",
+        REVIEW_SIGNATURE_NAMESPACE,
+        "-s",
+        signature_path,
+    ]);
+    if let Some(path) = revocations {
+        command.args(["-r", path]);
+    }
+    let mut child = command
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|error| {
+            format!(
+                "failed to start ssh-keygen for reviewer verification; install OpenSSH or configure PATH: {error}"
+            )
+        })?;
+
+    let mut stdin = child
+        .stdin
+        .take()
+        .ok_or_else(|| "failed to open ssh-keygen verification stdin".to_string())?;
+    stdin
+        .write_all(bytes)
+        .map_err(|error| format!("failed to stream ledger bytes to ssh-keygen: {error}"))?;
+    drop(stdin);
+
+    let output = child
+        .wait_with_output()
+        .map_err(|error| format!("failed to wait for ssh-keygen verification: {error}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "reviewer signature verification failed for '{reviewer}': {}",
+            bounded_command_error(&output.stderr)
+        ));
+    }
+    Ok(())
+}
+
+fn bounded_command_error(stderr: &[u8]) -> String {
+    let text = String::from_utf8_lossy(stderr);
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return "ssh-keygen returned a non-zero exit status".to_string();
+    }
+    trimmed.chars().take(600).collect()
+}
+
+fn write_bytes_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
+    let parent = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    if !parent.is_dir() {
+        return Err(format!(
+            "output directory does not exist: {}",
+            parent.display()
+        ));
+    }
+    let nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|error| format!("system clock error: {error}"))?
+        .as_nanos();
+    let file_name = path
+        .file_name()
+        .and_then(|value| value.to_str())
+        .ok_or_else(|| {
+            format!(
+                "output path has no valid UTF-8 file name: {}",
+                path.display()
+            )
+        })?;
+    let temp_path = parent.join(format!(".{file_name}.{}.{}.tmp", std::process::id(), nonce));
+
+    let write_result = (|| -> Result<()> {
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&temp_path)
+            .map_err(|error| format!("failed to create {}: {error}", temp_path.display()))?;
+        file.write_all(bytes)
+            .map_err(|error| format!("failed to write {}: {error}", temp_path.display()))?;
+        file.sync_all()
+            .map_err(|error| format!("failed to sync {}: {error}", temp_path.display()))?;
+        fs::rename(&temp_path, path).map_err(|error| {
+            format!(
+                "failed to atomically replace {} with {}: {error}",
+                path.display(),
+                temp_path.display()
+            )
+        })?;
+        Ok(())
+    })();
+
+    if write_result.is_err() {
+        let _ = fs::remove_file(&temp_path);
+    }
+    write_result
 }
 
 fn validate_bundle(bundle: &BlindComparisonBundleInput) -> Result<()> {
@@ -1278,4 +1672,222 @@ mod tests {
         .unwrap_err();
         assert!(error.contains("reveal-key SHA-256 differs"));
     }
+    fn ssh_keygen_available() -> bool {
+        Command::new("ssh-keygen").arg("-V").output().is_ok()
+    }
+
+    fn generate_test_signer(dir: &Path, reviewer: &str) -> (PathBuf, PathBuf, PathBuf) {
+        let key = dir.join("reviewer-key");
+        let public_key = dir.join("reviewer-key.pub");
+        let allowed = dir.join("allowed_signers");
+        let status = Command::new("ssh-keygen")
+            .args(["-q", "-t", "ed25519", "-N", "", "-f"])
+            .arg(&key)
+            .status()
+            .expect("ssh-keygen should start");
+        assert!(status.success(), "test reviewer key generation should succeed");
+
+        let public_text = fs::read_to_string(&public_key).unwrap();
+        let mut fields = public_text.split_whitespace();
+        let key_type = fields.next().unwrap();
+        let key_body = fields.next().unwrap();
+        fs::write(&allowed, format!("{reviewer} {key_type} {key_body}\n")).unwrap();
+        (key, public_key, allowed)
+    }
+
+    #[test]
+    fn authenticated_signature_round_trip_rejects_tampering_wrong_principal_and_revocation() {
+        if !ssh_keygen_available() {
+            return;
+        }
+
+        let dir = tempdir().unwrap();
+        let reviewer = "reviewer@example.test";
+        let (signing_key, public_key, allowed_signers) =
+            generate_test_signer(dir.path(), reviewer);
+        let wrong_allowed = dir.path().join("wrong_allowed_signers");
+        let public_text = fs::read_to_string(&public_key).unwrap();
+        let mut fields = public_text.split_whitespace();
+        let key_type = fields.next().unwrap();
+        let key_body = fields.next().unwrap();
+        fs::write(
+            &wrong_allowed,
+            format!("other@example.test {key_type} {key_body}\n"),
+        )
+        .unwrap();
+
+        let bundle = dir.path().join("bundle.json");
+        let reveal_key = dir.path().join("key.json");
+        let ledger_path = dir.path().join("ledger.json");
+        let dossier_path = dir.path().join("dossier.json");
+        let signature_path = dir.path().join("ledger.sig");
+        let bundle_bytes =
+            br#"{"schema_version":1,"corpus_id":"phase37-test","cases":[{"case_id":"c1"}]}"#;
+        fs::write(&bundle, bundle_bytes).unwrap();
+        let digest = sha256_hex(bundle_bytes);
+
+        let key = BlindComparisonKeyInput {
+            schema_version: 2,
+            corpus_id: "phase37-test".into(),
+            bundle_sha256: Some(digest.clone()),
+            system_one: "one".into(),
+            system_two: "two".into(),
+            assignments: vec![BlindAssignmentInput {
+                case_id: "c1".into(),
+                candidate_a_system: "one".into(),
+                candidate_b_system: "two".into(),
+            }],
+        };
+        fs::write(
+            &reveal_key,
+            format!(
+                "{{\"schema_version\":2,\"corpus_id\":\"phase37-test\",\"bundle_sha256\":\"{digest}\",\"system_one\":\"one\",\"system_two\":\"two\",\"assignments\":[{{\"case_id\":\"c1\",\"candidate_a_system\":\"one\",\"candidate_b_system\":\"two\"}}]}}"
+            ),
+        )
+        .unwrap();
+
+        let ledger = BlindReviewLedger {
+            schema_version: 2,
+            corpus_id: "phase37-test".into(),
+            bundle_fingerprint: fingerprint(bundle_bytes),
+            bundle_sha256: Some(digest),
+            reviewer: reviewer.into(),
+            cases: vec![BlindReviewCase {
+                case_id: "c1".into(),
+                decision: ReviewDecision::CandidateA,
+                reason: Some("source meaning and voice are better preserved".into()),
+                notes: CriterionNotes::default(),
+            }],
+            instructions: Vec::new(),
+        };
+        write_json_atomic(&ledger_path, &ledger).unwrap();
+        let dossier = build_dossier(&key, std::slice::from_ref(&ledger)).unwrap();
+        write_json_atomic(&dossier_path, &dossier).unwrap();
+
+        let paths = [
+            bundle.to_string_lossy().into_owned(),
+            reveal_key.to_string_lossy().into_owned(),
+            dossier_path.to_string_lossy().into_owned(),
+            ledger_path.to_string_lossy().into_owned(),
+            signature_path.to_string_lossy().into_owned(),
+            signing_key.to_string_lossy().into_owned(),
+            allowed_signers.to_string_lossy().into_owned(),
+            wrong_allowed.to_string_lossy().into_owned(),
+        ];
+
+        run_provider_review(&[
+            "sign-ledger".into(),
+            paths[3].clone(),
+            paths[4].clone(),
+            "--key".into(),
+            paths[5].clone(),
+        ])
+        .unwrap();
+
+        run_provider_review(&[
+            "verify-ledger-signature".into(),
+            paths[3].clone(),
+            paths[4].clone(),
+            "--allowed-signers".into(),
+            paths[6].clone(),
+        ])
+        .unwrap();
+
+        run_provider_review(&[
+            "verify-authenticated".into(),
+            paths[0].clone(),
+            paths[1].clone(),
+            paths[2].clone(),
+            paths[3].clone(),
+            paths[4].clone(),
+            "--allowed-signers".into(),
+            paths[6].clone(),
+        ])
+        .unwrap();
+
+        let original_ledger = fs::read(&ledger_path).unwrap();
+        fs::write(
+            &ledger_path,
+            [original_ledger.as_slice(), b"\n"].concat(),
+        )
+        .unwrap();
+        let tampered = run_provider_review(&[
+            "verify-ledger-signature".into(),
+            paths[3].clone(),
+            paths[4].clone(),
+            "--allowed-signers".into(),
+            paths[6].clone(),
+        ])
+        .unwrap_err();
+        assert!(tampered.contains("signature verification failed"));
+        fs::write(&ledger_path, &original_ledger).unwrap();
+
+        let wrong_principal = run_provider_review(&[
+            "verify-ledger-signature".into(),
+            paths[3].clone(),
+            paths[4].clone(),
+            "--allowed-signers".into(),
+            paths[7].clone(),
+        ])
+        .unwrap_err();
+        assert!(wrong_principal.contains("signature verification failed"));
+
+        let revocations = dir.path().join("revoked.krl");
+        let status = Command::new("ssh-keygen")
+            .args(["-k", "-f"])
+            .arg(&revocations)
+            .arg(&public_key)
+            .status()
+            .unwrap();
+        assert!(status.success(), "test KRL generation should succeed");
+        let revoked = run_provider_review(&[
+            "verify-ledger-signature".into(),
+            paths[3].clone(),
+            paths[4].clone(),
+            "--allowed-signers".into(),
+            paths[6].clone(),
+            "--revocations".into(),
+            revocations.to_string_lossy().into_owned(),
+        ])
+        .unwrap_err();
+        assert!(revoked.contains("signature verification failed"));
+    }
+
+    #[test]
+    fn authenticated_path_rejects_legacy_ledger_and_unsafe_principals() {
+        let legacy = ledger(
+            "reviewer@example.test",
+            ReviewDecision::CandidateA,
+            ReviewDecision::CandidateB,
+        );
+        assert!(validate_authenticatable_ledger(&legacy)
+            .unwrap_err()
+            .contains("schema-2"));
+
+        let mut current = BlindReviewLedger {
+            schema_version: 2,
+            corpus_id: "phase37".into(),
+            bundle_fingerprint: "fnv1a64-test".into(),
+            bundle_sha256: Some(sha256_hex(b"bundle")),
+            reviewer: "reviewer with spaces".into(),
+            cases: vec![BlindReviewCase {
+                case_id: "c1".into(),
+                decision: ReviewDecision::CandidateA,
+                reason: Some("reason".into()),
+                notes: CriterionNotes::default(),
+            }],
+            instructions: Vec::new(),
+        };
+        assert!(validate_authenticatable_ledger(&current)
+            .unwrap_err()
+            .contains("principal"));
+
+        current.reviewer = "reviewer@example.test".into();
+        current.cases[0].decision = ReviewDecision::Pending;
+        current.cases[0].reason = None;
+        assert!(validate_authenticatable_ledger(&current)
+            .unwrap_err()
+            .contains("completed ledger"));
+    }
+
 }
