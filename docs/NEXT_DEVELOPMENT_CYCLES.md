@@ -419,3 +419,42 @@ Trendshift is a **candidate-discovery source**, not an installation list. Future
 
 Use one representative long-horizon maintenance task plus one architecture/research task, establish a baseline, evaluate candidates sequentially, and retain the smallest combination that improves correctness, context recovery, provenance, and developer efficiency without contaminating literary memory or raising privacy/maintenance risk.
 
+### Authoritative execution decision matrix
+
+For future `next stage` work, this table determines whether a candidate should actually be installed, benchmarked, used only for ideas, deferred, or excluded. The detailed architecture/privacy/license rules above remain mandatory.
+
+| Candidate | Decision | Trigger / required future action |
+|---|---|---|
+| Trendshift | **ADOPT AS DISCOVERY PROCESS** | During major research/open-source adoption stages, scan for promising GitHub projects, then verify the real upstream, revision, license, security, and fit before use. |
+| codebase-memory-mcp | **BENCHMARK -> INSTALL DEVELOPER-SIDE IF IT WINS** | First new coding-context candidate to evaluate. Keep indexes disposable/ignored and completely separate from literary/project memory. |
+| existing projectmem | **KEEP AS BASELINE** | Treat the current safe developer-memory profile as the baseline against which new memory systems are measured. |
+| AgentMemory | **BENCHMARK -> INSTALL ONLY IF SUPERIOR/COMPLEMENTARY** | Test persistent coding recall on a real long-horizon cross-crate task; keep manuscripts/canon/review/provider data outside capture. |
+| OpenViking | **BENCHMARK LATER -> OPTIONAL EXTERNAL CONTEXT SIDECAR** | Evaluate after lighter candidates; adopt only if unified resources/memory/skills materially outperform the simpler stack enough to justify AGPL/ops complexity. |
+| Graft | **BENCHMARK AFTER PRIMARY CONTEXT TOOL** | Retain only if it adds measurable complementary code context rather than duplicate retrieval. |
+| PI-Desktop | **OPTIONAL EXTERNAL WORKSPACE** | May be installed for developer orchestration convenience, but never becomes the canonical desktop/web architecture or runtime dependency. |
+| Hyperresearch | **PREFERRED OPTIONAL DEEP-RESEARCH SIDECAR** | Use for standards, Persian NLP, datasets, translation-quality evidence, publishing, licensing, provider/model and architecture research when broad sourced investigation is required. |
+| Browser Use | **OPTIONAL DEV/RESEARCH + EXPLORATORY QA** | Use for interactive documentation/site research or exploratory web-app checks; deterministic E2E/CI and engine behavior must not depend on it. |
+| Scientific Agent Skills | **SELECTIVE SKILL ADOPTION** | Install/vendor only specific general research/evidence/statistics/database skills needed by an active research question. |
+| Diagram Design | **ADOPT FOR ARCHITECTURE/DOCS WHEN NEEDED** | Use for application boundaries, memory/review flow, publishing pipeline, threat models, schemas, deployment and mobile-web journeys; outputs remain explanatory. |
+| Anthropic-Cybersecurity-Skills | **INSPIRATION / SELECTIVE DEFENSIVE EXTRACTION** | Review only defensive web/OAuth/secrets/supply-chain/threat-model/upload/privacy material; never bulk-install offensive catalog content. |
+| Awesome Harness Engineering | **INSPIRATION / PERIODIC HARNESS REVIEW** | Use as a curated source for context delivery, verification loops, worktree/PR isolation, observability, permissions, safe autonomy and long-running agent patterns. |
+| Agency-agents | **INSPIRATION / SELECTIVE ROLE EXTRACTION** | Only adapt a narrowly useful security/research/Rust/UX/QA specialist after license and instruction-conflict review. |
+| abi/screenshot-to-code | **ADOPT AS WEB-UI PROTOTYPE TOOL WHEN WEB CYCLE STARTS** | During mobile-first web UI implementation, use for project-owned sketches/mockups/approved references only; refactor output through canonical APIs and enforce RTL/accessibility/originality/security gates. |
+| KAT-Coder-Pro | **OPTIONAL CODING-MODEL A/B TEST** | Verify exact model/version first; test only on repository coding work and never promote it to literary translation merely because it is good at coding. |
+| Needle | **DEFERRED NARROW PROTOTYPE** | Evaluate only when a concrete local structured-extraction/tool-calling gap is demonstrated and native/deterministic paths are insufficient. |
+| FreeLLMAPI | **DEV/TEST ONLY** | Optional non-canonical provider/failover experiment behind provider neutrality; never final literary-quality baseline or destination for private/copyrighted manuscripts by default. |
+| 9Drive | **DEFERRED WEB/CLOUD STORAGE INSPIRATION** | Revisit after the web app has a demonstrated user-owned Drive/multi-account cloud import/export requirement and after privacy/OAuth/sync review. |
+| AutoShorts | **OUT OF CURRENT PRODUCT SCOPE** | Revisit only if the product explicitly expands into audiobook/video promotional content. |
+| OpenMontage | **FUTURE MEDIA INSPIRATION ONLY** | Revisit only after an approved trailer/social-video publishing scope and dedicated license/architecture review. |
+| AdGuard Home | **OUT OF SCOPE** | Do not install or integrate into engine, CI, desktop, web, or developer bootstrap. |
+
+#### Default future sequence
+
+1. Keep `projectmem` as the baseline; do not accumulate memory systems.
+2. Benchmark `codebase-memory-mcp`, then AgentMemory; test Graft/OpenViking only where a measured gap remains.
+3. Keep only the smallest context stack that improves correctness, provenance, stale-memory resistance, privacy and deep-task efficiency.
+4. Use Hyperresearch + selected research skills for evidence-heavy phases, not as runtime dependencies.
+5. Use Diagram Design when architecture/documentation complexity warrants it.
+6. Use screenshot-to-code only when the planned web-app implementation reaches prototype/UI construction.
+7. Storage/media/provider experiments run only when their explicit product trigger is reached.
+
