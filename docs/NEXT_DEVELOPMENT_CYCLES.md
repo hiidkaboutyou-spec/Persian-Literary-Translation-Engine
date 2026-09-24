@@ -215,6 +215,33 @@ Make the engine usable from an iPhone or other mobile browser without requiring 
 - The mobile workflow is covered by automated tests and documented as a supported product path.
 - The production UI passes the project-specific design gate: strong editorial identity, excellent Persian/RTL reading, non-generic composition, accessible interaction, restrained motion, and documented provenance for adopted open-source UI code.
 
+## Cycle 14 — Persian Publishing Studio & Editable Multi-Format Export
+
+### Goal
+Turn the canonical translated manuscript into a professionally designed Persian book and make publication controls usable from the web app. DOCX/Word, EPUB, and PDF must be generated from one editable Book IR and share the same approved Persian typography and book-design decisions.
+
+See `docs/PERSIAN_PUBLISHING_ENGINE.md` for the normative publishing contract and open-source adoption map.
+
+### Work
+- Add a canonical editable Book IR for chapter/paragraph/run/scene-break/note/image/metadata/publication-style state.
+- Add protected Persian normalization for Yeh/Kaf, digits, punctuation, ZWNJ, whitespace, and mixed-script direction without corrupting URLs, identifiers, code, or explicit Latin runs.
+- Adopt/evaluate the approved Persian GitHub tooling and font families under pinned versions/licenses, including `rust-persian-tools`, Persian Tools/Virastar differential fixtures, Vazirmatn, Sahel, Samim, and Parastoo.
+- Add a tokenized Persian book design system with Literary Classic, Modern Novel, Compact Paperback, Large Reading, and Digital EPUB profiles.
+- Upgrade DOCX export to a genuinely editable publisher-facing Word document with styles, semantic RTL, protected LTR runs, sections, page numbering, headers/footers, notes, links/bookmarks, and TOC support where source semantics allow it.
+- Extend the existing Phase 20 EPUB round-trip path with publication profiles, Persian typography CSS, font policy, and re-import/edit/regenerate guarantees.
+- Add Paged.js-based professional print preview/PDF rendering using sanitized semantic HTML and the same publication tokens shown in the web app.
+- Add a Book Design surface in the mobile-first web app for font, trim, margins, body type, line height, paragraph behavior, chapter openings, scene breaks, headers/footers, and export presets.
+- Add deterministic QA for DOCX structure/round-trip, EPUBCheck/re-import, and PDF font embedding/text extraction/BiDi/visual-regression fixtures.
+- Preserve a single source of truth: browser edits regenerate every format; do not implement three independent manuscript states.
+
+### Exit criteria
+- A user can edit one canonical manuscript in the web app and export matching DOCX, EPUB, and PDF versions.
+- DOCX is directly editable in Microsoft Word and retains professional Persian book structure instead of flattened formatting.
+- EPUB passes EPUBCheck and preserves valid Persian RTL/navigation/assets after round trip.
+- PDF is a professional final render regenerated from the editable project and contains selectable/searchable Persian text with embedded fonts.
+- A user does not need to manually repair RTL, نیم‌فاصله, Persian characters/punctuation, chapter openings, ordinary page numbering, or baseline book layout after export.
+- Persian/mixed-script fixtures and each output-format publication gate pass on supported CI environments.
+
 ## Definition of Product Completion
 
 The project is considered functionally complete when a user can:
@@ -233,10 +260,10 @@ The project is considered functionally complete when a user can:
 12. Inspect the provenance of important literary decisions and trust user-approved decisions over model suggestions.
 13. Process large long-form projects without redundant work or fragile state.
 14. Install, upgrade, back up, restore, and use a stable v1 release on a clean supported system.
-15. Open the product from a mobile browser, upload a supported book, run and review a one-chapter translation test, resume the project, and export the result without using Terminal.
+15. Open the product from a mobile browser, upload a supported book, run and review a one-chapter translation test, resume the project, and export the result without using Terminal.\n16. Edit one canonical Persian manuscript, choose a professional book-design profile, and generate matching editable DOCX/Word and EPUB outputs plus a professional regenerable PDF without manual RTL/typography repair.
 
 ## Priority Rule
 
 Until the end-to-end runtime in Cycle 5 works, implementation work should take priority over additional architecture-only documentation. Every subsequent cycle must leave the repository in a more runnable, testable, user-facing state.
 
-Cycles 9-13 must not start by adding new product surfaces unless Cycles 5-8 exit criteria are materially satisfied. Their purpose is to turn a working release into a dependable daily-use product, not to postpone the core runtime behind additional architecture work.
+Cycles 9-14 must not start by adding new product surfaces unless Cycles 5-8 exit criteria are materially satisfied. Their purpose is to turn a working release into a dependable daily-use product, not to postpone the core runtime behind additional architecture work.
