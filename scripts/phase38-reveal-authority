@@ -15,10 +15,19 @@ EOF
 
 sha256_file() { shasum -a 256 -- "$1" | awk '{print $1}'; }
 valid_atom() { [[ "$1" =~ ^[A-Za-z0-9._@:+-]{1,128}$ ]]; }
+require_regular_file() { [[ -f "$1" && ! -L "$1" ]] || { echo "$2 must be a regular non-symlink file" >&2; exit 2; }; }
+same_path() {
+  local left right
+  left=$(cd "$(dirname -- "$1")" 2>/dev/null && printf '%s/%s' "$PWD" "$(basename -- "$1")") || return 1
+  right=$(cd "$(dirname -- "$2")" 2>/dev/null && printf '%s/%s' "$PWD" "$(basename -- "$2")") || return 1
+  [[ "$left" == "$right" ]]
+}
 
 [[ $# -ge 4 ]] || usage
 command=$1; bundle=$2; reveal=$3; signature=$4; shift 4
-[[ -f "$bundle" && -f "$reveal" ]] || { echo 'bundle and reveal key must be regular files' >&2; exit 2; }
+require_regular_file "$bundle" 'bundle'
+require_regular_file "$reveal" 'reveal key'
+same_path "$bundle" "$reveal" && { echo 'bundle and reveal key must be distinct files' >&2; exit 2; }
 
 project='' review='' authority='' key='' allowed='' revocations=''
 while [[ $# -gt 0 ]]; do
@@ -40,8 +49,10 @@ statement=$(printf '%s\nproject=%s\nreview=%s\nbundle_sha256=%s\nreveal_sha256=%
 
 case "$command" in
   sign)
-    [[ -n "$key" && -f "$key" ]] || { echo 'sign requires --key' >&2; exit 2; }
-    [[ ! -e "$signature" ]] || { echo 'signature output already exists; refusing overwrite' >&2; exit 2; }
+    [[ -n "$key" ]] || { echo 'sign requires --key' >&2; exit 2; }
+    require_regular_file "$key" 'signing key'
+    [[ ! -e "$signature" && ! -L "$signature" ]] || { echo 'signature output already exists; refusing overwrite or symlink target' >&2; exit 2; }
+    for protected in "$bundle" "$reveal" "$key"; do same_path "$signature" "$protected" && { echo 'signature output must be distinct from all protected inputs' >&2; exit 2; }; done
     tmp=$(mktemp "${TMPDIR:-/tmp}/plte-phase38.XXXXXX")
     trap 'rm -f "$tmp" "$tmp.sig"' EXIT
     printf '%s' "$statement" >"$tmp"
@@ -49,9 +60,11 @@ case "$command" in
     install -m 600 "$tmp.sig" "$signature"
     ;;
   verify)
-    [[ -f "$signature" && -n "$allowed" && -f "$allowed" ]] || { echo 'verify requires signature and --allowed-signers' >&2; exit 2; }
+    require_regular_file "$signature" 'signature'
+    [[ -n "$allowed" ]] || { echo 'verify requires --allowed-signers' >&2; exit 2; }
+    require_regular_file "$allowed" 'allowed-signers file'
     args=(-Y verify -f "$allowed" -I "$authority" -n "$NAMESPACE" -s "$signature")
-    if [[ -n "$revocations" ]]; then [[ -f "$revocations" ]] || { echo 'revocations file not found' >&2; exit 2; }; args+=(-r "$revocations"); fi
+    if [[ -n "$revocations" ]]; then require_regular_file "$revocations" 'revocations file'; args+=(-r "$revocations"); fi
     printf '%s' "$statement" | ssh-keygen "${args[@]}" >/dev/null
     ;;
   *) usage ;;
