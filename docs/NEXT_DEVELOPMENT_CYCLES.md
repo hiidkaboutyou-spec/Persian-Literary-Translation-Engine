@@ -192,7 +192,7 @@ Freeze a dependable v1 contract and make the Rust engine straightforward to inst
 Make the engine usable from an iPhone or other mobile browser without requiring Terminal, Rust tooling, or direct filesystem access, while reusing the existing application/service layer instead of duplicating translation logic.
 
 ### Work
-- Build a responsive mobile-first web app that works well in iPhone Safari and modern desktop browsers.
+- Build a responsive mobile-first web app that works well in iPhone Safari and modern desktop browsers. The surface must meet the distinctive editorial UI quality bar in `docs/WEB_APP_UI_DESIGN_DIRECTION.md`, not ship as a generic dashboard/template.
 - Let the user upload supported manuscript formats (EPUB, DOCX, TXT, Markdown, and text-based PDF) and create a project from the browser.
 - Make the safest first-run path a one-chapter test by default, with an explicit choice before translating more chapters.
 - Show import/analysis/translation progress, chapter state, quality findings, warnings, and resumable failures in the UI.
@@ -202,6 +202,8 @@ Make the engine usable from an iPhone or other mobile browser without requiring 
 - Add upload-size limits, content-type/format validation, rate limiting, bounded job execution, cost/usage previews, and explicit confirmation before expensive multi-chapter runs.
 - Preserve project isolation, source provenance, checkpoints, memory, review ledgers, backup/recovery semantics, and all existing safety gates.
 - Add mobile end-to-end tests covering upload -> inspect/analyze -> one-chapter translation -> review -> resume -> export.
+- Add visual-regression, RTL/bidirectional, reduced-motion, accessibility, touch-target and originality/design-review gates for the core web surfaces.
+- Maintain a license/adoption ledger for any GitHub-derived UI components or patterns; use permissive building blocks selectively while preserving a project-specific visual system.
 - Document a simple user journey: open the site, choose a book, test one chapter, review the result, then continue the book if desired.
 
 ### Exit criteria
@@ -211,6 +213,7 @@ Make the engine usable from an iPhone or other mobile browser without requiring 
 - Secrets and manuscript contents do not leak into client bundles, logs, URLs, or public artifacts.
 - A user can review the first translated chapter and export/download a valid Persian result from the browser.
 - The mobile workflow is covered by automated tests and documented as a supported product path.
+- The production UI passes the project-specific design gate: strong editorial identity, excellent Persian/RTL reading, non-generic composition, accessible interaction, restrained motion, and documented provenance for adopted open-source UI code.
 
 ## Definition of Product Completion
 
