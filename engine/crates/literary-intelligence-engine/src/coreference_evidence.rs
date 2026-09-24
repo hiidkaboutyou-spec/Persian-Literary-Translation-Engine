@@ -107,12 +107,27 @@ pub fn coreference_source_fingerprint(unit_id: &str, source_text: &str) -> Strin
 
 fn read_bounded(mut reader: impl Read, max_bytes: usize) -> Result<BoundedOutput, std::io::Error> {
     let mut bytes = Vec::with_capacity(max_bytes.min(64 * 1024));
-    let limit = max_bytes.saturating_add(1);
-    reader.by_ref().take(limit as u64).read_to_end(&mut bytes)?;
-    let exceeded = bytes.len() > max_bytes;
-    if exceeded {
-        bytes.truncate(max_bytes);
+    let mut buffer = [0u8; 8 * 1024];
+    let mut exceeded = false;
+
+    loop {
+        let read = reader.read(&mut buffer)?;
+        if read == 0 {
+            break;
+        }
+
+        if bytes.len() < max_bytes {
+            let remaining = max_bytes - bytes.len();
+            let keep = remaining.min(read);
+            bytes.extend_from_slice(&buffer[..keep]);
+            if keep < read {
+                exceeded = true;
+            }
+        } else {
+            exceeded = true;
+        }
     }
+
     Ok(BoundedOutput { bytes, exceeded })
 }
 

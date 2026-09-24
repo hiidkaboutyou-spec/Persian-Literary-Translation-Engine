@@ -1,0 +1,90 @@
+name: Phase 37 Reviewer Ledger Authentication
+
+on:
+  push:
+    branches:
+      - phase-37-authenticated-reviewer-evidence
+    paths:
+      - "engine/cli/src/provider_review_cmd.rs"
+      - "docs/PHASE_37_RESEARCH.md"
+      - "docs/IMPLEMENTATION_STATUS.md"
+      - "docs/IMPLEMENTATION_ROADMAP.md"
+      - "docs/EXTERNAL_INTEGRATIONS.md"
+      - "AGENTS.md"
+      - ".github/workflows/phase37-authenticated-reviewer-evidence.yml"
+  pull_request:
+    paths:
+      - "engine/cli/src/provider_review_cmd.rs"
+      - "docs/PHASE_37_RESEARCH.md"
+      - "docs/IMPLEMENTATION_STATUS.md"
+      - "docs/IMPLEMENTATION_ROADMAP.md"
+      - "docs/EXTERNAL_INTEGRATIONS.md"
+      - "AGENTS.md"
+      - ".github/workflows/phase37-authenticated-reviewer-evidence.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: Phase 37 / Linux
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: engine
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Verify OpenSSH SSHSIG availability
+        run: |
+          command -v ssh-keygen
+          ssh -V
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # reviewed stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Format
+        run: cargo fmt --all -- --check
+
+      - name: Authenticated reviewer evidence tests
+        run: cargo test --locked -p literary-engine provider_review_cmd::tests -- --nocapture
+
+      - name: Clippy CLI
+        run: cargo clippy --locked -p literary-engine --all-targets -- -D warnings
+
+      - name: Static non-admission and local-only guards
+        run: |
+          set -euo pipefail
+          grep -F 'REVIEW_SIGNATURE_NAMESPACE' cli/src/provider_review_cmd.rs
+          grep -F 'production admission: NOT GRANTED' cli/src/provider_review_cmd.rs
+          grep -F 'automatic_winner: None' cli/src/provider_review_cmd.rs
+          ! grep -Eq 'sigstore|cosign|fulcio|rekor|ed25519_dalek|ed25519-dalek' cli/Cargo.toml crates/*/Cargo.toml
+
+  macos-arm64:
+    name: Phase 37 / macOS arm64
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: engine
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Verify Apple Silicon and OpenSSH
+        run: |
+          test "$(uname -m)" = arm64
+          command -v ssh-keygen
+          ssh -V
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # reviewed stable
+        with:
+          components: rustfmt
+
+      - name: Authenticated reviewer evidence tests
+        run: cargo test --locked -p literary-engine provider_review_cmd::tests::authenticated -- --nocapture

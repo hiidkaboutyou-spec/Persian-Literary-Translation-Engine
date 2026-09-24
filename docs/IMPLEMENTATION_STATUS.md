@@ -346,10 +346,33 @@ The canonical CLI and desktop application remain operationally independent. Phas
 
 PR #127 merged at `6b7a1af64ac68ba0db71ef5ae647ddd584d6dd22` from final validated head `8554b564266a4f56726c4e1fbd8c36ee944a5042`. All 17 triggered exact-head workflows passed, including Rust CI, Security, Phase 31/32/33 and Apple Silicon coverage. The offline `blind-review verify` command reconstructs and compares the complete dossier from local evidence, rejects aliased inputs and altered bundle bytes, writes nothing and grants no provider admission. Research: `docs/PHASE_35_RESEARCH.md`.
 
+## Phase 36 — Versioned Cryptographic Blind-Review Evidence Binding — canonical
+
+PR #128 merged at `14ba7b0f82b9844ef99c6f7138c897ec4e2e3067` from final validated head `debc894d8d55a143f28fe2e8a24d5438427e3b3a`. All 19 exact-head pull-request workflows succeeded. Newly generated reveal keys and review ledgers use schema v2 with SHA-256 over the exact blind-bundle bytes; dossier construction and offline verification require the same digest and reject v2-to-v1 downgrade. Legacy schema-v1 evidence remains readable with explicitly weaker semantics. Phase 36 adds integrity, not reviewer identity or provider authorization. Research: `docs/PHASE_36_RESEARCH.md`.
+
+The durable canonical Phase-36 handoff from PR #129 is merged on `main` at `b8c9f17d2323f1fe0b6f027362ef92cae0d4db79`.
+
 ## Current Handoff
 
-Phase 35 is canonical. The remaining measured integrity gap is that schema-v1 reveal keys and ledgers use FNV/corpus/case binding rather than a cryptographic exact-byte chain. Private-book provider admission still requires verified hosted-service terms, real human literary evidence and a separate explicit owner decision. Atria remains research-only.
+Phase 36 is canonical. The next measured gap is reviewer authenticity: a coordinated local rewrite can still replace a schema-v2 ledger and recompute all unkeyed hashes if every local evidence artifact is under the same attacker's control. The trust root must therefore be independent from review artifacts.
 
-## Phase 36 — Versioned Cryptographic Blind-Review Evidence Binding — in progress
+Private-book provider admission remains blocked on separate evidence: verified hosted-provider data-handling terms, representative real human English→Persian literary review, and an explicit owner authorization. Atria remains research-only.
 
-The Phase-36 branch adds a project-owned SHA-256 helper using the repository's existing RustCrypto `sha2` dependency, emits schema-v2 reveal keys with an exact blind-bundle digest, creates schema-v2 ledgers with an independently computed digest, requires matching v2 evidence before dossier construction, and extends Phase-35 verification to recompute SHA-256 from supplied bundle bytes. Legacy schema-v1 artifacts remain readable with explicitly weaker semantics. Reviewer identity/signing and production provider authorization remain separate future decisions. Research: `docs/PHASE_36_RESEARCH.md`.
+## Phase 37 — Authenticated Reviewer Ledger Evidence with Offline SSHSIG — in progress
+
+Branch: `phase-37-authenticated-reviewer-evidence`.
+
+Phase 37 adds an optional local OpenSSH SSHSIG boundary for completed schema-v2 blind-review ledgers:
+
+- sign the exact completed ledger bytes with `ssh-keygen -Y sign`;
+- verify against a human/operator-maintained `allowed_signers` trust file and the reviewer principal recorded in the ledger;
+- use a fixed project namespace for signature domain separation;
+- optionally enforce OpenSSH KRL/revoked-key files;
+- require schema-v2 evidence for authenticated verification; legacy artifacts are never silently upgraded;
+- keep private keys, trust roots and revocation state outside project persistence;
+- perform Phase-36 dossier consistency reconstruction from the same in-memory ledger bytes that are signature-checked, while making clear that only reviewer ledgers—not reveal-key assignment provenance—are authenticated;
+- add no Cargo/Python/npm dependency and make no provider-selection/admission change.
+
+Research, threat model, privacy boundary and exit criteria: `docs/PHASE_37_RESEARCH.md`.
+
+Known remaining evidence gap: the reveal key's Candidate A/B → system mapping is a separate authority artifact and is not authenticated by Phase 37. Phase 38 should design reveal-authority provenance without leaking the hidden mapping during blind review.

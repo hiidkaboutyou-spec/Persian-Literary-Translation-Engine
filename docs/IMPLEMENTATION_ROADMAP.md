@@ -366,23 +366,36 @@ PR #127; final validated head `8554b564266a4f56726c4e1fbd8c36ee944a5042`; squash
 
 Delivered an offline `blind-review verify` path that reconstructs the complete Phase-32 dossier from the supplied blind bundle, reveal key and completed ledgers, rejects duplicate/aliased inputs, checks exact bundle-byte legacy fingerprints, and compares the full dossier value without writing or granting admission. All 17 triggered exact-head workflows succeeded before merge. Research: `docs/PHASE_35_RESEARCH.md`.
 
-### Phase 36 — Versioned Cryptographic Blind-Review Evidence Binding — in progress
+### Phase 36 — Versioned Cryptographic Blind-Review Evidence Binding — canonical
 
-Branch: `phase-36-cryptographic-evidence-binding`.
+PR #128; final validated head `debc894d8d55a143f28fe2e8a24d5438427e3b3a`; squash merge `14ba7b0f82b9844ef99c6f7138c897ec4e2e3067`.
 
-Goal: replace FNV-only evidence binding for newly generated review artifacts with a schema-v2 SHA-256 chain while keeping legacy v1 artifacts readable.
+Delivered a schema-v2 SHA-256 chain over the exact blind-bundle bytes across reveal keys, independently initialized review ledgers, dossier construction and offline verification. Schema-v2 evidence rejects downgrade to legacy ledgers. Existing schema-v1 evidence remains readable with explicitly weaker FNV/corpus/case semantics. No new dependency source, provider, model, database or manuscript-transfer path was added. All 19 exact-head pull-request workflows succeeded before merge.
+
+The documentation-only canonical handoff PR #129 then merged at `b8c9f17d2323f1fe0b6f027362ef92cae0d4db79`.
+
+Research: `docs/PHASE_36_RESEARCH.md`.
+
+### Phase 37 — Authenticated Reviewer Ledger Evidence with Offline SSHSIG — in progress
+
+Branch: `phase-37-authenticated-reviewer-evidence`.
+
+Goal: close the reviewer-authenticity gap without building a custom PKI or introducing hosted identity/network dependencies.
 
 Current scope:
 
-- reuse the already-present RustCrypto `sha2` dependency through a small `project-engine::artifact_integrity` helper; no new dependency source;
-- schema-v2 reveal keys bind the exact blind-bundle bytes with `bundle_sha256`;
-- schema-v2 ledgers independently bind the same bundle bytes;
-- schema-v2 dossiers require matching key/ledger SHA-256 and reject downgrade to legacy ledgers;
-- Phase-35 verification recomputes SHA-256 from supplied bundle bytes before accepting a v2 chain;
-- legacy v1 artifacts retain their explicitly weaker FNV/corpus/case semantics;
-- reviewer identity/signatures, provider authorization and manuscript transfer remain out of scope.
+- optional `ssh-keygen -Y sign/verify` process boundary over exact completed schema-v2 ledger bytes;
+- fixed `blind-review@persian-literary-translation-engine` namespace for signature domain separation;
+- verifier-controlled OpenSSH `allowed_signers` trust root mapped to the ledger reviewer principal;
+- optional KRL/revoked-key enforcement;
+- private signing keys, trust roots and revocation files remain external to project state;
+- reviewer-authenticated verification reuses the same in-memory ledger bytes for Phase-36 SHA-256/dossier consistency checks and SSHSIG verification;
+- legacy v1 evidence remains supported by the existing unsigned verification path but cannot claim authenticated status;
+- no new Rust/Python/npm package, provider, production selector or manuscript-transfer capability.
 
-Research and exit criteria: `docs/PHASE_36_RESEARCH.md`.
+Research and exit criteria: `docs/PHASE_37_RESEARCH.md`.
+
+Next measured frontier: Phase 38 reveal-authority provenance. The hidden reveal-key mapping is not authenticated by reviewer ledger signatures, so do not claim end-to-end evidence authenticity until its creation/reveal authority has an independently verifiable provenance mechanism that preserves blindness.
 
 ## Next Action Rule
 

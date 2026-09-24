@@ -577,3 +577,33 @@ Phase 36 adds no network integration and installs no new dependency source.
 - `cargo-crev` remains optional developer research; existing Security/cargo-audit stays the enforced dependency-security gate.
 
 No manuscript text, review text, provider secret or identity credential is sent to an external service by this phase.
+
+
+## Phase 37 — OpenSSH SSHSIG reviewer-authenticity boundary
+
+Upstream: `openssh/openssh-portable`.
+
+Phase 37 uses the operating system's OpenSSH `ssh-keygen -Y sign/verify` support only through explicit blind-review authentication commands.
+
+Approved boundary:
+
+- local process invocation only; no hosted service and no project-initiated network request;
+- exact completed schema-v2 ledger bytes are streamed to `ssh-keygen` over stdin;
+- a fixed project signature namespace provides domain separation;
+- reviewer authorization comes from an explicit verifier-controlled `allowed_signers` file;
+- optional revocation uses an OpenSSH KRL or one-public-key-per-line revocation file;
+- private signing keys are never generated, copied, serialized or persisted by the engine;
+- a signing key path may refer to an OpenSSH private key or an agent-backed public-key reference supported by OpenSSH;
+- OpenSSH availability is required only for the explicit authentication commands and the dedicated Phase-37 validation workflow;
+- normal translation, review recording, dossier creation, desktop operation, publishing and legacy unsigned verification remain independent of OpenSSH signing;
+- signature success authenticates the exact reviewer-ledger bytes for the enrolled principal only; it does not authenticate reveal-key assignment provenance and never implies literary approval, provider privacy safety or production admission.
+
+No Cargo/Python/npm dependency is added for this boundary.
+
+Alternatives remain deferred:
+
+- `ed25519-dalek`: cryptographic primitive alone would make this repository own additional key-custody/revocation infrastructure without closing a measured gap beyond SSHSIG.
+- Sigstore/Cosign: useful for software provenance, but OIDC/CA/transparency-log/network semantics are unnecessary for the current private offline reviewer workflow.
+- DSSE/in-toto: retained as design references; a second signature envelope is not added while OpenSSH SSHSIG already provides namespaced detached signatures.
+
+Research: `docs/PHASE_37_RESEARCH.md`.

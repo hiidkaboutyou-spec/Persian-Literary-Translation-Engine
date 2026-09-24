@@ -170,3 +170,18 @@ Before adopting a GitHub repository/package/model/tool:
 - Hashing proves byte integrity, not reviewer identity. Signatures, enrollment, key custody, revocation and trust roots require a later threat-modelled design.
 - Sigstore/Cosign and Ed25519 are research candidates for that later identity layer, not Phase-36 dependencies.
 - Production provider selection, provider authorization, private-manuscript transfer and automatic literary winner selection remain unchanged.
+
+
+## Phase 37 — Reviewer Ledger Authentication with Offline SSHSIG
+
+- Authenticate the exact completed schema-v2 reviewer-ledger bytes, not a reserialized object.
+- Use the operating system's OpenSSH SSHSIG implementation through explicit `ssh-keygen -Y sign/verify` commands instead of adding a new Rust cryptography/PKI dependency.
+- Fix the signature namespace to `blind-review@persian-literary-translation-engine` for domain separation.
+- Reviewer authorization comes only from a verifier-controlled external `allowed_signers` trust file; the engine does not enroll identities or persist trust roots.
+- Keep reviewer private keys, trust files and revocation/KRL state outside project persistence and Git.
+- Verification must fail closed for missing/duplicate trust flags, wrong principals, revoked keys, changed ledger bytes and legacy schema-v1 evidence.
+- Do not overwrite an existing signature artifact; install new signature evidence with no-overwrite semantics.
+- Reuse the same in-memory ledger bytes for Phase-36 integrity/dossier consistency checks and SSHSIG verification.
+- A valid reviewer-ledger signature authenticates only that ledger for the enrolled principal. It does not authenticate the reveal key's Candidate A/B → system mapping, does not prove real-world identity, and does not grant literary approval or production provider admission.
+- The next evidence frontier is reveal-authority provenance. Do not claim end-to-end blind-review evidence authenticity until the hidden mapping has independent provenance that preserves blindness.
+- No new Cargo/Python/npm dependency, provider, model, database, manuscript-transfer path or production selector is justified by Phase 37.
