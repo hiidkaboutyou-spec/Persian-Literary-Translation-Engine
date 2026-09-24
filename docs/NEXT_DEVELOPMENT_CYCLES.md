@@ -267,3 +267,88 @@ The project is considered functionally complete when a user can:
 Until the end-to-end runtime in Cycle 5 works, implementation work should take priority over additional architecture-only documentation. Every subsequent cycle must leave the repository in a more runnable, testable, user-facing state.
 
 Cycles 9-14 must not start by adding new product surfaces unless Cycles 5-8 exit criteria are materially satisfied. Their purpose is to turn a working release into a dependable daily-use product, not to postpone the core runtime behind additional architecture work.
+
+## Cross-cutting developer tooling & external-project adoption track — 2026-09-25
+
+This track records external GitHub projects that may improve future development or inspire later product phases. It is **not** permission to bulk-install dependencies. The Rust-first architecture, provider neutrality, literary/project-memory boundaries, human review, privacy, publishing guarantees, and existing external-integration policy remain authoritative.
+
+### Priority A — developer-side context and research tooling
+
+1. **codebase-memory-mcp — evaluate, then adopt developer-side if gates pass**
+   - Purpose: structural codebase knowledge, dependency/call-graph navigation, impact analysis, and faster agent context recovery during large next-stage work.
+   - This is coding memory only. It must never become literary translation memory, Character Bible, glossary, relationship context, review state, or runtime retrieval.
+   - Keep this repository's index/config isolated from every other project.
+   - Before adoption:
+     - pin and review the exact upstream revision/license;
+     - audit install scripts, background services/watchers, telemetry, config mutations, and data locations;
+     - prefer manual MCP configuration and prohibit automatic modification of `AGENTS.md`/agent policy files;
+     - exclude manuscripts, credentials, provider secrets, review ledgers, generated books, and private project data from any unintended external transmission;
+     - generated indexes/caches must be ignored, disposable, and non-canonical;
+     - normal Rust build/test/export must work identically without the tool.
+   - Benchmark on a representative cross-crate change and record measurable effects on correctness, navigation effort, regression discovery, and context/tool usage.
+
+2. **Graft — evaluate only after the codebase-memory-mcp benchmark**
+   - Test whether it contributes complementary repository context rather than duplicating another context engine.
+   - Keep optional and developer-side.
+   - Do not permit unreviewed edits to `AGENTS.md`, project-memory policy, provider configuration, or core architecture docs.
+   - Adopt only when an A/B task demonstrates material benefit with no new privacy or instruction-conflict risk.
+
+3. **Hyperresearch — high-value research workflow candidate**
+   - Evaluate for deep research phases involving EPUB/DOCX/PDF standards, Persian NLP, typography, provider/model evidence, datasets, licensing, security, web architecture, and open-source adoption.
+   - Store conclusions as normal reviewed research notes with sources/provenance; the research tool itself is not canonical evidence.
+   - It must remain outside translation/runtime execution and must not gain manuscript/provider secrets by default.
+   - Prefer it when a future phase explicitly calls for broad comparative research before implementation.
+
+4. **PI-Desktop — optional external developer workspace**
+   - Evaluate as a local-first environment for this repository, coding agents, MCP servers, models, and workflows.
+   - Do not treat it as the product's desktop/web architecture or as a replacement for the canonical Tauri/application-service boundaries.
+   - Preserve project isolation and ensure the engine/CLI/web/desktop paths do not depend on PI-Desktop availability.
+
+### Priority B — selective inspiration and controlled prototypes
+
+5. **Agency-agents — selective specialist inspiration only**
+   - Never bulk-install the full catalog.
+   - Future stages may inspect narrowly relevant roles such as security reviewer, research specialist, Rust reviewer, publishing/UX reviewer, accessibility reviewer, or QA specialist.
+   - Any useful role should be adapted into project-specific guidance only after provenance/license and instruction-conflict review.
+   - Project `AGENTS.md`, human-review boundaries, and repository invariants always outrank imported agent prompts.
+
+6. **Needle — deferred local structured-extraction prototype**
+   - Potential future use is narrow local structured extraction/tool calling, not literary translation.
+   - Consider only when a concrete pipeline gap exists and compare it with native Rust/deterministic extraction and existing model-assisted analysis.
+   - Require benchmarks for Persian/English accuracy, schema reliability, resource use, privacy, licensing, and failure behavior.
+   - Disable telemetry where supported. No automatic model downloads in default CI/runtime.
+   - Do not promote generated findings directly to canon or human approval.
+
+7. **FreeLLMAPI — development/test provider experiment only**
+   - May be tested behind the provider-neutral boundary for non-canonical smoke/stress/fallback experiments.
+   - Never make free third-party endpoints the quality baseline for final literary translation or advanced analysis.
+   - Do not send copyrighted/private manuscripts, credentials, reviewer data, or durable project memory to unknown providers by default.
+   - Promotion beyond development requires explicit model/provider provenance, privacy/terms, quota/reliability, output-quality, cost, and failure-mode review.
+
+8. **9Drive — future web/cloud-storage inspiration, not current integration**
+   - Revisit after the mobile web app/project workspace has a real requirement for user-owned cloud-file import/export or multi-account storage.
+   - Evaluate architectural ideas such as virtual folders, quota-aware routing, reconnect/sync UX, and provider abstraction rather than copying the application wholesale.
+   - Any prototype must pass OAuth/credential, manuscript privacy, deletion/retention, sync-conflict, backup/recovery, quota, and lock-in review.
+   - The canonical project/application service and local project model remain the source of truth.
+
+### Priority C — currently unrelated to the translation product
+
+9. **AutoShorts — no current integration**
+   - Video/audio short-form clip generation is outside the literary translation/publishing goal.
+   - Revisit only if the product scope explicitly expands to audiobook/video promotional media.
+
+10. **OpenMontage — inspiration only if a future media-production scope is approved**
+    - Do not integrate into the translation engine today.
+    - If future publishing expands into trailers/social video, perform a dedicated architecture and license review and keep media production outside the core literary runtime.
+
+11. **AdGuard Home — no roadmap integration**
+    - Network-wide ad/tracker blocking is outside the product boundary and should not be added to runtime, CI, web app, desktop app, or developer bootstrap.
+
+### Sequencing rule for future next-stage work
+
+When these tools are relevant, prefer:
+
+`codebase-memory-mcp benchmark -> optional adoption -> Graft complementary benchmark -> Hyperresearch/relevant specialist guidance -> narrowly justified local/provider/storage prototypes`.
+
+External tooling must not displace the actual product frontier. Every adoption needs a concrete problem statement, pinned provenance, security/privacy/license review, benchmark or acceptance evidence, rollback, and documentation. Inspiration-only projects should yield project-native design decisions rather than new runtime dependencies.
+
