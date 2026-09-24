@@ -186,6 +186,32 @@ Freeze a dependable v1 contract and make the Rust engine straightforward to inst
 - Upgrades preserve existing translation projects through tested migrations.
 - The final acceptance matrix passes without data loss, silent omission, or secret leakage.
 
+## Cycle 13 — Mobile-First Web App & No-Terminal Book Testing
+
+### Goal
+Make the engine usable from an iPhone or other mobile browser without requiring Terminal, Rust tooling, or direct filesystem access, while reusing the existing application/service layer instead of duplicating translation logic.
+
+### Work
+- Build a responsive mobile-first web app that works well in iPhone Safari and modern desktop browsers.
+- Let the user upload supported manuscript formats (EPUB, DOCX, TXT, Markdown, and text-based PDF) and create a project from the browser.
+- Make the safest first-run path a one-chapter test by default, with an explicit choice before translating more chapters.
+- Show import/analysis/translation progress, chapter state, quality findings, warnings, and resumable failures in the UI.
+- Expose review actions for terminology, character facts, literary findings, corrections, approvals, and selective retranslation through the same canonical application layer used by the CLI/desktop surface.
+- Allow users to preview translated chapter text in the browser and download/export the final Persian RTL manuscript and supported intermediate artifacts.
+- Keep provider credentials and other secrets server-side; never embed API keys in browser code, logs, downloadable artifacts, or project files.
+- Add upload-size limits, content-type/format validation, rate limiting, bounded job execution, cost/usage previews, and explicit confirmation before expensive multi-chapter runs.
+- Preserve project isolation, source provenance, checkpoints, memory, review ledgers, backup/recovery semantics, and all existing safety gates.
+- Add mobile end-to-end tests covering upload -> inspect/analyze -> one-chapter translation -> review -> resume -> export.
+- Document a simple user journey: open the site, choose a book, test one chapter, review the result, then continue the book if desired.
+
+### Exit criteria
+- A user can open the web app on an iPhone, upload a supported book, and run a one-chapter translation test without using Terminal.
+- The web app uses the canonical engine/application APIs rather than a second translation implementation.
+- Interrupted browser sessions can reconnect to a persisted project/job without losing completed work.
+- Secrets and manuscript contents do not leak into client bundles, logs, URLs, or public artifacts.
+- A user can review the first translated chapter and export/download a valid Persian result from the browser.
+- The mobile workflow is covered by automated tests and documented as a supported product path.
+
 ## Definition of Product Completion
 
 The project is considered functionally complete when a user can:
@@ -204,9 +230,10 @@ The project is considered functionally complete when a user can:
 12. Inspect the provenance of important literary decisions and trust user-approved decisions over model suggestions.
 13. Process large long-form projects without redundant work or fragile state.
 14. Install, upgrade, back up, restore, and use a stable v1 release on a clean supported system.
+15. Open the product from a mobile browser, upload a supported book, run and review a one-chapter translation test, resume the project, and export the result without using Terminal.
 
 ## Priority Rule
 
 Until the end-to-end runtime in Cycle 5 works, implementation work should take priority over additional architecture-only documentation. Every subsequent cycle must leave the repository in a more runnable, testable, user-facing state.
 
-Cycles 9-12 must not start by adding new product surfaces unless Cycles 5-8 exit criteria are materially satisfied. Their purpose is to turn a working release into a dependable daily-use product, not to postpone the core runtime behind additional architecture work.
+Cycles 9-13 must not start by adding new product surfaces unless Cycles 5-8 exit criteria are materially satisfied. Their purpose is to turn a working release into a dependable daily-use product, not to postpone the core runtime behind additional architecture work.
