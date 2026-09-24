@@ -1,0 +1,46 @@
+name: Phase 38 Reveal Authority Provenance
+on:
+  pull_request:
+    paths:
+      - 'scripts/phase38-reveal-authority'
+      - '.github/workflows/phase38-reveal-authority-provenance.yml'
+      - 'docs/research/phase-38-reveal-authority-provenance-design.md'
+  push:
+    branches: [phase-38-reveal-authority-provenance-implementation]
+permissions:
+  contents: read
+jobs:
+  provenance:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-15]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Verify platform and OpenSSH
+        run: |
+          command -v ssh-keygen
+          command -v shasum
+          if [[ '${{ matrix.os }}' == 'macos-15' ]]; then test "$(uname -m)" = arm64; fi
+      - name: Exercise exact-context authority provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x scripts/phase38-reveal-authority
+          d="$RUNNER_TEMP/phase38"; mkdir -p "$d"
+          printf '%s\n' '{"schema_version":1,"corpus_id":"synthetic","cases":[{"case_id":"c1"}]}' > "$d/bundle.json"
+          printf '%s\n' '{"schema_version":2,"corpus_id":"synthetic","bundle_sha256":"synthetic-test-only","system_one":"x","system_two":"y","assignments":[]}' > "$d/reveal.json"
+          ssh-keygen -q -t ed25519 -N '' -f "$d/key"
+          printf 'authority-1 namespaces="literary-reveal-authority-v1@persian-literary-translation-engine" %s\n' "$(cat "$d/key.pub")" > "$d/allowed"
+          scripts/phase38-reveal-authority sign "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --key "$d/key"
+          scripts/phase38-reveal-authority verify "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed"
+          ! scripts/phase38-reveal-authority verify "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p2 --review r1 --authority authority-1 --allowed-signers "$d/allowed"
+          ! scripts/phase38-reveal-authority verify "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r2 --authority authority-1 --allowed-signers "$d/allowed"
+          cp "$d/reveal.json" "$d/reveal-mutated.json"; printf ' ' >> "$d/reveal-mutated.json"
+          ! scripts/phase38-reveal-authority verify "$d/bundle.json" "$d/reveal-mutated.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed"
+          cp "$d/bundle.json" "$d/bundle-mutated.json"; printf ' ' >> "$d/bundle-mutated.json"
+          ! scripts/phase38-reveal-authority verify "$d/bundle-mutated.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed"
+          ! scripts/phase38-reveal-authority verify "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority wrong-authority --allowed-signers "$d/allowed"
+          test ! -e "$d/evidence.sig.sig"
