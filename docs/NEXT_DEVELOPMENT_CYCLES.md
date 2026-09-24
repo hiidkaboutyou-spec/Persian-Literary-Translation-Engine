@@ -352,3 +352,70 @@ When these tools are relevant, prefer:
 
 External tooling must not displace the actual product frontier. Every adoption needs a concrete problem statement, pinned provenance, security/privacy/license review, benchmark or acceptance evidence, rollback, and documentation. Inspiration-only projects should yield project-native design decisions rather than new runtime dependencies.
 
+### Trendshift discovery & second-batch tooling review — 2026-09-25
+
+Trendshift is a **candidate-discovery source**, not an installation list. Future research stages may scan its daily/weekly/monthly GitHub momentum views, but adoption decisions must always be based on the upstream repository, exact revision, license, maintenance, security/privacy behavior, benchmarks, and a demonstrated Translation Engine need.
+
+12. **Browser Use — research/browser sidecar and exploratory QA only**
+    - Useful for interactive standards/library research, browsing complex documentation, and exploratory web-app UX checks.
+    - Do not make manuscript ingestion, translation, review, publishing, or CI correctness depend on an agent navigating arbitrary websites.
+    - Deterministic product E2E/CI should continue to prefer controlled browser-test tooling and project-owned fixtures.
+    - Any Browser Use evaluation must keep credentials/session profiles separate from manuscripts/provider secrets and document hosted-browser/privacy/ToS/resource implications.
+
+13. **AgentMemory (`rohitg00/agentmemory`) — high-priority developer-memory benchmark**
+    - Evaluate only as **coding-agent memory**, never literary/project translation memory.
+    - Compare directly with the already-approved developer-side `projectmem` profile and the planned codebase-memory-mcp experiment.
+    - Do not enable multiple auto-capture memory systems simultaneously by default.
+    - Use a dedicated data directory/namespace for this repository and exclude manuscripts, provider keys, review ledgers, Character Bible, glossary, Translation Memory, project artifacts, and human-review data from unintended capture.
+    - Adoption requires auditable recall, forgetting/deletion, stale-memory handling, export/rollback, and a measured improvement on representative cross-crate/long-horizon maintenance work.
+
+14. **Scientific Agent Skills — selective research adoption candidate**
+    - Do not install all 166 skills.
+    - High-value candidates for future research phases are general research/evidence workflows: literature retrieval, reproducible evidence gathering, database lookup, statistical analysis, benchmarking, and other skills directly relevant to translation-quality research.
+    - Domain-specific biomedical/chemistry skills remain out of scope unless a concrete research question requires them.
+    - Selected skills are developer/research guidance only; they never become translation-runtime dependencies or human approval.
+
+15. **Diagram Design — strong developer/docs skill candidate**
+    - Evaluate for architecture diagrams, application-service boundaries, translation/review pipelines, memory retrieval, EPUB/DOCX/PDF publishing flows, threat models, deployment, data schemas, and mobile-web user journeys.
+    - Self-contained static HTML/SVG is preferred for portable review artifacts.
+    - Diagrams are explanatory views, not normative contracts; schemas/tests/code/Markdown remain authoritative.
+    - Pin provenance/license if vendored and keep the skill outside normal engine/runtime dependencies.
+
+16. **Anthropic-Cybersecurity-Skills — defensive subset only**
+    - The repository is community-created and not an official Anthropic package.
+    - Never bulk-install the entire offensive/security catalog.
+    - Review only defensive skills applicable to this product: web-app security, OAuth/session/secret handling, dependency and supply-chain security, CI/GitHub Actions hardening, threat modeling, incident response, local data privacy, and secure file upload/download.
+    - Offensive credential-access, persistence, exploitation, or unrelated pentest workflows must not become project tooling.
+
+17. **Awesome Harness Engineering — recurring architecture/reference input**
+    - Treat as a curated research index for long-horizon agent reliability: context delivery, memory/state, task decomposition, worktree/PR isolation, verification loops, observability, human review, permissions, and safe autonomy.
+    - Periodically compare high-signal patterns with the repository's next-stage protocol and project-memory policy.
+    - Import project-native patterns only after evidence review; do not replace the Rust-first architecture or repository guidance with a generic harness.
+
+18. **OpenViking — high-value unified-context benchmark, not immediate runtime integration**
+    - Evaluate as a potential developer context database combining resources, coding memories, and skills.
+    - Compare against `projectmem`, AgentMemory, and codebase-memory-mcp; avoid running every context system concurrently.
+    - Initial use should be an isolated developer-side/local service. The main OpenViking project uses AGPLv3, so embedding/distribution needs a separate license and architecture review.
+    - Keep a dedicated repository namespace/instance and do not ingest copyrighted/private manuscripts, provider credentials, review ledgers, durable literary memory, or unrelated-project context by default.
+    - Measure retrieval quality, token/context savings, observability, stale-memory behavior, deletion/forgetting, latency/resource use, and operational burden before adoption.
+
+19. **KAT-Coder-Pro — coding-model benchmark only; never a translation provider by default**
+    - The exact `KAT-Coder-Pro V9.5` label was not verified in the 2026-09-25 review. Verify the exact identifier before configuring anything.
+    - The publicly verified current candidate is proprietary KAT-Coder-Pro V2.5.
+    - It may be compared on bounded repository coding tasks if a compatible provider is already available.
+    - It must not be promoted into the literary translation/analysis provider set merely because it is a strong coding model.
+    - Record cost, latency, tool reliability, Rust/TypeScript/Python change quality, test success, and regression rate against the existing coding-agent baseline.
+
+20. **abi/screenshot-to-code — useful prototype accelerator for the planned web UI**
+    - Revisit during the mobile-first web-app implementation/design cycles.
+    - Use for translating project-owned screenshots, sketches, mockups, or approved references into throwaway/prototype React/Tailwind-style implementations; do not make it a runtime dependency.
+    - Generated code must be refactored through the canonical application/API boundaries and reviewed for Persian RTL/BiDi behavior, accessibility, responsive mobile layout, security, dependency quality, and originality.
+    - Do not clone third-party product UI exactly; treat visual references as inspiration and preserve the project's distinctive editorial/book identity.
+    - Final production UI remains subject to the existing visual-regression, originality/design, and accessibility gates.
+
+### Context/memory competition rule
+
+`projectmem`, AgentMemory, OpenViking, codebase-memory-mcp, and Graft overlap. They are **candidates to benchmark**, not dependencies to accumulate.
+
+Use one representative long-horizon maintenance task plus one architecture/research task, establish a baseline, evaluate candidates sequentially, and retain the smallest combination that improves correctness, context recovery, provenance, and developer efficiency without contaminating literary memory or raising privacy/maintenance risk.
+
