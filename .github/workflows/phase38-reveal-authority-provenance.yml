@@ -28,7 +28,7 @@ jobs:
       - name: Build Rust authority boundary
         run: |
           cargo fmt --manifest-path engine/Cargo.toml --all -- --check
-          cargo build --manifest-path engine/Cargo.toml -p literary-engine --bin reveal-authority --locked
+          cargo build --manifest-path engine/Cargo.toml -p literary-engine --bin reveal_authority --locked
       - name: Exercise exact-context authority provenance
         shell: bash
         run: |
@@ -44,7 +44,7 @@ jobs:
           printf 'authority-2 namespaces="literary-reveal-authority-v1@persian-literary-translation-engine" %s\n' "$(cat "$d/other-key.pub")" > "$d/unlisted-authority"
           scripts/phase38-reveal-authority sign "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --key "$d/key"
           scripts/phase38-reveal-authority verify "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed"
-          rustbin="engine/target/debug/reveal-authority"
+          rustbin="engine/target/debug/reveal_authority"
           "$rustbin" verify "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed"
           "$rustbin" sign "$d/bundle.json" "$d/reveal.json" "$d/rust-evidence.sig" --project p1 --review r1 --authority authority-1 --key "$d/key"
           scripts/phase38-reveal-authority verify "$d/bundle.json" "$d/reveal.json" "$d/rust-evidence.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed"
