@@ -2,8 +2,7 @@ name: Phase 38 Reveal Authority Provenance
 on:
   pull_request:
     paths:
-      - 'scripts/phase38-reveal-authority'
-      - 'engine/cli/src/bin/reveal_authority.rs'
+      - 'engine/cli/src/reveal_authority.rs'
       - 'engine/cli/src/main.rs'
       - 'engine/cli/src/provider_review_cmd.rs'
       - '.github/workflows/phase38-reveal-authority-provenance.yml'
@@ -27,80 +26,50 @@ jobs:
           command -v ssh-keygen
           command -v shasum
           if [[ '${{ matrix.os }}' == 'macos-15' ]]; then test "$(uname -m)" = arm64; fi
-      - name: Build Rust authority boundary
+      - name: Build and test canonical Rust authority boundary
         run: |
           cargo fmt --manifest-path engine/Cargo.toml --all -- --check
-          cargo build --manifest-path engine/Cargo.toml -p literary-engine --bin reveal_authority --locked
-      - name: Exercise exact-context authority provenance
+          cargo test --manifest-path engine/Cargo.toml -p literary-engine --locked reveal_authority
+          cargo build --manifest-path engine/Cargo.toml -p literary-engine --bin literary-engine --locked
+      - name: Exercise canonical exact-context authority provenance
         shell: bash
         run: |
           set -euo pipefail
-          chmod +x scripts/phase38-reveal-authority
           d="$RUNNER_TEMP/phase38"; mkdir -p "$d"
+          cli="engine/target/debug/literary-engine"
           printf '%s\n' '{"schema_version":1,"corpus_id":"synthetic","cases":[{"case_id":"c1"}]}' > "$d/bundle.json"
-          printf '%s\n' '{"schema_version":2,"corpus_id":"synthetic","bundle_sha256":"synthetic-test-only","system_one":"x","system_two":"y","assignments":[]}' > "$d/reveal.json"
+          bundle_sha=$(shasum -a 256 "$d/bundle.json" | awk '{print $1}')
+          printf '{"schema_version":2,"corpus_id":"synthetic","bundle_sha256":"%s","system_one":"x","system_two":"y","assignments":[{"case_id":"c1","candidate_a_system":"x","candidate_b_system":"y"}]}\n' "$bundle_sha" > "$d/reveal.json"
           ssh-keygen -q -t ed25519 -N '' -f "$d/key"
           ssh-keygen -q -t ed25519 -N '' -f "$d/other-key"
           printf 'authority-1 namespaces="literary-reveal-authority-v1@persian-literary-translation-engine" %s\n' "$(cat "$d/key.pub")" > "$d/allowed"
-          printf 'authority-1 namespaces="literary-review-ledger-v1@persian-literary-translation-engine" %s\n' "$(cat "$d/key.pub")" > "$d/wrong-namespace-allowed"
-          printf 'authority-2 namespaces="literary-reveal-authority-v1@persian-literary-translation-engine" %s\n' "$(cat "$d/other-key.pub")" > "$d/unlisted-authority"
-          scripts/phase38-reveal-authority sign "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --key "$d/key"
-          scripts/phase38-reveal-authority verify "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed"
-          rustbin="engine/target/debug/reveal_authority"
-          "$rustbin" verify "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed"
-          "$rustbin" sign "$d/bundle.json" "$d/reveal.json" "$d/rust-evidence.sig" --project p1 --review r1 --authority authority-1 --key "$d/key"
-          scripts/phase38-reveal-authority verify "$d/bundle.json" "$d/reveal.json" "$d/rust-evidence.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed"
-          ! scripts/phase38-reveal-authority verify "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p2 --review r1 --authority authority-1 --allowed-signers "$d/allowed"
-          ! "$rustbin" verify "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p2 --review r1 --authority authority-1 --allowed-signers "$d/allowed"
-          ! scripts/phase38-reveal-authority verify "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r2 --authority authority-1 --allowed-signers "$d/allowed"
-          ! "$rustbin" verify "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r2 --authority authority-1 --allowed-signers "$d/allowed"
-          ! scripts/phase38-reveal-authority verify "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project 'p1/bad' --review r1 --authority authority-1 --allowed-signers "$d/allowed"
-          ! scripts/phase38-reveal-authority verify "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review '' --authority authority-1 --allowed-signers "$d/allowed"
-          cp "$d/reveal.json" "$d/reveal-mutated.json"; printf ' ' >> "$d/reveal-mutated.json"
-          ! scripts/phase38-reveal-authority verify "$d/bundle.json" "$d/reveal-mutated.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed"
-          ! "$rustbin" verify "$d/bundle.json" "$d/reveal-mutated.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed"
-          cp "$d/bundle.json" "$d/bundle-mutated.json"; printf ' ' >> "$d/bundle-mutated.json"
-          ! scripts/phase38-reveal-authority verify "$d/bundle-mutated.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed"
-          ! "$rustbin" verify "$d/bundle-mutated.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed"
-          ! scripts/phase38-reveal-authority verify "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority wrong-authority --allowed-signers "$d/allowed"
-          ! "$rustbin" verify "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority wrong-authority --allowed-signers "$d/allowed"
-          ! scripts/phase38-reveal-authority verify "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/wrong-namespace-allowed"
-          ! scripts/phase38-reveal-authority verify "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/unlisted-authority"
-          head -c 40 "$d/evidence.sig" > "$d/truncated.sig"
-          ! scripts/phase38-reveal-authority verify "$d/bundle.json" "$d/reveal.json" "$d/truncated.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed"
-          cp "$d/key.pub" "$d/revoked.pub"
-          ! scripts/phase38-reveal-authority verify "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed" --revocations "$d/revoked.pub"
-          ! "$rustbin" verify "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed" --revocations "$d/revoked.pub"
-          ! scripts/phase38-reveal-authority verify "$d/bundle.json" "$d/reveal.json" "$d/missing.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed"
-          ! scripts/phase38-reveal-authority sign "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --key "$d/key"
-          ! "$rustbin" sign "$d/bundle.json" "$d/reveal.json" "$d/rust-evidence.sig" --project p1 --review r1 --authority authority-1 --key "$d/key"
-          ln -s "$d/nonexistent-target" "$d/dangling.sig"
-          ! scripts/phase38-reveal-authority sign "$d/bundle.json" "$d/reveal.json" "$d/dangling.sig" --project p1 --review r1 --authority authority-1 --key "$d/key"
-          ! "$rustbin" sign "$d/bundle.json" "$d/reveal.json" "$d/dangling.sig" --project p1 --review r1 --authority authority-1 --key "$d/key"
-          ln -s "$d/bundle.json" "$d/bundle-link.json"
-          ! scripts/phase38-reveal-authority verify "$d/bundle-link.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed"
-          ! "$rustbin" verify "$d/bundle-link.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed"
-          ln -s "$d/allowed" "$d/allowed-link"
-          ! scripts/phase38-reveal-authority verify "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed-link"
-          ! "$rustbin" verify "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed-link"
-          ! grep -R -F -- "$d/key" "$d/evidence.sig" "$d/rust-evidence.sig" "$d/bundle.json" "$d/reveal.json"
-          test ! -e "$d/evidence.sig.sig"
-          test ! -e "$d/rust-evidence.sig.sig"
-      - name: Canonical blind-review authority gate
-        shell: bash
-        run: |
-          set -euo pipefail
-          d="$RUNNER_TEMP/phase38"
-          bundle_sha=$(shasum -a 256 "$d/bundle.json" | awk '{print $1}')
-          printf '{"schema_version":2,"corpus_id":"synthetic","bundle_sha256":"%s","system_one":"x","system_two":"y","assignments":[{"case_id":"c1","candidate_a_system":"x","candidate_b_system":"y"}]}\n' "$bundle_sha" > "$d/valid-reveal.json"
-          cli="engine/target/debug/literary-engine"
-          cargo build --manifest-path engine/Cargo.toml -p literary-engine --bin literary-engine --locked
-          "$cli" blind-review sign-reveal-authority "$d/bundle.json" "$d/valid-reveal.json" "$d/canonical.sig" --project p1 --review r1 --authority authority-1 --key "$d/key"
-          "$cli" blind-review verify-reveal-authority "$d/bundle.json" "$d/valid-reveal.json" "$d/canonical.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed"
-          ! "$cli" blind-review verify-reveal-authority "$d/bundle.json" "$d/valid-reveal.json" "$d/canonical.sig" --project p2 --review r1 --authority authority-1 --allowed-signers "$d/allowed"
-          ! "$cli" blind-review verify-reveal-authority "$d/bundle.json" "$d/valid-reveal.json" "$d/canonical.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed" --revocations "$d/revoked.pub"
-          ! "$cli" blind-review verify-reveal-authority "$d/bundle.json" "$d/reveal.json" "$d/canonical.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed"
-          cp "$d/valid-reveal.json" "$d/swapped.json"
+          printf 'authority-1 namespaces="blind-review@persian-literary-translation-engine" %s\n' "$(cat "$d/key.pub")" > "$d/wrong-namespace"
+          printf 'authority-2 namespaces="literary-reveal-authority-v1@persian-literary-translation-engine" %s\n' "$(cat "$d/other-key.pub")" > "$d/unlisted"
+          "$cli" blind-review sign-reveal-authority "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --key "$d/key"
+          "$cli" blind-review verify-reveal-authority "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed"
+          ! "$cli" blind-review verify-reveal-authority "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p2 --review r1 --authority authority-1 --allowed-signers "$d/allowed"
+          ! "$cli" blind-review verify-reveal-authority "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r2 --authority authority-1 --allowed-signers "$d/allowed"
+          ! "$cli" blind-review verify-reveal-authority "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-2 --allowed-signers "$d/unlisted"
+          ! "$cli" blind-review verify-reveal-authority "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/wrong-namespace"
+          ! "$cli" blind-review verify-reveal-authority "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/unlisted"
+          cp "$d/reveal.json" "$d/swapped.json"
           sed -i.bak 's/"candidate_a_system":"x","candidate_b_system":"y"/"candidate_a_system":"y","candidate_b_system":"x"/' "$d/swapped.json"
-          ! "$cli" blind-review verify-reveal-authority "$d/bundle.json" "$d/swapped.json" "$d/canonical.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed"
-          ! grep -q 'system_one\|candidate_a_system' "$d/bundle.json"
+          ! "$cli" blind-review verify-reveal-authority "$d/bundle.json" "$d/swapped.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed"
+          cp "$d/reveal.json" "$d/reveal-mutated.json"; printf ' ' >> "$d/reveal-mutated.json"
+          ! "$cli" blind-review verify-reveal-authority "$d/bundle.json" "$d/reveal-mutated.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed"
+          cp "$d/bundle.json" "$d/bundle-mutated.json"; printf ' ' >> "$d/bundle-mutated.json"
+          ! "$cli" blind-review verify-reveal-authority "$d/bundle-mutated.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed"
+          head -c 40 "$d/evidence.sig" > "$d/truncated.sig"
+          ! "$cli" blind-review verify-reveal-authority "$d/bundle.json" "$d/reveal.json" "$d/truncated.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed"
+          ssh-keygen -q -k -f "$d/revoked.krl" "$d/key.pub"
+          ! "$cli" blind-review verify-reveal-authority "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed" --revocations "$d/revoked.krl"
+          ! "$cli" blind-review sign-reveal-authority "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --key "$d/key"
+          ln -s "$d/bundle.json" "$d/bundle-link.json"
+          ! "$cli" blind-review verify-reveal-authority "$d/bundle-link.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed"
+          ln -s "$d/allowed" "$d/allowed-link"
+          ! "$cli" blind-review verify-reveal-authority "$d/bundle.json" "$d/reveal.json" "$d/evidence.sig" --project p1 --review r1 --authority authority-1 --allowed-signers "$d/allowed-link"
+          printf '%s\n' '{"schema_version":1,"corpus_id":"synthetic","system_one":"x","system_two":"y","assignments":[{"case_id":"c1","candidate_a_system":"x","candidate_b_system":"y"}]}' > "$d/legacy.json"
+          ! "$cli" blind-review sign-reveal-authority "$d/bundle.json" "$d/legacy.json" "$d/legacy.sig" --project p1 --review r1 --authority authority-1 --key "$d/key"
+          ! grep -Eq 'system_one|candidate_a_system|reveal_sha256' "$d/bundle.json"
+          ! grep -F -- "$d/key" "$d/evidence.sig" "$d/bundle.json" "$d/reveal.json"
+          test ! -e "$d/evidence.sig.sig"

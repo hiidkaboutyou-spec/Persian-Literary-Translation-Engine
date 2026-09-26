@@ -24,7 +24,6 @@ mod benchmark_cmd;
 mod project_cmd;
 mod provider_qualification_cmd;
 mod provider_review_cmd;
-#[path = "bin/reveal_authority.rs"]
 mod reveal_authority;
 mod review;
 

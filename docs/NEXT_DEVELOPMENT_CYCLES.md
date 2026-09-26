@@ -267,3 +267,194 @@ The project is considered functionally complete when a user can:
 Until the end-to-end runtime in Cycle 5 works, implementation work should take priority over additional architecture-only documentation. Every subsequent cycle must leave the repository in a more runnable, testable, user-facing state.
 
 Cycles 9-14 must not start by adding new product surfaces unless Cycles 5-8 exit criteria are materially satisfied. Their purpose is to turn a working release into a dependable daily-use product, not to postpone the core runtime behind additional architecture work.
+
+## Cross-cutting developer tooling & external-project adoption track — 2026-09-25
+
+This track records external GitHub projects that may improve future development or inspire later product phases. It is **not** permission to bulk-install dependencies. The Rust-first architecture, provider neutrality, literary/project-memory boundaries, human review, privacy, publishing guarantees, and existing external-integration policy remain authoritative.
+
+### Priority A — developer-side context and research tooling
+
+1. **codebase-memory-mcp — evaluate, then adopt developer-side if gates pass**
+   - Purpose: structural codebase knowledge, dependency/call-graph navigation, impact analysis, and faster agent context recovery during large next-stage work.
+   - This is coding memory only. It must never become literary translation memory, Character Bible, glossary, relationship context, review state, or runtime retrieval.
+   - Keep this repository's index/config isolated from every other project.
+   - Before adoption:
+     - pin and review the exact upstream revision/license;
+     - audit install scripts, background services/watchers, telemetry, config mutations, and data locations;
+     - prefer manual MCP configuration and prohibit automatic modification of `AGENTS.md`/agent policy files;
+     - exclude manuscripts, credentials, provider secrets, review ledgers, generated books, and private project data from any unintended external transmission;
+     - generated indexes/caches must be ignored, disposable, and non-canonical;
+     - normal Rust build/test/export must work identically without the tool.
+   - Benchmark on a representative cross-crate change and record measurable effects on correctness, navigation effort, regression discovery, and context/tool usage.
+
+2. **Graft — evaluate only after the codebase-memory-mcp benchmark**
+   - Test whether it contributes complementary repository context rather than duplicating another context engine.
+   - Keep optional and developer-side.
+   - Do not permit unreviewed edits to `AGENTS.md`, project-memory policy, provider configuration, or core architecture docs.
+   - Adopt only when an A/B task demonstrates material benefit with no new privacy or instruction-conflict risk.
+
+3. **Hyperresearch — high-value research workflow candidate**
+   - Evaluate for deep research phases involving EPUB/DOCX/PDF standards, Persian NLP, typography, provider/model evidence, datasets, licensing, security, web architecture, and open-source adoption.
+   - Store conclusions as normal reviewed research notes with sources/provenance; the research tool itself is not canonical evidence.
+   - It must remain outside translation/runtime execution and must not gain manuscript/provider secrets by default.
+   - Prefer it when a future phase explicitly calls for broad comparative research before implementation.
+
+4. **PI-Desktop — optional external developer workspace**
+   - Evaluate as a local-first environment for this repository, coding agents, MCP servers, models, and workflows.
+   - Do not treat it as the product's desktop/web architecture or as a replacement for the canonical Tauri/application-service boundaries.
+   - Preserve project isolation and ensure the engine/CLI/web/desktop paths do not depend on PI-Desktop availability.
+
+### Priority B — selective inspiration and controlled prototypes
+
+5. **Agency-agents — selective specialist inspiration only**
+   - Never bulk-install the full catalog.
+   - Future stages may inspect narrowly relevant roles such as security reviewer, research specialist, Rust reviewer, publishing/UX reviewer, accessibility reviewer, or QA specialist.
+   - Any useful role should be adapted into project-specific guidance only after provenance/license and instruction-conflict review.
+   - Project `AGENTS.md`, human-review boundaries, and repository invariants always outrank imported agent prompts.
+
+6. **Needle — deferred local structured-extraction prototype**
+   - Potential future use is narrow local structured extraction/tool calling, not literary translation.
+   - Consider only when a concrete pipeline gap exists and compare it with native Rust/deterministic extraction and existing model-assisted analysis.
+   - Require benchmarks for Persian/English accuracy, schema reliability, resource use, privacy, licensing, and failure behavior.
+   - Disable telemetry where supported. No automatic model downloads in default CI/runtime.
+   - Do not promote generated findings directly to canon or human approval.
+
+7. **FreeLLMAPI — development/test provider experiment only**
+   - May be tested behind the provider-neutral boundary for non-canonical smoke/stress/fallback experiments.
+   - Never make free third-party endpoints the quality baseline for final literary translation or advanced analysis.
+   - Do not send copyrighted/private manuscripts, credentials, reviewer data, or durable project memory to unknown providers by default.
+   - Promotion beyond development requires explicit model/provider provenance, privacy/terms, quota/reliability, output-quality, cost, and failure-mode review.
+
+8. **9Drive — future web/cloud-storage inspiration, not current integration**
+   - Revisit after the mobile web app/project workspace has a real requirement for user-owned cloud-file import/export or multi-account storage.
+   - Evaluate architectural ideas such as virtual folders, quota-aware routing, reconnect/sync UX, and provider abstraction rather than copying the application wholesale.
+   - Any prototype must pass OAuth/credential, manuscript privacy, deletion/retention, sync-conflict, backup/recovery, quota, and lock-in review.
+   - The canonical project/application service and local project model remain the source of truth.
+
+### Priority C — currently unrelated to the translation product
+
+9. **AutoShorts — no current integration**
+   - Video/audio short-form clip generation is outside the literary translation/publishing goal.
+   - Revisit only if the product scope explicitly expands to audiobook/video promotional media.
+
+10. **OpenMontage — inspiration only if a future media-production scope is approved**
+    - Do not integrate into the translation engine today.
+    - If future publishing expands into trailers/social video, perform a dedicated architecture and license review and keep media production outside the core literary runtime.
+
+11. **AdGuard Home — no roadmap integration**
+    - Network-wide ad/tracker blocking is outside the product boundary and should not be added to runtime, CI, web app, desktop app, or developer bootstrap.
+
+### Sequencing rule for future next-stage work
+
+When these tools are relevant, prefer:
+
+`codebase-memory-mcp benchmark -> optional adoption -> Graft complementary benchmark -> Hyperresearch/relevant specialist guidance -> narrowly justified local/provider/storage prototypes`.
+
+External tooling must not displace the actual product frontier. Every adoption needs a concrete problem statement, pinned provenance, security/privacy/license review, benchmark or acceptance evidence, rollback, and documentation. Inspiration-only projects should yield project-native design decisions rather than new runtime dependencies.
+
+### Trendshift discovery & second-batch tooling review — 2026-09-25
+
+Trendshift is a **candidate-discovery source**, not an installation list. Future research stages may scan its daily/weekly/monthly GitHub momentum views, but adoption decisions must always be based on the upstream repository, exact revision, license, maintenance, security/privacy behavior, benchmarks, and a demonstrated Translation Engine need.
+
+12. **Browser Use — research/browser sidecar and exploratory QA only**
+    - Useful for interactive standards/library research, browsing complex documentation, and exploratory web-app UX checks.
+    - Do not make manuscript ingestion, translation, review, publishing, or CI correctness depend on an agent navigating arbitrary websites.
+    - Deterministic product E2E/CI should continue to prefer controlled browser-test tooling and project-owned fixtures.
+    - Any Browser Use evaluation must keep credentials/session profiles separate from manuscripts/provider secrets and document hosted-browser/privacy/ToS/resource implications.
+
+13. **AgentMemory (`rohitg00/agentmemory`) — high-priority developer-memory benchmark**
+    - Evaluate only as **coding-agent memory**, never literary/project translation memory.
+    - Compare directly with the already-approved developer-side `projectmem` profile and the planned codebase-memory-mcp experiment.
+    - Do not enable multiple auto-capture memory systems simultaneously by default.
+    - Use a dedicated data directory/namespace for this repository and exclude manuscripts, provider keys, review ledgers, Character Bible, glossary, Translation Memory, project artifacts, and human-review data from unintended capture.
+    - Adoption requires auditable recall, forgetting/deletion, stale-memory handling, export/rollback, and a measured improvement on representative cross-crate/long-horizon maintenance work.
+
+14. **Scientific Agent Skills — selective research adoption candidate**
+    - Do not install all 166 skills.
+    - High-value candidates for future research phases are general research/evidence workflows: literature retrieval, reproducible evidence gathering, database lookup, statistical analysis, benchmarking, and other skills directly relevant to translation-quality research.
+    - Domain-specific biomedical/chemistry skills remain out of scope unless a concrete research question requires them.
+    - Selected skills are developer/research guidance only; they never become translation-runtime dependencies or human approval.
+
+15. **Diagram Design — strong developer/docs skill candidate**
+    - Evaluate for architecture diagrams, application-service boundaries, translation/review pipelines, memory retrieval, EPUB/DOCX/PDF publishing flows, threat models, deployment, data schemas, and mobile-web user journeys.
+    - Self-contained static HTML/SVG is preferred for portable review artifacts.
+    - Diagrams are explanatory views, not normative contracts; schemas/tests/code/Markdown remain authoritative.
+    - Pin provenance/license if vendored and keep the skill outside normal engine/runtime dependencies.
+
+16. **Anthropic-Cybersecurity-Skills — defensive subset only**
+    - The repository is community-created and not an official Anthropic package.
+    - Never bulk-install the entire offensive/security catalog.
+    - Review only defensive skills applicable to this product: web-app security, OAuth/session/secret handling, dependency and supply-chain security, CI/GitHub Actions hardening, threat modeling, incident response, local data privacy, and secure file upload/download.
+    - Offensive credential-access, persistence, exploitation, or unrelated pentest workflows must not become project tooling.
+
+17. **Awesome Harness Engineering — recurring architecture/reference input**
+    - Treat as a curated research index for long-horizon agent reliability: context delivery, memory/state, task decomposition, worktree/PR isolation, verification loops, observability, human review, permissions, and safe autonomy.
+    - Periodically compare high-signal patterns with the repository's next-stage protocol and project-memory policy.
+    - Import project-native patterns only after evidence review; do not replace the Rust-first architecture or repository guidance with a generic harness.
+
+18. **OpenViking — high-value unified-context benchmark, not immediate runtime integration**
+    - Evaluate as a potential developer context database combining resources, coding memories, and skills.
+    - Compare against `projectmem`, AgentMemory, and codebase-memory-mcp; avoid running every context system concurrently.
+    - Initial use should be an isolated developer-side/local service. The main OpenViking project uses AGPLv3, so embedding/distribution needs a separate license and architecture review.
+    - Keep a dedicated repository namespace/instance and do not ingest copyrighted/private manuscripts, provider credentials, review ledgers, durable literary memory, or unrelated-project context by default.
+    - Measure retrieval quality, token/context savings, observability, stale-memory behavior, deletion/forgetting, latency/resource use, and operational burden before adoption.
+
+19. **KAT-Coder-Pro — coding-model benchmark only; never a translation provider by default**
+    - The exact `KAT-Coder-Pro V9.5` label was not verified in the 2026-09-25 review. Verify the exact identifier before configuring anything.
+    - The publicly verified current candidate is proprietary KAT-Coder-Pro V2.5.
+    - It may be compared on bounded repository coding tasks if a compatible provider is already available.
+    - It must not be promoted into the literary translation/analysis provider set merely because it is a strong coding model.
+    - Record cost, latency, tool reliability, Rust/TypeScript/Python change quality, test success, and regression rate against the existing coding-agent baseline.
+
+20. **abi/screenshot-to-code — useful prototype accelerator for the planned web UI**
+    - Revisit during the mobile-first web-app implementation/design cycles.
+    - Use for translating project-owned screenshots, sketches, mockups, or approved references into throwaway/prototype React/Tailwind-style implementations; do not make it a runtime dependency.
+    - Generated code must be refactored through the canonical application/API boundaries and reviewed for Persian RTL/BiDi behavior, accessibility, responsive mobile layout, security, dependency quality, and originality.
+    - Do not clone third-party product UI exactly; treat visual references as inspiration and preserve the project's distinctive editorial/book identity.
+    - Final production UI remains subject to the existing visual-regression, originality/design, and accessibility gates.
+
+### Context/memory competition rule
+
+`projectmem`, AgentMemory, OpenViking, codebase-memory-mcp, and Graft overlap. They are **candidates to benchmark**, not dependencies to accumulate.
+
+Use one representative long-horizon maintenance task plus one architecture/research task, establish a baseline, evaluate candidates sequentially, and retain the smallest combination that improves correctness, context recovery, provenance, and developer efficiency without contaminating literary memory or raising privacy/maintenance risk.
+
+### Authoritative execution decision matrix
+
+For future `next stage` work, this table determines whether a candidate should actually be installed, benchmarked, used only for ideas, deferred, or excluded. The detailed architecture/privacy/license rules above remain mandatory.
+
+| Candidate | Decision | Trigger / required future action |
+|---|---|---|
+| Trendshift | **ADOPT AS DISCOVERY PROCESS** | During major research/open-source adoption stages, scan for promising GitHub projects, then verify the real upstream, revision, license, security, and fit before use. |
+| codebase-memory-mcp | **BENCHMARK -> INSTALL DEVELOPER-SIDE IF IT WINS** | First new coding-context candidate to evaluate. Keep indexes disposable/ignored and completely separate from literary/project memory. |
+| existing projectmem | **KEEP AS BASELINE** | Treat the current safe developer-memory profile as the baseline against which new memory systems are measured. |
+| AgentMemory | **BENCHMARK -> INSTALL ONLY IF SUPERIOR/COMPLEMENTARY** | Test persistent coding recall on a real long-horizon cross-crate task; keep manuscripts/canon/review/provider data outside capture. |
+| OpenViking | **BENCHMARK LATER -> OPTIONAL EXTERNAL CONTEXT SIDECAR** | Evaluate after lighter candidates; adopt only if unified resources/memory/skills materially outperform the simpler stack enough to justify AGPL/ops complexity. |
+| Graft | **BENCHMARK AFTER PRIMARY CONTEXT TOOL** | Retain only if it adds measurable complementary code context rather than duplicate retrieval. |
+| PI-Desktop | **OPTIONAL EXTERNAL WORKSPACE** | May be installed for developer orchestration convenience, but never becomes the canonical desktop/web architecture or runtime dependency. |
+| Hyperresearch | **PREFERRED OPTIONAL DEEP-RESEARCH SIDECAR** | Use for standards, Persian NLP, datasets, translation-quality evidence, publishing, licensing, provider/model and architecture research when broad sourced investigation is required. |
+| Browser Use | **OPTIONAL DEV/RESEARCH + EXPLORATORY QA** | Use for interactive documentation/site research or exploratory web-app checks; deterministic E2E/CI and engine behavior must not depend on it. |
+| Scientific Agent Skills | **SELECTIVE SKILL ADOPTION** | Install/vendor only specific general research/evidence/statistics/database skills needed by an active research question. |
+| Diagram Design | **ADOPT FOR ARCHITECTURE/DOCS WHEN NEEDED** | Use for application boundaries, memory/review flow, publishing pipeline, threat models, schemas, deployment and mobile-web journeys; outputs remain explanatory. |
+| Anthropic-Cybersecurity-Skills | **INSPIRATION / SELECTIVE DEFENSIVE EXTRACTION** | Review only defensive web/OAuth/secrets/supply-chain/threat-model/upload/privacy material; never bulk-install offensive catalog content. |
+| Awesome Harness Engineering | **INSPIRATION / PERIODIC HARNESS REVIEW** | Use as a curated source for context delivery, verification loops, worktree/PR isolation, observability, permissions, safe autonomy and long-running agent patterns. |
+| Agency-agents | **INSPIRATION / SELECTIVE ROLE EXTRACTION** | Only adapt a narrowly useful security/research/Rust/UX/QA specialist after license and instruction-conflict review. |
+| abi/screenshot-to-code | **ADOPT AS WEB-UI PROTOTYPE TOOL WHEN WEB CYCLE STARTS** | During mobile-first web UI implementation, use for project-owned sketches/mockups/approved references only; refactor output through canonical APIs and enforce RTL/accessibility/originality/security gates. |
+| KAT-Coder-Pro | **OPTIONAL CODING-MODEL A/B TEST** | Verify exact model/version first; test only on repository coding work and never promote it to literary translation merely because it is good at coding. |
+| Needle | **DEFERRED NARROW PROTOTYPE** | Evaluate only when a concrete local structured-extraction/tool-calling gap is demonstrated and native/deterministic paths are insufficient. |
+| FreeLLMAPI | **DEV/TEST ONLY** | Optional non-canonical provider/failover experiment behind provider neutrality; never final literary-quality baseline or destination for private/copyrighted manuscripts by default. |
+| 9Drive | **DEFERRED WEB/CLOUD STORAGE INSPIRATION** | Revisit after the web app has a demonstrated user-owned Drive/multi-account cloud import/export requirement and after privacy/OAuth/sync review. |
+| AutoShorts | **OUT OF CURRENT PRODUCT SCOPE** | Revisit only if the product explicitly expands into audiobook/video promotional content. |
+| OpenMontage | **FUTURE MEDIA INSPIRATION ONLY** | Revisit only after an approved trailer/social-video publishing scope and dedicated license/architecture review. |
+| AdGuard Home | **OUT OF SCOPE** | Do not install or integrate into engine, CI, desktop, web, or developer bootstrap. |
+
+#### Default future sequence
+
+1. Keep `projectmem` as the baseline; do not accumulate memory systems.
+2. Benchmark `codebase-memory-mcp`, then AgentMemory; test Graft/OpenViking only where a measured gap remains.
+3. Keep only the smallest context stack that improves correctness, provenance, stale-memory resistance, privacy and deep-task efficiency.
+4. Use Hyperresearch + selected research skills for evidence-heavy phases, not as runtime dependencies.
+5. Use Diagram Design when architecture/documentation complexity warrants it.
+6. Use screenshot-to-code only when the planned web-app implementation reaches prototype/UI construction.
+7. Storage/media/provider experiments run only when their explicit product trigger is reached.
+

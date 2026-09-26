@@ -1,9 +1,7 @@
 use project_engine::artifact_integrity::sha256_hex;
-use std::env;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const NAMESPACE: &str = "literary-reveal-authority-v1@persian-literary-translation-engine";
@@ -12,18 +10,7 @@ const PROTOCOL: &str = "PLTE-REVEAL-AUTHORITY-V1";
 type Result<T> = std::result::Result<T, String>;
 
 fn usage() -> String {
-    "Usage:\n  reveal-authority sign <bundle> <reveal-key> <signature> --project <id> --review <id> --authority <principal> --key <ssh-key>\n  reveal-authority verify <bundle> <reveal-key> <signature> --project <id> --review <id> --authority <principal> --allowed-signers <file> [--revocations <file>]".into()
-}
-
-#[allow(dead_code)] // The same source is included as a module by the canonical CLI.
-fn main() -> std::process::ExitCode {
-    match run(&env::args().skip(1).collect::<Vec<_>>()) {
-        Ok(()) => std::process::ExitCode::SUCCESS,
-        Err(error) => {
-            eprintln!("{error}");
-            std::process::ExitCode::from(2)
-        }
-    }
+    "Usage:\n  literary-engine blind-review sign-reveal-authority <bundle> <reveal-key> <signature> --project <id> --review <id> --authority <principal> --key <ssh-key>\n  literary-engine blind-review verify-reveal-authority <bundle> <reveal-key> <signature> --project <id> --review <id> --authority <principal> --allowed-signers <file> [--revocations <file>]".into()
 }
 
 pub(crate) fn run(args: &[String]) -> Result<()> {
@@ -34,6 +21,17 @@ pub(crate) fn run(args: &[String]) -> Result<()> {
     let bundle = &args[1];
     let reveal = &args[2];
     let signature = &args[3];
+    let mut options = args[4..].chunks_exact(2);
+    for pair in &mut options {
+        if !matches!(pair[0].as_str(), "--project" | "--review" | "--authority" | "--key" | "--allowed-signers" | "--revocations")
+            || pair[1].starts_with("--") || pair[1].is_empty()
+        {
+            return Err("invalid reveal-authority option or value".into());
+        }
+    }
+    if !options.remainder().is_empty() {
+        return Err("reveal-authority option requires a value".into());
+    }
     require_regular(bundle, "bundle")?;
     require_regular(reveal, "reveal key")?;
     ensure_distinct(bundle, reveal)?;
@@ -47,10 +45,7 @@ pub(crate) fn run(args: &[String]) -> Result<()> {
 
     let bundle_bytes = fs::read(bundle).map_err(|e| format!("failed to read bundle: {e}"))?;
     let reveal_bytes = fs::read(reveal).map_err(|e| format!("failed to read reveal key: {e}"))?;
-    let statement = format!(
-        "{PROTOCOL}\nproject={project}\nreview={review}\nbundle_sha256={}\nreveal_sha256={}\nauthority={authority}\n",
-        sha256_hex(&bundle_bytes), sha256_hex(&reveal_bytes)
-    );
+    let statement = authority_statement(project, review, authority, &bundle_bytes, &reveal_bytes);
 
     match command {
         "sign" => {
@@ -66,7 +61,9 @@ pub(crate) fn run(args: &[String]) -> Result<()> {
                     "signature output already exists; refusing overwrite or symlink target".into(),
                 );
             }
-            let signed = ssh_sign(statement.as_bytes(), key)?;
+            let signed = crate::provider_review_cmd::ssh_sign_with_namespace(
+                statement.as_bytes(), key, NAMESPACE
+            )?;
             write_new_atomic(Path::new(signature), &signed)?;
             println!("reveal-authority signature written: {signature}");
         }
@@ -79,12 +76,8 @@ pub(crate) fn run(args: &[String]) -> Result<()> {
             if let Some(path) = revocations {
                 require_regular(path, "revocations file")?;
             }
-            ssh_verify(
-                statement.as_bytes(),
-                signature,
-                allowed,
-                authority,
-                revocations,
+            crate::provider_review_cmd::ssh_verify_with_namespace(
+                statement.as_bytes(), signature, allowed, authority, revocations, NAMESPACE
             )?;
             println!("reveal-authority signature verified: {authority}");
         }
@@ -93,6 +86,48 @@ pub(crate) fn run(args: &[String]) -> Result<()> {
     println!("signature namespace: {NAMESPACE}");
     println!("production admission: NOT GRANTED");
     Ok(())
+}
+
+fn authority_statement(
+    project: &str,
+    review: &str,
+    authority: &str,
+    bundle: &[u8],
+    reveal: &[u8],
+) -> String {
+    format!(
+        "{PROTOCOL}\nproject={project}\nreview={review}\nbundle_sha256={}\nreveal_sha256={}\nauthority={authority}\n",
+        sha256_hex(bundle), sha256_hex(reveal)
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reveal_authority_statement_binds_exact_bytes_and_context() {
+        let statement = authority_statement("p1", "r1", "editor", b"bundle", b"reveal");
+        assert!(statement.starts_with("PLTE-REVEAL-AUTHORITY-V1\nproject=p1\nreview=r1\n"));
+        assert!(statement.ends_with("authority=editor\n"));
+        for changed in [
+            authority_statement("p2", "r1", "editor", b"bundle", b"reveal"),
+            authority_statement("p1", "r2", "editor", b"bundle", b"reveal"),
+            authority_statement("p1", "r1", "other", b"bundle", b"reveal"),
+            authority_statement("p1", "r1", "editor", b"bundle ", b"reveal"),
+            authority_statement("p1", "r1", "editor", b"bundle", b"reveal "),
+        ] {
+            assert_ne!(statement, changed);
+        }
+    }
+
+    #[test]
+    fn reveal_authority_context_rejects_ambiguous_fields() {
+        for invalid in ["", "p\nreview=other", " leading", "a/b", "é"] {
+            assert!(validate_atom(invalid, "project").is_err());
+        }
+        assert!(validate_atom("project_1@example.test", "project").is_ok());
+    }
 }
 
 fn flag<'a>(args: &'a [String], name: &str, required: bool) -> Result<Option<&'a str>> {
@@ -166,83 +201,6 @@ fn ensure_distinct(left: &str, right: &str) -> Result<()> {
         Err("evidence paths must be distinct".into())
     } else {
         Ok(())
-    }
-}
-
-fn ssh_sign(bytes: &[u8], key: &str) -> Result<Vec<u8>> {
-    let mut child = Command::new("ssh-keygen")
-        .args(["-Y", "sign", "-f", key, "-n", NAMESPACE])
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|e| format!("failed to start ssh-keygen: {e}"))?;
-    child
-        .stdin
-        .take()
-        .ok_or("failed to open signing stdin")?
-        .write_all(bytes)
-        .map_err(|e| format!("failed to stream statement: {e}"))?;
-    let output = child
-        .wait_with_output()
-        .map_err(|e| format!("failed to wait for ssh-keygen: {e}"))?;
-    if !output.status.success() {
-        return Err(format!(
-            "reveal-authority signing failed: {}",
-            bounded(&output.stderr)
-        ));
-    }
-    if !output.stdout.starts_with(b"-----BEGIN SSH SIGNATURE-----") {
-        return Err("ssh-keygen returned an unexpected signature format".into());
-    }
-    Ok(output.stdout)
-}
-
-fn ssh_verify(
-    bytes: &[u8],
-    signature: &str,
-    allowed: &str,
-    authority: &str,
-    revocations: Option<&str>,
-) -> Result<()> {
-    let mut command = Command::new("ssh-keygen");
-    command.args([
-        "-Y", "verify", "-f", allowed, "-I", authority, "-n", NAMESPACE, "-s", signature,
-    ]);
-    if let Some(path) = revocations {
-        command.args(["-r", path]);
-    }
-    let mut child = command
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|e| format!("failed to start ssh-keygen: {e}"))?;
-    child
-        .stdin
-        .take()
-        .ok_or("failed to open verification stdin")?
-        .write_all(bytes)
-        .map_err(|e| format!("failed to stream statement: {e}"))?;
-    let output = child
-        .wait_with_output()
-        .map_err(|e| format!("failed to wait for ssh-keygen: {e}"))?;
-    if !output.status.success() {
-        return Err(format!(
-            "reveal-authority verification failed: {}",
-            bounded(&output.stderr)
-        ));
-    }
-    Ok(())
-}
-
-fn bounded(stderr: &[u8]) -> String {
-    let text = String::from_utf8_lossy(stderr);
-    let trimmed = text.trim();
-    if trimmed.is_empty() {
-        "ssh-keygen returned a non-zero exit status".into()
-    } else {
-        trimmed.chars().take(600).collect()
     }
 }
 

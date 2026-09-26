@@ -663,6 +663,14 @@ fn validate_reviewer_principal(reviewer: &str) -> Result<()> {
 }
 
 fn ssh_sign_bytes(bytes: &[u8], key_path: &str) -> Result<Vec<u8>> {
+    ssh_sign_with_namespace(bytes, key_path, REVIEW_SIGNATURE_NAMESPACE)
+}
+
+pub(crate) fn ssh_sign_with_namespace(
+    bytes: &[u8],
+    key_path: &str,
+    namespace: &str,
+) -> Result<Vec<u8>> {
     let mut child = Command::new("ssh-keygen")
         .args([
             "-Y",
@@ -670,7 +678,7 @@ fn ssh_sign_bytes(bytes: &[u8], key_path: &str) -> Result<Vec<u8>> {
             "-f",
             key_path,
             "-n",
-            REVIEW_SIGNATURE_NAMESPACE,
+            namespace,
         ])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -713,6 +721,24 @@ fn ssh_verify_bytes(
     reviewer: &str,
     revocations: Option<&str>,
 ) -> Result<()> {
+    ssh_verify_with_namespace(
+        bytes,
+        signature_path,
+        allowed_signers,
+        reviewer,
+        revocations,
+        REVIEW_SIGNATURE_NAMESPACE,
+    )
+}
+
+pub(crate) fn ssh_verify_with_namespace(
+    bytes: &[u8],
+    signature_path: &str,
+    allowed_signers: &str,
+    reviewer: &str,
+    revocations: Option<&str>,
+    namespace: &str,
+) -> Result<()> {
     let mut command = Command::new("ssh-keygen");
     command.args([
         "-Y",
@@ -722,7 +748,7 @@ fn ssh_verify_bytes(
         "-I",
         reviewer,
         "-n",
-        REVIEW_SIGNATURE_NAMESPACE,
+        namespace,
         "-s",
         signature_path,
     ]);
