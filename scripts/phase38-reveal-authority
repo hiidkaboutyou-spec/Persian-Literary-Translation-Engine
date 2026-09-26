@@ -47,7 +47,7 @@ bundle_sha=$(sha256_file "$bundle")
 reveal_sha=$(sha256_file "$reveal")
 # Stream the exact canonical bytes. Command substitution would strip the terminal newline.
 statement() {
-  printf '%s\\nproject=%s\\nreview=%s\\nbundle_sha256=%s\\nreveal_sha256=%s\\nauthority=%s\\n' "$PROTOCOL" "$project" "$review" "$bundle_sha" "$reveal_sha" "$authority"
+  printf '%s\nproject=%s\nreview=%s\nbundle_sha256=%s\nreveal_sha256=%s\nauthority=%s\n' "$PROTOCOL" "$project" "$review" "$bundle_sha" "$reveal_sha" "$authority"
 }
 
 case "$command" in
