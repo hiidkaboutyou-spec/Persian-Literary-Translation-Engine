@@ -27,7 +27,7 @@ jobs:
       run:
         working-directory: engine
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
@@ -53,7 +53,7 @@ jobs:
       run:
         working-directory: engine
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Verify Apple Silicon runner
         run: test "$(uname -m)" = "arm64"
       - uses: dtolnay/rust-toolchain@stable
