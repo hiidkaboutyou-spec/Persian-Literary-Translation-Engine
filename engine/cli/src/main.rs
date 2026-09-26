@@ -24,6 +24,7 @@ mod benchmark_cmd;
 mod project_cmd;
 mod provider_qualification_cmd;
 mod provider_review_cmd;
+mod reveal_authority;
 mod review;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -127,7 +128,7 @@ fn usage() {
     println!("  literary-engine benchmark <corpus.json> <submission.json> [--format json]");
     println!("  literary-engine qualify-provider <corpus.json> <submission.json> --provider echo|openai|atria [--model <id>] [--max-cases <n>] [--format json]");
     println!("  literary-engine blind-compare <corpus.json> <submission-a.json> <submission-b.json> <blind-bundle.json> <reveal-key.json> [--format json]");
-    println!("  literary-engine blind-review <init|record|dossier|verify> ...");
+    println!("  literary-engine blind-review <init|record|dossier|verify|sign-reveal-authority|verify-reveal-authority> ...");
     println!("    provider qualification is rights-safe research only; it never changes the production provider selector");
     println!(
         "  literary-engine prepare <file.txt|file.md|file.docx|file.epub|file.pdf> [target-language] [--format json]"
