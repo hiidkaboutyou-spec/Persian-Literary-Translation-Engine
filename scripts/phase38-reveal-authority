@@ -46,6 +46,32 @@ for atom in "$project" "$review" "$authority"; do valid_atom "$atom" || { echo '
 bundle_sha=$(sha256_file "$bundle")
 reveal_sha=$(sha256_file "$reveal")
 statement=$(printf '%s\nproject=%s\nreview=%s\nbundle_sha256=%s\nreveal_sha256=%s\nauthority=%s\n' "$PROTOCOL" "$project" "$review" "$bundle_sha" "$reveal_sha" "$authority")
+# Bash command substitution strips trailing newlines; Rust signs the terminal newline.
+statement+=
+
+case "$command" in
+  sign)
+    [[ -n "$key" ]] || { echo 'sign requires --key' >&2; exit 2; }
+    require_regular_file "$key" 'signing key'
+    [[ ! -e "$signature" && ! -L "$signature" ]] || { echo 'signature output already exists; refusing overwrite or symlink target' >&2; exit 2; }
+    for protected in "$bundle" "$reveal" "$key"; do same_path "$signature" "$protected" && { echo 'signature output must be distinct from all protected inputs' >&2; exit 2; }; done
+    tmp=$(mktemp "${TMPDIR:-/tmp}/plte-phase38.XXXXXX")
+    trap 'rm -f "$tmp" "$tmp.sig"' EXIT
+    printf '%s' "$statement" >"$tmp"
+    ssh-keygen -Y sign -f "$key" -n "$NAMESPACE" "$tmp" >/dev/null
+    install -m 600 "$tmp.sig" "$signature"
+    ;;
+  verify)
+    require_regular_file "$signature" 'signature'
+    [[ -n "$allowed" ]] || { echo 'verify requires --allowed-signers' >&2; exit 2; }
+    require_regular_file "$allowed" 'allowed-signers file'
+    args=(-Y verify -f "$allowed" -I "$authority" -n "$NAMESPACE" -s "$signature")
+    if [[ -n "$revocations" ]]; then require_regular_file "$revocations" 'revocations file'; args+=(-r "$revocations"); fi
+    printf '%s' "$statement" | ssh-keygen "${args[@]}" >/dev/null
+    ;;
+  *) usage ;;
+esac
+\n'
 
 case "$command" in
   sign)
