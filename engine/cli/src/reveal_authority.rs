@@ -21,8 +21,8 @@ pub(crate) fn run(args: &[String]) -> Result<()> {
     let bundle = &args[1];
     let reveal = &args[2];
     let signature = &args[3];
-    let mut options = args[4..].chunks_exact(2);
-    for pair in &mut options {
+    let (options, remainder) = args[4..].as_chunks::<2>();
+    for pair in options {
         if !matches!(
             pair[0].as_str(),
             "--project"
@@ -37,7 +37,7 @@ pub(crate) fn run(args: &[String]) -> Result<()> {
             return Err("invalid reveal-authority option or value".into());
         }
     }
-    if !options.remainder().is_empty() {
+    if !remainder.is_empty() {
         return Err("reveal-authority option requires a value".into());
     }
     require_regular(bundle, "bundle")?;
@@ -116,34 +116,6 @@ fn authority_statement(
     )
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn reveal_authority_statement_binds_exact_bytes_and_context() {
-        let statement = authority_statement("p1", "r1", "editor", b"bundle", b"reveal");
-        assert!(statement.starts_with("PLTE-REVEAL-AUTHORITY-V1\nproject=p1\nreview=r1\n"));
-        assert!(statement.ends_with("authority=editor\n"));
-        for changed in [
-            authority_statement("p2", "r1", "editor", b"bundle", b"reveal"),
-            authority_statement("p1", "r2", "editor", b"bundle", b"reveal"),
-            authority_statement("p1", "r1", "other", b"bundle", b"reveal"),
-            authority_statement("p1", "r1", "editor", b"bundle ", b"reveal"),
-            authority_statement("p1", "r1", "editor", b"bundle", b"reveal "),
-        ] {
-            assert_ne!(statement, changed);
-        }
-    }
-
-    #[test]
-    fn reveal_authority_context_rejects_ambiguous_fields() {
-        for invalid in ["", "p\nreview=other", " leading", "a/b", "é"] {
-            assert!(validate_atom(invalid, "project").is_err());
-        }
-        assert!(validate_atom("project_1@example.test", "project").is_ok());
-    }
-}
 
 fn flag<'a>(args: &'a [String], name: &str, required: bool) -> Result<Option<&'a str>> {
     let positions = args
@@ -258,4 +230,33 @@ fn write_new_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
         let _ = fs::remove_file(&temp);
     }
     result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reveal_authority_statement_binds_exact_bytes_and_context() {
+        let statement = authority_statement("p1", "r1", "editor", b"bundle", b"reveal");
+        assert!(statement.starts_with("PLTE-REVEAL-AUTHORITY-V1\nproject=p1\nreview=r1\n"));
+        assert!(statement.ends_with("authority=editor\n"));
+        for changed in [
+            authority_statement("p2", "r1", "editor", b"bundle", b"reveal"),
+            authority_statement("p1", "r2", "editor", b"bundle", b"reveal"),
+            authority_statement("p1", "r1", "other", b"bundle", b"reveal"),
+            authority_statement("p1", "r1", "editor", b"bundle ", b"reveal"),
+            authority_statement("p1", "r1", "editor", b"bundle", b"reveal "),
+        ] {
+            assert_ne!(statement, changed);
+        }
+    }
+
+    #[test]
+    fn reveal_authority_context_rejects_ambiguous_fields() {
+        for invalid in ["", "p\nreview=other", " leading", "a/b", "é"] {
+            assert!(validate_atom(invalid, "project").is_err());
+        }
+        assert!(validate_atom("project_1@example.test", "project").is_ok());
+    }
 }
