@@ -84,3 +84,9 @@ Do not turn the project into a simple API wrapper. The value is the literary mem
 - Research checked OpenSSH's upstream SSHSIG protocol and local allowed-signers/namespace/revocation boundary. No missing primitive justified Sigstore/Cosign, a new signing crate, or any Cycle 14 publishing package in this security slice; no new dependency was installed.
 - Current checkpoint head: `4b9e024424530c315769c67398120731e12dcfe9`. CI is running. Earlier heads failed Rust format/Clippy and were repaired; they are not validation evidence. Keep the PR draft and unmerged until exact-final-head Phase 36/37/38, Rust CI, Security, and Apple Silicon checks pass. If a gate fails, repair the cause and repeat exact-head validation.
 - Next after Phase 38: authoritative hosted-provider data handling and representative human EN→FA literary evaluation. Production provider admission remains blocked pending governance evidence and explicit owner authorization.
+
+## 2026-09-26 Phase 38 canonical closure
+
+- The earlier Phase 38 in-flight/pending-CI checkpoints above are historical. PR #134 merged after all 32 exact-head checks succeeded on `8e8fd081520ce004db6687020d5e7f40688af4b6`; canonical `main` merge is `914781a103679dbb9964583668bbeabb0104f879`.
+- Phase 38 authenticates the schema-v2 reveal authority via the canonical blind-review CLI, exact bundle/reveal digest and context, dedicated OpenSSH SSHSIG namespace, local allowed-signers and revocation. The parallel shell/binary prototypes are gone. See `docs/PHASE_38_CANONICAL_HANDOFF.md` for validation and limits.
+- Next stage: confirm post-merge `main` CI, then collect authoritative hosted-provider data-handling evidence and representative human literary evaluation. Production provider admission remains blocked until separate governance and owner authorization. Cycle 14 publishing is a distinct roadmap track.
