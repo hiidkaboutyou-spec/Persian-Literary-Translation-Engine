@@ -92,8 +92,25 @@ jobs:
           baseline="$(git merge-base HEAD origin/main)"
           git diff --exit-code "$baseline" -- \
             engine/Cargo.toml \
-            engine/cli/Cargo.toml \
             engine/crates/translation-core/Cargo.toml
+          # A second local CLI binary requires this explicit default, not a dependency.
+          python3 - <<'PY'
+          import pathlib
+          import subprocess
+          import tomllib
+
+          path = "engine/cli/Cargo.toml"
+          baseline = subprocess.check_output(
+              ["git", "show", f"{subprocess.check_output(['git', 'merge-base', 'HEAD', 'origin/main'], text=True).strip()}:{path}"],
+              text=True,
+          )
+          before = tomllib.loads(baseline)
+          after = tomllib.loads(pathlib.Path(path).read_text())
+          value = after["package"].pop("default-run", None)
+          before["package"].pop("default-run", None)
+          if value != "literary-engine" or before != after:
+              raise SystemExit("Unexpected CLI manifest change or default binary")
+          PY
 
   macos-arm64:
     runs-on: macos-15
