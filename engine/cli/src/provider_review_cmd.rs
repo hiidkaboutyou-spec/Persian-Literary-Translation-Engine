@@ -201,10 +201,10 @@ fn run_reveal_authority(command: &str, args: &[String]) -> Result<()> {
         }
     }
     ensure_unique_inputs(&[bundle_path, key_path, signature_path])?;
-    let bundle_bytes = fs::read(bundle_path)
-        .map_err(|error| format!("failed to read blind bundle: {error}"))?;
-    let key_bytes = fs::read(key_path)
-        .map_err(|error| format!("failed to read reveal key: {error}"))?;
+    let bundle_bytes =
+        fs::read(bundle_path).map_err(|error| format!("failed to read blind bundle: {error}"))?;
+    let key_bytes =
+        fs::read(key_path).map_err(|error| format!("failed to read reveal key: {error}"))?;
     validate_reveal_authority_inputs(&bundle_bytes, &key_bytes)?;
 
     let mut prototype_args = vec![if command == "sign-reveal-authority" {
@@ -513,7 +513,10 @@ fn run_verify_reviewer_authenticated(args: &[String]) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn validate_reveal_authority_inputs(bundle_bytes: &[u8], key_bytes: &[u8]) -> Result<()> {
+pub(crate) fn validate_reveal_authority_inputs(
+    bundle_bytes: &[u8],
+    key_bytes: &[u8],
+) -> Result<()> {
     validate_bundle_key_bytes(bundle_bytes, key_bytes, true).map(|_| ())
 }
 
