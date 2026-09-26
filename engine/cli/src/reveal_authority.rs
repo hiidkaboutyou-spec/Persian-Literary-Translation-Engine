@@ -116,7 +116,6 @@ fn authority_statement(
     )
 }
 
-
 fn flag<'a>(args: &'a [String], name: &str, required: bool) -> Result<Option<&'a str>> {
     let positions = args
         .iter()
