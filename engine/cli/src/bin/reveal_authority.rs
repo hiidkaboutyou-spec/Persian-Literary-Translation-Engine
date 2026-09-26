@@ -15,6 +15,7 @@ fn usage() -> String {
     "Usage:\n  reveal-authority sign <bundle> <reveal-key> <signature> --project <id> --review <id> --authority <principal> --key <ssh-key>\n  reveal-authority verify <bundle> <reveal-key> <signature> --project <id> --review <id> --authority <principal> --allowed-signers <file> [--revocations <file>]".into()
 }
 
+#[allow(dead_code)] // The same source is included as a module by the canonical CLI.
 fn main() -> std::process::ExitCode {
     match run(&env::args().skip(1).collect::<Vec<_>>()) {
         Ok(()) => std::process::ExitCode::SUCCESS,
@@ -25,7 +26,7 @@ fn main() -> std::process::ExitCode {
     }
 }
 
-fn run(args: &[String]) -> Result<()> {
+pub(crate) fn run(args: &[String]) -> Result<()> {
     if args.len() < 4 {
         return Err(usage());
     }

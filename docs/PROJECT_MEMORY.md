@@ -61,6 +61,13 @@ Build a Rust-first Persian literary translation engine for fiction workflows.
 
 ## Dependency / Open-PR Discipline
 
+### 2026-09-26 Phase 38 canonical CLI checkpoint
+
+- Draft PR #134 now adds `literary-engine blind-review sign-reveal-authority` and `verify-reveal-authority` over the existing SSHSIG statement. The canonical command validates the actual Phase-36 schema-v2 reveal key, exact bundle digest, corpus and case identities before signing or accepting authority evidence. The standalone shell/Rust prototypes remain transitional and are not the production acceptance path.
+- The dedicated workflow adds a real schema-v2 synthetic fixture and checks the canonical command against wrong project, revoked authority, legacy/invalid reveal evidence, a post-signature candidate mapping swap, and pre-reveal bundle contents on Linux and Apple Silicon. No package was installed and no private evidence is committed.
+- **Promotion remains blocked:** inspect exact-head CI, replace the remaining duplicated prototype/OpenSSH process logic with the existing bounded Phase-37 helper, add focused Rust negative tests and verify all affected Phase 36/37/38, Rust, Security and macOS gates before marking #134 ready or merging. In particular the standalone prototype must not be mistaken for schema-aware verification.
+- Next after Phase 38: authoritative hosted-provider data-handling terms and actual human English-to-Persian literary evaluation. Provider admission still requires separate governance evidence and explicit owner authorization.
+
 - Do not mix Phase 38 with the open major upgrades for `lopdf`, `zip`, `sha2`, `thiserror`, or GitHub Actions. Evaluate and land those separately with their own compatibility/security evidence.
 - Historical superseded feature PRs must not be used as an alternate implementation path around the current canonical frontier.
 - Never force-merge or force-update Phase 38; preserve exact-head CI evidence and traceable review records.

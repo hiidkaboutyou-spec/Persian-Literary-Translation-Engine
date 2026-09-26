@@ -140,6 +140,8 @@ fn usage() -> &'static str {
         "  literary-engine blind-review sign-ledger <ledger.json> <signature.sig> --key <ssh-key>\n",
         "  literary-engine blind-review verify-ledger-signature <ledger.json> <signature.sig> --allowed-signers <allowed_signers> [--revocations <krl-or-revoked-keys>]\n",
         "  literary-engine blind-review verify-reviewer-authenticated <blind-bundle.json> <reveal-key.json> <dossier.json> <ledger.json> <signature.sig> [ledger2.json signature2.sig ...] --allowed-signers <allowed_signers> [--revocations <krl-or-revoked-keys>]\n\n",
+        "  literary-engine blind-review sign-reveal-authority <blind-bundle.json> <reveal-key.json> <signature.sig> --project <id> --review <id> --authority <principal> --key <ssh-key>\n",
+        "  literary-engine blind-review verify-reveal-authority <blind-bundle.json> <reveal-key.json> <signature.sig> --project <id> --review <id> --authority <principal> --allowed-signers <file> [--revocations <file>]\n\n",
         "The review ledger never receives the reveal key. Schema-2 reviewer signatures use local OpenSSH SSHSIG over the exact completed-ledger bytes. Private signing keys and verifier trust files remain external to project state. Authentication never grants production admission."
     )
 }
@@ -154,12 +156,65 @@ pub(crate) fn run_provider_review(args: &[String]) -> Result<()> {
         "sign-ledger" => run_sign_ledger(&args[1..]),
         "verify-ledger-signature" => run_verify_ledger_signature(&args[1..]),
         "verify-reviewer-authenticated" => run_verify_reviewer_authenticated(&args[1..]),
+        "sign-reveal-authority" | "verify-reveal-authority" => {
+            run_reveal_authority(command, &args[1..])
+        }
         "--help" | "-h" | "help" => {
             println!("{}", usage());
             Ok(())
         }
         _ => Err(usage().to_string()),
     }
+}
+
+fn run_reveal_authority(command: &str, args: &[String]) -> Result<()> {
+    let flags = [
+        "--project",
+        "--review",
+        "--authority",
+        "--key",
+        "--allowed-signers",
+        "--revocations",
+    ];
+    let bundle_path = positional(args, 0, &flags).ok_or_else(|| usage().to_string())?;
+    let key_path = positional(args, 1, &flags).ok_or_else(|| usage().to_string())?;
+    let signature_path = positional(args, 2, &flags).ok_or_else(|| usage().to_string())?;
+    if positional(args, 3, &flags).is_some() {
+        return Err("unexpected reveal-authority positional argument".into());
+    }
+    for required in ["--project", "--review", "--authority"] {
+        strict_flag_value(args, required, true)?;
+    }
+    if command == "sign-reveal-authority" {
+        strict_flag_value(args, "--key", true)?;
+        if args
+            .iter()
+            .any(|arg| arg == "--allowed-signers" || arg == "--revocations")
+        {
+            return Err("verification flags are invalid for signing".into());
+        }
+    } else {
+        strict_flag_value(args, "--allowed-signers", true)?;
+        strict_flag_value(args, "--revocations", false)?;
+        if args.iter().any(|arg| arg == "--key") {
+            return Err("--key is invalid for verification".into());
+        }
+    }
+    ensure_unique_inputs(&[bundle_path, key_path, signature_path])?;
+    let bundle_bytes = fs::read(bundle_path)
+        .map_err(|error| format!("failed to read blind bundle: {error}"))?;
+    let key_bytes = fs::read(key_path)
+        .map_err(|error| format!("failed to read reveal key: {error}"))?;
+    validate_reveal_authority_inputs(&bundle_bytes, &key_bytes)?;
+
+    let mut prototype_args = vec![if command == "sign-reveal-authority" {
+        "sign"
+    } else {
+        "verify"
+    }
+    .to_string()];
+    prototype_args.extend_from_slice(args);
+    crate::reveal_authority::run(&prototype_args)
 }
 
 fn run_init(args: &[String]) -> Result<()> {
@@ -456,6 +511,10 @@ fn run_verify_reviewer_authenticated(args: &[String]) -> Result<()> {
     println!("signature namespace: {REVIEW_SIGNATURE_NAMESPACE}");
     println!("production admission: NOT GRANTED");
     Ok(())
+}
+
+pub(crate) fn validate_reveal_authority_inputs(bundle_bytes: &[u8], key_bytes: &[u8]) -> Result<()> {
+    validate_bundle_key_bytes(bundle_bytes, key_bytes, true).map(|_| ())
 }
 
 fn validate_bundle_key_bytes(
