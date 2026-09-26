@@ -23,8 +23,16 @@ pub(crate) fn run(args: &[String]) -> Result<()> {
     let signature = &args[3];
     let mut options = args[4..].chunks_exact(2);
     for pair in &mut options {
-        if !matches!(pair[0].as_str(), "--project" | "--review" | "--authority" | "--key" | "--allowed-signers" | "--revocations")
-            || pair[1].starts_with("--") || pair[1].is_empty()
+        if !matches!(
+            pair[0].as_str(),
+            "--project"
+                | "--review"
+                | "--authority"
+                | "--key"
+                | "--allowed-signers"
+                | "--revocations"
+        ) || pair[1].starts_with("--")
+            || pair[1].is_empty()
         {
             return Err("invalid reveal-authority option or value".into());
         }
@@ -62,7 +70,9 @@ pub(crate) fn run(args: &[String]) -> Result<()> {
                 );
             }
             let signed = crate::provider_review_cmd::ssh_sign_with_namespace(
-                statement.as_bytes(), key, NAMESPACE
+                statement.as_bytes(),
+                key,
+                NAMESPACE,
             )?;
             write_new_atomic(Path::new(signature), &signed)?;
             println!("reveal-authority signature written: {signature}");
@@ -77,7 +87,12 @@ pub(crate) fn run(args: &[String]) -> Result<()> {
                 require_regular(path, "revocations file")?;
             }
             crate::provider_review_cmd::ssh_verify_with_namespace(
-                statement.as_bytes(), signature, allowed, authority, revocations, NAMESPACE
+                statement.as_bytes(),
+                signature,
+                allowed,
+                authority,
+                revocations,
+                NAMESPACE,
             )?;
             println!("reveal-authority signature verified: {authority}");
         }
