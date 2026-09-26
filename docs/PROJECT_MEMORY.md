@@ -75,3 +75,12 @@ Build a Rust-first Persian literary translation engine for fiction workflows.
 ## Constraints
 
 Do not turn the project into a simple API wrapper. The value is the literary memory and workflow system.
+
+## 2026-09-26 Phase 38 consolidation checkpoint
+
+- Preflight: canonical main `83dc62c2cc4632ad2f37c96247c6010ed7a4f0c3`; the open draft Phase 38 PR #134 was the active non-canonical frontier, with unrelated Dependabot and historic feature PRs left separate. The Phase 36/37 handoff and Phase 38 design gate were reviewed before mutation.
+- PR #134 has been reconciled with current main without force-updating history. The shell prototype and automatically exposed standalone Rust binary were removed. The canonical `literary-engine blind-review sign-reveal-authority` and `verify-reveal-authority` now share the Phase 37 OpenSSH subprocess/trust helper while retaining the separate Phase 38 namespace. The CLI still validates schema-v2 reveal evidence, exact bundle SHA-256, corpus and case IDs before signing or verification.
+- The dedicated Linux/macOS arm64 gate now exercises the canonical CLI alone against authorized exact evidence, cross-project/review replay, wrong namespace/principal/trust root, mapping/bundle/reveal mutation, truncated signature, KRL revocation, overwrite, symlinked inputs, legacy reveal, and pre-reveal leakage. Rust unit tests bind the deterministic statement to exact bytes and context.
+- Research checked OpenSSH's upstream SSHSIG protocol and local allowed-signers/namespace/revocation boundary. No missing primitive justified Sigstore/Cosign, a new signing crate, or any Cycle 14 publishing package in this security slice; no new dependency was installed.
+- Current checkpoint head: `4b9e024424530c315769c67398120731e12dcfe9`. CI is running. Earlier heads failed Rust format/Clippy and were repaired; they are not validation evidence. Keep the PR draft and unmerged until exact-final-head Phase 36/37/38, Rust CI, Security, and Apple Silicon checks pass. If a gate fails, repair the cause and repeat exact-head validation.
+- Next after Phase 38: authoritative hosted-provider data handling and representative human EN→FA literary evaluation. Production provider admission remains blocked pending governance evidence and explicit owner authorization.
