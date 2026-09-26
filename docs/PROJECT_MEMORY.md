@@ -51,6 +51,14 @@ Build a Rust-first Persian literary translation engine for fiction workflows.
 5. After the blind-review authority chain is trustworthy, return to authoritative hosted-provider data-handling evidence and representative real human English→Persian literary evaluation.
 6. Keep production provider activation blocked until the separate governance evidence and explicit owner authorization requirements are satisfied.
 
+## 2026-09-26 Phase 38 CI Repair and Promotion Gate
+
+- Preflight: canonical `main@83dc62c2cc4632ad2f37c96247c6010ed7a4f0c3`; draft PR #134 was `a30132b787634bce64357475f95982c68cf3113b`, diverged from main (merge base `57a2e22981b61080ed1699d4c090ed20bfe2f10d`; main has three docs-only commits). The other open PRs include Dependabot upgrades and historical feature branches; do not bundle them into Phase 38.
+- Exact-head #134 CI exposed two independent failures: Phase 38's shell signer removed its terminal newline via Bash command substitution while the Rust statement retained it, so cross-implementation SSHSIG verification failed; Phase 31's manifest guard rejected the required `default-run = "literary-engine"` setting despite no dependency change.
+- Repair commits `1e55c19cfc5c7480bae13a9578cdb3ccdc3626c0` and `c5488b6b4824d24a38c0ccb55ffb0be5a7fc5723` preserve the statement newline and narrow the Phase 31 manifest gate to semantic equality except the exact CLI default binary. Do not mark the repair validated until the new exact-head Linux/macOS and affected CI complete.
+- GitHub package research for Cycle 14 confirmed `persian-tools/rust-persian-tools`, `bokuweb/docx-rs`, and `pagedjs/pagedjs` remain candidates for isolated publishing prototypes. Their integration must follow the already merged Cycle 14 contract and differential/RTL/export QA; none fixes this Phase 38 signature or manifest failure, so no runtime package was installed.
+- Next: inspect exact-head CI. If green, replace the parallel shell/Rust prototype with the canonical `blind-review` Rust authority command surface and existing bounded OpenSSH helper; validate reveal schema/context against the actual Phase 36 bundle and reveal records, legacy unsigned distinction, signer/revocation/path failures, and pre-reveal leakage. Re-run all affected gates on the final head and only then consider promotion. Production provider admission remains blocked.
+
 ## Dependency / Open-PR Discipline
 
 - Do not mix Phase 38 with the open major upgrades for `lopdf`, `zip`, `sha2`, `thiserror`, or GitHub Actions. Evaluate and land those separately with their own compatibility/security evidence.
