@@ -313,7 +313,10 @@ mod tests {
     fn directional_runs_preserve_exact_unicode_and_xml_escaping() {
         let original = "«سلام» A&B <tag> کتاب‌ها ۱۲۳";
         let runs = directional_runs(original);
-        assert_eq!(runs.iter().map(|(text, _)| *text).collect::<String>(), original);
+        assert_eq!(
+            runs.iter().map(|(text, _)| *text).collect::<String>(),
+            original
+        );
         let xml = paragraph_xml(original, "Normal");
         assert!(xml.contains("A&amp;B"));
         assert!(xml.contains("&lt;tag&gt;"));
