@@ -150,11 +150,56 @@ fn document_xml(title: &str, chapters: &[Chapter]) -> String {
 }
 
 fn paragraph_xml(text: &str, style: &str) -> String {
+    let runs = directional_runs(text)
+        .into_iter()
+        .map(|(content, latin)| {
+            let properties = if latin {
+                // Override the RTL document defaults for protected ASCII runs.
+                r#"<w:rtl w:val="0"/><w:lang w:val="en-US"/>"#
+            } else {
+                r#"<w:rtl/><w:lang w:val="fa-IR" w:bidi="fa-IR"/>"#
+            };
+            format!(
+                "<w:r><w:rPr>{properties}</w:rPr><w:t xml:space=\"preserve\">{}</w:t></w:r>",
+                escape_xml(content)
+            )
+        })
+        .collect::<String>();
     format!(
-        "<w:p><w:pPr><w:pStyle w:val=\"{}\"/><w:bidi/></w:pPr><w:r><w:rPr><w:rtl/><w:lang w:val=\"fa-IR\" w:bidi=\"fa-IR\"/></w:rPr><w:t xml:space=\"preserve\">{}</w:t></w:r></w:p>",
+        "<w:p><w:pPr><w:pStyle w:val=\"{}\"/><w:bidi/></w:pPr>{runs}</w:p>",
         escape_xml(style),
-        escape_xml(text)
     )
+}
+
+// ASCII graphic spans are left intact, including URLs, emails, ISBNs and
+// Latin identifiers. Spaces and non-ASCII prose stay in the Persian run;
+// no spelling, punctuation or character normalization is performed here.
+fn directional_runs(text: &str) -> Vec<(&str, bool)> {
+    let mut runs = Vec::new();
+    let mut start = 0;
+    let mut current = None;
+    for (index, character) in text.char_indices() {
+        let latin = character.is_ascii_graphic();
+        if let Some(previous) = current {
+            if previous != latin {
+                let span = &text[start..index];
+                runs.push((
+                    span,
+                    previous && span.bytes().any(|byte| byte.is_ascii_alphanumeric()),
+                ));
+                start = index;
+            }
+        }
+        current = Some(latin);
+    }
+    if let Some(latin) = current {
+        let span = &text[start..];
+        runs.push((
+            span,
+            latin && span.bytes().any(|byte| byte.is_ascii_alphanumeric()),
+        ));
+    }
+    runs
 }
 
 fn split_paragraphs(text: &str) -> Vec<&str> {
@@ -238,5 +283,43 @@ mod tests {
         let error = export_persian_docx(&path, "خالی", &[]).unwrap_err();
         assert!(error.to_string().contains("without chapters"));
         fs::remove_file(path).ok();
+    }
+
+    #[test]
+    fn mixed_script_docx_keeps_protected_latin_runs_and_round_trips() {
+        let path = temp_docx();
+        let original = "به OpenAI.com و user@example.org نگاه کن؛ ISBN 978-1-234. می‌رود.";
+        let chapters = vec![Chapter::translated(0, "فصل ۱", original)];
+        export_persian_docx(&path, "نمونه", &chapters).unwrap();
+        let file = File::open(&path).unwrap();
+        let mut archive = zip::ZipArchive::new(file).unwrap();
+        let mut xml = String::new();
+        use std::io::Read;
+        archive
+            .by_name("word/document.xml")
+            .unwrap()
+            .read_to_string(&mut xml)
+            .unwrap();
+        assert!(xml.contains("<w:rtl w:val=\"0\"/><w:lang w:val=\"en-US\"/></w:rPr><w:t xml:space=\"preserve\">OpenAI.com</w:t>"));
+        assert!(xml.contains("<w:rtl w:val=\"0\"/><w:lang w:val=\"en-US\"/></w:rPr><w:t xml:space=\"preserve\">user@example.org</w:t>"));
+        assert!(xml.contains("<w:rtl/><w:lang w:val=\"fa-IR\" w:bidi=\"fa-IR\"/></w:rPr><w:t xml:space=\"preserve\"> می‌رود</w:t>"));
+        drop(archive);
+        let loaded = load_docx_file(&path).unwrap();
+        fs::remove_file(path).ok();
+        assert!(loaded.text.contains(original));
+    }
+
+    #[test]
+    fn directional_runs_preserve_exact_unicode_and_xml_escaping() {
+        let original = "«سلام» A&B <tag> کتاب‌ها ۱۲۳";
+        let runs = directional_runs(original);
+        assert_eq!(
+            runs.iter().map(|(text, _)| *text).collect::<String>(),
+            original
+        );
+        let xml = paragraph_xml(original, "Normal");
+        assert!(xml.contains("A&amp;B"));
+        assert!(xml.contains("&lt;tag&gt;"));
+        assert!(xml.contains("کتاب‌ها ۱۲۳"));
     }
 }
