@@ -14,7 +14,7 @@ Phase 38 is canonical via PR #134 and main merge 914781a103679dbb9964583668bbeab
 
 ## OpenAI evidence snapshot
 
-Evidence reviewed 2026-09-27:
+Evidence reviewed 2026-09-29:
 
 - OpenAI Services Agreement: https://openai.com/policies/services-agreement/
 - Service Terms (updated 2026-09-21): https://openai.com/policies/service-terms/
@@ -22,6 +22,7 @@ Evidence reviewed 2026-09-27:
 - Zero Data Retention announcement (2026-08-19): https://openai.com/index/offering-zero-data-retention-for-frontier-models/
 - ZDR with Private Safety Processing: https://developers.openai.com/api/docs/guides/private-safety-processing
 - Project data-retention controls: https://developers.openai.com/api/docs/guides/terraform/project-controls
+- OpenAI API deprecations (Evals transition): https://developers.openai.com/api/docs/deprecations
 
 ### Supported by public authoritative evidence
 
@@ -45,6 +46,21 @@ Public documentation does **not** prove any of the following for the project's a
 
 These must remain UNKNOWN/fail-closed until account/project evidence is captured outside manuscript data.
 
+## Evaluation-platform decision (2026-09-29)
+
+Do **not** adopt the hosted OpenAI Evals platform for Phase 39. OpenAI announced its deprecation on 2026-06-03; existing evals become read-only on 2026-10-31 and the dashboard/API are scheduled to shut down on 2026-11-30. Adding a new hosted evaluation dependency now would create avoidable migration and retention surface while the repository already has a local blind-review/provenance chain.
+
+Use the repository-owned Phase 32–38 evaluation path for blind human EN→FA qualification. Hosted evaluation frameworks may be researched as references, but they must not become required evidence storage or reviewer authority in this phase.
+
+## Persian literary rubric evidence
+
+GitHub research on 2026-09-29 found two useful idea sources that do not justify runtime adoption:
+
+- `mshojaei77/ParsiEval` / Persian Fluency Bench (MIT): useful rubric ideas for formal Persian register, native fluency and explicit translationese penalties.
+- `niktaas/TAAROFBENCH` (CC0 dataset): useful evidence that Persian cultural pragmatics can diverge sharply from literal-semantic quality and should be reviewed explicitly.
+
+Adapt ideas only; do not copy benchmark code or make either repository a runtime dependency. Human literary review remains authoritative.
+
 ## Admission rule
 
 Do not send private, unpublished, licensed, or otherwise rights-sensitive book text to a hosted provider merely to qualify it. First establish account/project governance evidence. Initial quality qualification must use public-domain, project-owned, synthetic, or otherwise explicitly rights-safe passages.
@@ -64,7 +80,7 @@ Use the existing blind-review/provenance chain:
 1. Build a small rights-safe corpus representing dialogue, narration, idiom/pragmatics, register, character voice, ambiguity, imagery, and long-context continuity.
 2. Freeze source passages and evaluation rubric before provider outputs are revealed.
 3. Generate candidate translations without reviewer-identifying metadata in the blind bundle.
-4. Human reviewers score fidelity, Persian naturalness, literary voice, character consistency, register, idiom/pragmatics, omissions/additions, and continuity.
+4. Human reviewers score fidelity, Persian naturalness, literary voice, character consistency, register, translationese/calque artifacts, idiom/pragmatics and cultural intent, omissions/additions, and continuity.
 5. Preserve Phase 36–38 bundle/reveal/provenance rules and record the human decision dossier.
 6. Compare against the current baseline; do not promote on aggregate score alone if a hard literary/safety criterion regresses.
 
