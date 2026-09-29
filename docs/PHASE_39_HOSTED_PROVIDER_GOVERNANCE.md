@@ -90,6 +90,26 @@ No new runtime dependency is justified for this phase. Existing Phase 32/33 eval
 
 Keep unrelated Dependabot major upgrades and Cycle 14 publishing tooling out of this phase.
 
+## Account/project evidence capture procedure (2026-09-30)
+
+GitHub-first implementation research found the official `openai/terraform-provider-openai` (Apache-2.0) exposes read-only data sources for the exact project-scoped controls needed here: `openai_project_data_retention`, `openai_project_rate_limits`, `openai_project_spend_alerts`, and `openai_project_spend_limit`. The provider source also keeps Administration API credentials separate and requires `OPENAI_ADMIN_KEY` for these data sources.
+
+Decision: use these interfaces only as an **operator-side, read-only evidence path** when an authorized Admin API key is available. Do not install Terraform/provider binaries into this repository, do not run them in project CI, do not commit Terraform state, project IDs, Admin API keys, recipient addresses, raw account metadata, or command output. Do not create/update spend limits, alerts, rate limits, model permissions, or retention settings as part of evidence collection.
+
+Safe evidence workflow:
+
+1. Run the official provider in a temporary local directory outside the repository, pinned to an explicitly reviewed provider version/revision.
+2. Supply the Admin API key only through the environment or an external secret manager; never through `.tf`, shell history, project files, CI variables, or captured screenshots.
+3. Query only the four read-only data sources above for the intended project. No Terraform resources and no `apply`.
+4. Redact project/account identifiers and notification recipients before preserving evidence.
+5. Record only the minimum normalized facts needed by Phase 39: retention mode; relevant model rate limits; whether project spend alerts exist and their non-identifying thresholds; whether a hard project spend limit exists and its threshold; capture date; provider revision; and source type.
+6. Obtain **separate authoritative evidence** for data residency, optional data-sharing/feedback state, and endpoint-specific application-state behavior. Absence from the Terraform data sources is not evidence that these controls are disabled.
+7. Treat any inaccessible, ambiguous, or stale field as UNKNOWN. Never infer ZDR from public eligibility, infer residency from retention mode, or infer a hard budget cap from spend alerts.
+
+Current OpenAI documentation distinguishes spend alerts from hard spend limits: alerts notify but do not stop traffic, while a hard project spend limit can reject requests after the tracked threshold is reached. Phase 39 therefore records these as separate governance facts.
+
+This procedure is intentionally not executable in repository CI because account evidence requires an external Admin API credential and may expose organization metadata. The repository stores only the redacted governance result, never the credential or raw provider state.
+
 ## Exit criteria
 
 Phase 39 can advance only when:
