@@ -6,7 +6,7 @@ A production-grade English-to-Persian literary translation engine with a Rust co
 
 ## Canonical Main State
 
-`main` is canonical through Phase 34 (PR #125, merge `ae34a07e08926e073db43db82fa04672640d1048`).
+`main` is canonical through Phase 38 (PR #134, merge `914781a103679dbb9964583668bbeabb0104f879`). Phase 39 is the current non-canonical frontier in draft PR #146.
 
 Phase 26 PR #111 landed from final validated head `8418fdf4eb06252dec8a014c13e789efa7fe800e` at merge commit `5c0d4c8514b999faf786971da8541f7ea5a1b773`.
 
@@ -88,7 +88,7 @@ Phase-29 contract:
 
 Detailed research: `docs/PHASE_29_RESEARCH.md`.
 
-### Active Phase 30 — Desktop Pilot Review Workspace
+### Phase 30 — Desktop Pilot Review Workspace — canonical
 
 Branch: `phase-30-pilot-review-workspace`.
 
@@ -354,25 +354,36 @@ The durable canonical Phase-36 handoff from PR #129 is merged on `main` at `b8c9
 
 ## Current Handoff
 
-Phase 36 is canonical. The next measured gap is reviewer authenticity: a coordinated local rewrite can still replace a schema-v2 ledger and recompute all unkeyed hashes if every local evidence artifact is under the same attacker's control. The trust root must therefore be independent from review artifacts.
+Phase 38 is canonical via PR #134; final validated head `8e8fd081520ce004db6687020d5e7f40688af4b6`; merge `914781a103679dbb9964583668bbeabb0104f879`. It authenticates schema-v2 reveal-authority provenance with a distinct offline OpenSSH SSHSIG trust boundary. Reviewer-ledger authentication remains the Phase-37 boundary; reveal-authority provenance is separate. Signatures add provenance only and grant neither literary approval nor provider admission.
 
-Private-book provider admission remains blocked on separate evidence: verified hosted-provider data-handling terms, representative real human English→Persian literary review, and an explicit owner authorization. Atria remains research-only.
+Phase 39 is the current numbered frontier on branch `phase-39-openai-governance-evidence` / draft PR #146. It must establish authoritative non-secret hosted-provider account/project data-handling evidence and a rights-safe representative blind human EN→FA literary qualification before a hosted provider can become eligible for production consideration. Unknown retention/ZDR/residency/data-sharing/endpoint/budget evidence remains fail-closed. The repository-owned Phase 32–38 blind-review/provenance path remains authoritative; no hosted evaluation dependency is required. Production provider admission remains **NOT GRANTED** and still requires the existing governance assessment plus separate explicit owner authorization.
 
-## Phase 37 — Authenticated Reviewer Ledger Evidence with Offline SSHSIG — in progress
+Cycle 14 publishing work, including draft PR #147 for DOCX mixed-script direction, remains an independent publishing track and must not be conflated with Phase 39 provider governance.
 
-Branch: `phase-37-authenticated-reviewer-evidence`.
+## Phase 37 — Authenticated Reviewer Ledger Evidence with Offline SSHSIG — canonical
 
-Phase 37 adds an optional local OpenSSH SSHSIG boundary for completed schema-v2 blind-review ledgers:
+PR #131 merged at `396fb780fa225eedd0c3eb393ec6fd755add7b01`; durable handoff on main at `a6c9b69e9344d748e96a4c81dca9a889f7f7a562`. Phase 37 authenticates completed schema-v2 reviewer ledgers against external verifier-controlled OpenSSH trust material, without adding a runtime dependency or provider admission.
 
-- sign the exact completed ledger bytes with `ssh-keygen -Y sign`;
-- verify against a human/operator-maintained `allowed_signers` trust file and the reviewer principal recorded in the ledger;
-- use a fixed project namespace for signature domain separation;
-- optionally enforce OpenSSH KRL/revoked-key files;
-- require schema-v2 evidence for authenticated verification; legacy artifacts are never silently upgraded;
-- keep private keys, trust roots and revocation state outside project persistence;
-- perform Phase-36 dossier consistency reconstruction from the same in-memory ledger bytes that are signature-checked, while making clear that only reviewer ledgers—not reveal-key assignment provenance—are authenticated;
-- add no Cargo/Python/npm dependency and make no provider-selection/admission change.
+Research and threat model: `docs/PHASE_37_RESEARCH.md`.
 
-Research, threat model, privacy boundary and exit criteria: `docs/PHASE_37_RESEARCH.md`.
+## Phase 38 — Reveal-Authority Provenance — canonical
 
-Known remaining evidence gap: the reveal key's Candidate A/B → system mapping is a separate authority artifact and is not authenticated by Phase 37. Phase 38 should design reveal-authority provenance without leaking the hidden mapping during blind review.
+PR #134 merged at `914781a103679dbb9964583668bbeabb0104f879` from final validated head `8e8fd081520ce004db6687020d5e7f40688af4b6`. The canonical CLI signs/verifies the exact schema-v2 hidden reveal key against the exact blind bundle and project/review context under a distinct SSHSIG namespace. External allowed-signers/revocation trust remains outside project files. All 32 observed exact-head checks passed before merge.
+
+Canonical handoff: `docs/PHASE_38_CANONICAL_HANDOFF.md`.
+
+## Phase 39 — Hosted Provider Governance Evidence & Representative EN→FA Qualification — in progress
+
+Branch: `phase-39-openai-governance-evidence`; draft PR #146.
+
+Phase-39 contract:
+
+- public provider documentation is evidence, not proof of this account/project's configuration;
+- unknown retention/ZDR/residency/data-sharing/endpoint/budget facts block eligibility;
+- private or rights-sensitive manuscript text is not used merely to qualify a provider;
+- representative qualification uses rights-safe text and the existing Phase 32–38 blind human review/provenance path;
+- human literary review remains authoritative, including Persian naturalness, voice, register, translationese/calque artifacts, idiom/pragmatics, cultural intent and continuity;
+- no provider becomes selected or authorized merely by passing qualification;
+- production admission remains **NOT GRANTED** pending governance assessment and separate explicit owner authorization.
+
+Evidence and exit criteria: `docs/PHASE_39_HOSTED_PROVIDER_GOVERNANCE.md`.
