@@ -110,6 +110,33 @@ Current OpenAI documentation distinguishes spend alerts from hard spend limits: 
 
 This procedure is intentionally not executable in repository CI because account evidence requires an external Admin API credential and may expose organization metadata. The repository stores only the redacted governance result, never the credential or raw provider state.
 
+## Redacted governance evidence record
+
+Preserve only a normalized, non-secret record. Every field that is not supported by authoritative project/account evidence is `UNKNOWN` and remains blocking; public product capability or defaults are never substituted for project state.
+
+Required fields:
+
+- `captured_at` and evidence provenance/revision;
+- `retention_mode`: organization default / ZDR / MAM / enhanced variant / none / UNKNOWN;
+- `data_residency_region` and whether regional **storage** and **processing** are each evidenced;
+- `data_sharing.api_inputs_outputs`, `data_sharing.evals_fine_tuning`, and `data_sharing.feedback` as independent states;
+- intended `endpoint`, model snapshot/family, processing mode, and regional base URL where applicable;
+- endpoint `store` behavior, ZDR eligibility, application-state behavior, and prompt-cache behavior relevant to that model/request;
+- project spend alerts and hard spend limit as separate controls;
+- relevant project/model rate limits;
+- unresolved contractual/account-specific facts as explicit `UNKNOWN` entries.
+
+Interpretation rules:
+
+1. `store: false` is not evidence that ZDR is enabled. ZDR is an organization/project retention control and changes endpoint behavior only when actually enabled.
+2. ZDR eligibility is request-wide: model, endpoint, tools and third-party services must all be compatible. ZDR-ineligible capabilities may retain application state even on a ZDR project.
+3. Data residency storage and regional processing are distinct. A regional endpoint or storage region alone does not prove regional processing.
+4. Prompt caching is application state and must be evaluated for the selected model/request. Do not infer cache behavior from the base endpoint alone.
+5. Third-party MCP/tool traffic inherits the third party's own retention/residency policy; therefore Phase 39 qualification should use no third-party network tool unless separately governed.
+6. Do not record project IDs, organization IDs, Admin API keys, notification recipients, raw API responses, screenshots containing identifiers, or manuscript text in this evidence record.
+
+For the first rights-safe qualification, prefer a plain text-only `/v1/responses` or `/v1/chat/completions` request with no hosted/remote tools and no persistent conversation object. Freeze the exact endpoint/model/processing/cache parameters alongside the rubric before candidate generation. This is a qualification profile, not production admission.
+
 ## Exit criteria
 
 Phase 39 can advance only when:
