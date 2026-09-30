@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "purpose": "Phase 39 redacted hosted-provider governance evidence. Never store credentials, organization/project IDs, raw API responses, recipient addresses, screenshots with identifiers, or manuscript text here.",
+  "captured_at": null,
+  "evidence": {
+    "provider": "openai",
+    "source_type": "UNKNOWN",
+    "source_revision": "UNKNOWN"
+  },
+  "retention": {
+    "mode": "UNKNOWN",
+    "zdr_enabled": "UNKNOWN",
+    "evidence_status": "UNKNOWN"
+  },
+  "residency": {
+    "region": "UNKNOWN",
+    "storage_evidenced": "UNKNOWN",
+    "processing_evidenced": "UNKNOWN"
+  },
+  "data_sharing": {
+    "api_inputs_outputs": "UNKNOWN",
+    "evals_fine_tuning": "UNKNOWN",
+    "feedback": "UNKNOWN"
+  },
+  "request_profile": {
+    "endpoint": "UNKNOWN",
+    "model_snapshot": "UNKNOWN",
+    "processing_mode": "UNKNOWN",
+    "regional_base_url": "UNKNOWN",
+    "store": "UNKNOWN",
+    "zdr_eligible": "UNKNOWN",
+    "application_state": "UNKNOWN",
+    "prompt_cache_behavior": "UNKNOWN",
+    "hosted_or_remote_tools": false,
+    "persistent_conversation": false
+  },
+  "budget": {
+    "spend_alerts": "UNKNOWN",
+    "hard_spend_limit": "UNKNOWN"
+  },
+  "rate_limits": {
+    "status": "UNKNOWN",
+    "normalized_non_identifying_limits": []
+  },
+  "contractual_account_specific_facts": "UNKNOWN",
+  "blocking_unknowns": [
+    "retention.mode",
+    "retention.zdr_enabled",
+    "residency.region",
+    "residency.storage_evidenced",
+    "residency.processing_evidenced",
+    "data_sharing.api_inputs_outputs",
+    "data_sharing.evals_fine_tuning",
+    "data_sharing.feedback",
+    "request_profile.endpoint",
+    "request_profile.model_snapshot",
+    "request_profile.processing_mode",
+    "request_profile.store",
+    "request_profile.zdr_eligible",
+    "request_profile.application_state",
+    "request_profile.prompt_cache_behavior",
+    "budget.spend_alerts",
+    "budget.hard_spend_limit",
+    "rate_limits.status",
+    "contractual_account_specific_facts"
+  ],
+  "qualification_allowed": false,
+  "production_admission": "NOT_GRANTED"
+}
