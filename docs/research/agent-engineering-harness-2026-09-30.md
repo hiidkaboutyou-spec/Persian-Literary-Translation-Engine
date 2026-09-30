@@ -55,11 +55,11 @@ Decision: keep it optional and complementary. Repository-owned evidence gates re
 
 Add:
 
-1. `.agents/skills/evidence-first-engineering/SKILL.md`
-   - shared research, debugging, regression and verification workflow.
+1. `.agents/skills/research-first-engineering/SKILL.md`
+   - research-first debugging, RED/GREEN regression and verification workflow.
 
-2. `.agents/skills/translation-engine-acceptance/SKILL.md`
-   - project-specific proof for literary quality, formats/artifacts, persistence/canon, providers, desktop orchestration and releases.
+2. `.agents/skills/literary-production-acceptance/SKILL.md`
+   - project-specific end-to-end proof for manuscript workflows, literary quality, formats/artifacts, persistence/canon, providers, application orchestration and releases.
 
 3. a mandatory activation section in `AGENTS.md`.
 
