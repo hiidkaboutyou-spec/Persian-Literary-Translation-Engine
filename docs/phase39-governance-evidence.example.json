@@ -1,6 +1,6 @@
 {
-  "schema_version": 1,
-  "purpose": "Phase 39 redacted hosted-provider governance evidence. Never store credentials, organization/project IDs, raw API responses, recipient addresses, screenshots with identifiers, or manuscript text here.",
+  "schema_version": 2,
+  "purpose": "Phase 39 redacted hosted-provider governance evidence. Never store credentials, organization/project IDs, raw API responses, recipient addresses, screenshots with identifiers, external-storage identifiers, or manuscript text here.",
   "captured_at": null,
   "evidence": {
     "provider": "openai",
@@ -10,6 +10,12 @@
   "retention": {
     "mode": "UNKNOWN",
     "zdr_enabled": "UNKNOWN",
+    "private_safety_processing": {
+      "enabled": "UNKNOWN",
+      "storage_validated": "UNKNOWN",
+      "storage_health": "UNKNOWN",
+      "storage_region_matches_project_residency": "UNKNOWN"
+    },
     "evidence_status": "UNKNOWN"
   },
   "residency": {
@@ -46,6 +52,10 @@
   "blocking_unknowns": [
     "retention.mode",
     "retention.zdr_enabled",
+    "retention.private_safety_processing.enabled",
+    "retention.private_safety_processing.storage_validated",
+    "retention.private_safety_processing.storage_health",
+    "retention.private_safety_processing.storage_region_matches_project_residency",
     "residency.region",
     "residency.storage_evidenced",
     "residency.processing_evidenced",
