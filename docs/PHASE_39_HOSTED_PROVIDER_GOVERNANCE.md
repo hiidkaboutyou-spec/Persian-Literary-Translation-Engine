@@ -110,6 +110,22 @@ Current OpenAI documentation distinguishes spend alerts from hard spend limits: 
 
 This procedure is intentionally not executable in repository CI because account evidence requires an external Admin API credential and may expose organization metadata. The repository stores only the redacted governance result, never the credential or raw provider state.
 
+### Terraform state safety hardening (2026-09-30)
+
+GitHub-first source review plus Terraform's own state-security guidance identified an additional evidence-capture hazard: a read-only data source can still persist returned fields in Terraform state. The OpenAI provider's project-control data sources expose raw-response material for diagnostics, so **read-only does not mean state-free or safe to retain**. Terraform also documents that local state is plaintext by default and that plans/backend configuration can contain sensitive material.
+
+Phase 39 therefore tightens the operator-side Terraform option:
+
+- treat every Terraform state, plan, crash/recovery state, `.terraform/` directory, stdout/stderr capture, and provider diagnostic as potentially sensitive account metadata;
+- use a disposable working directory outside this repository and never a repository checkout, Git worktree, CI workspace, shared artifact directory, or synchronized folder;
+- do not use a remote backend for this evidence probe; the goal is not durable infrastructure state, and uploading account metadata would create an unnecessary additional retention surface;
+- pass credentials only through a short-lived environment/secret-manager path and never via backend arguments, `.tfvars`, plan files, shell-history-bearing command arguments, or committed configuration;
+- extract only the normalized allow-listed Phase-39 facts, redact identifiers/recipients, and verify the redacted record before it crosses into the repository;
+- destroy the disposable directory, including `terraform.tfstate*`, saved plans, `.terraform/`, lock/debug logs and crash files, after the normalized facts are captured;
+- if the operator cannot guarantee this isolation and cleanup, **do not use Terraform**; capture the same facts through an authorized administrative UI/API path and preserve only the normalized redacted evidence.
+
+No Terraform/provider dependency is added to this repository. No provider execution is required to merge Phase-39 documentation, and this hardening does not weaken the existing UNKNOWN/fail-closed rule.
+
 ## Redacted governance evidence record
 
 Preserve only a normalized, non-secret record. Every field that is not supported by authoritative project/account evidence is `UNKNOWN` and remains blocking; public product capability or defaults are never substituted for project state.
