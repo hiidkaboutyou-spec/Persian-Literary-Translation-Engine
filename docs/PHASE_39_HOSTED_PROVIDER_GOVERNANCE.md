@@ -137,6 +137,31 @@ Interpretation rules:
 
 For the first rights-safe qualification, prefer a plain text-only `/v1/responses` or `/v1/chat/completions` request with no hosted/remote tools and no persistent conversation object. Freeze the exact endpoint/model/processing/cache parameters alongside the rubric before candidate generation. This is a qualification profile, not production admission.
 
+## Qualification freeze checkpoint (2026-09-30)
+
+The rights-safe corpus does not need to be invented or imported from a third party. Reuse the repository-owned synthetic `benchmarks/phase21/corpus-v1.json` (Git blob `893359b53c49619f4e808c4d8f89eebd1463eda4` on the current canonical base). Its provenance explicitly states that all English passages, Persian references, and contrastive degradations were written for this repository and that no third-party literary, subtitle, social-media, or proprietary manuscript text is included.
+
+This corpus already exercises the Phase-39 literary failure classes that matter for an initial gate: negation/subtext, formal-vs-intimate register, sarcasm, named-place terminology continuity, agency/sequence, concrete-detail omission, English-shaped calques, and short-window entity continuity. Reusing it avoids a new dataset dependency, new licensing uncertainty, and benchmark drift while preserving the existing Phase-21 schema and Phase-31 qualification CLI.
+
+Freeze the first hosted-provider qualification as follows **before** candidate generation:
+
+- corpus path: `benchmarks/phase21/corpus-v1.json`;
+- corpus Git blob: `893359b53c49619f4e808c4d8f89eebd1463eda4` (re-fetch and record a new immutable identifier if the corpus intentionally changes);
+- all eight cases; no cherry-picking after outputs are seen;
+- existing Phase-21 dimensions/anchors are deterministic challenge evidence only, never the literary verdict;
+- candidate generation uses the existing `qualify-provider` pipeline; comparison uses `blind-compare`; review/dossier/provenance uses the canonical Phase 32–38 chain;
+- human comparison must explicitly consider semantic fidelity, Persian naturalness/translationese, voice/subtext, relationship register, idiom/pragmatics, terminology/entity continuity, omissions/additions, and overall reading quality;
+- ties/defer remain valid; no automatic winner and no score-only promotion;
+- the reveal key remains unavailable to reviewers until all judgments are complete;
+- provider/model snapshot, endpoint, processing mode, `store`, cache policy, and governance-evidence revision are frozen in the run record before generation;
+- no hosted/remote tools, persistent conversation object, private manuscript, or rights-sensitive text is permitted in this first qualification.
+
+Current OpenAI data-control documentation was rechecked on 2026-09-30. It confirms that Responses and Chat Completions can be ZDR-eligible but that ZDR must actually be enabled for the organization/project; `store: false` alone does not enable ZDR. It also documents endpoint/application-state exceptions, including prompt caching, and states that third-party network services have their own retention policies. OpenAI's current data-sharing documentation separately controls feedback, eval/fine-tuning data, and API inputs/outputs at organization/project scope. These facts reinforce the existing fail-closed account-evidence gate; they do not substitute for real project settings.
+
+### Execution boundary
+
+The corpus/rubric is now frozen enough for a reproducible qualification, but **provider execution remains blocked** until the redacted account/project governance record has no blocking UNKNOWN for retention/ZDR, residency, data sharing, intended endpoint/application-state behavior, budget, and relevant rate limits. Once that evidence exists, run the frozen corpus without changing cases/rubric in response to observed outputs, then carry the resulting blind bundle through the existing authenticated reviewer/reveal evidence path.
+
 ## Exit criteria
 
 Phase 39 can advance only when:
