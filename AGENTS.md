@@ -171,7 +171,7 @@ For Phase 20 publishing changes, run the dedicated `Phase 20 EPUB Round Trip` wo
 
 For every substantive bugfix, feature, refactor, dependency/model/tool decision, persisted-contract change, publishing/format change, performance/reliability change, or task that could end with a claim such as "fixed", "works", "complete", "safe", or "production-ready":
 
-1. Read and follow `.agents/skills/research-first-engineering/SKILL.md`.
+1. Read and follow `.agents/skills/evidence-first-engineering/SKILL.md`.
 2. Read and follow `.agents/skills/literary-production-acceptance/SKILL.md` for engine, provider, format, artifact, persistence, desktop, quality, or release behavior.
 3. For bugs, establish root cause and reproduce the failure (or gather equivalent concrete evidence) **before** the real fix.
 4. Add a regression that exercises the same concrete implementation boundary that failed. A helper/trait-unit test is insufficient when the real path uses another adapter/provider/application/publisher implementation.
