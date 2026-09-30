@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "purpose": "Phase 39 redacted hosted-provider governance evidence. Never store credentials, organization/project IDs, raw API responses, recipient addresses, screenshots with identifiers, external-storage identifiers, or manuscript text here.",
   "captured_at": null,
   "evidence": {
@@ -36,9 +36,13 @@
     "store": "UNKNOWN",
     "zdr_eligible": "UNKNOWN",
     "application_state": "UNKNOWN",
-    "prompt_cache_behavior": "UNKNOWN",
     "hosted_or_remote_tools": false,
-    "persistent_conversation": false
+    "persistent_conversation": false,
+    "prompt_cache": {
+      "mode": "UNKNOWN",
+      "ttl_or_retention": "UNKNOWN",
+      "application_state_evidence": "UNKNOWN"
+    }
   },
   "budget": {
     "spend_alerts": "UNKNOWN",
@@ -68,7 +72,9 @@
     "request_profile.store",
     "request_profile.zdr_eligible",
     "request_profile.application_state",
-    "request_profile.prompt_cache_behavior",
+    "request_profile.prompt_cache.mode",
+    "request_profile.prompt_cache.ttl_or_retention",
+    "request_profile.prompt_cache.application_state_evidence",
     "budget.spend_alerts",
     "budget.hard_spend_limit",
     "rate_limits.status",
