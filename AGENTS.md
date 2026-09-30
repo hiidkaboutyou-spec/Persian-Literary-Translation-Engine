@@ -167,6 +167,23 @@ For Phase 20 publishing changes, run the dedicated `Phase 20 EPUB Round Trip` wo
 6. Open a concise pull request describing behavior, contracts, and validation.
 7. Merge only after required CI and security checks pass and the change is safe; otherwise record the blocker and leave the pull request open.
 
+## Mandatory evidence-first task contract
+
+For every substantive bugfix, feature, refactor, dependency/model/tool decision, persisted-contract change, publishing/format change, performance/reliability change, or task that could end with a claim such as "fixed", "works", "complete", "safe", or "production-ready":
+
+1. Read and follow `.agents/skills/evidence-first-engineering/SKILL.md`.
+2. Read and follow `.agents/skills/translation-engine-acceptance/SKILL.md` for engine, provider, format, artifact, persistence, desktop, quality, or release behavior.
+3. For bugs, establish root cause and reproduce the failure (or gather equivalent concrete evidence) **before** the real fix.
+4. Add a regression that exercises the same concrete implementation boundary that failed. A helper/trait-unit test is insufficient when the real path uses another adapter/provider/application/publisher implementation.
+5. Research primary/upstream sources before implementation when file-format, platform, provider, model, dependency, licensing, security, rights, or privacy behavior is material.
+6. Verify in a ladder: focused regression -> related crate/integration tests -> repository baseline -> affected phase/format/security/platform CI -> artifact/runtime/editorial acceptance where applicable.
+7. Perform an explicit convergence review before merge against the original product outcome, not merely the implementation checklist.
+8. Do not equate deterministic correctness with literary/editorial quality; human/editorial claims require the corresponding review evidence.
+9. Do not equate a generated artifact existing/opening with publication correctness; inspect the contract actually changed.
+10. Completion claims must name the strongest actually-proven level: implemented, regression verified, affected CI verified, artifact/runtime verified, editorially reviewed, merged, release/real-project verified.
+
+For broad next-stage requests, this contract applies **in addition to** `project-next-stage`; it does not reduce the required stage scope.
+
 ## Deep next-stage requests
 
 When the user asks to "do the next stage", "continue deeply", "advance the project", or gives an equivalent broad continuation request, do not interpret that as a request for the smallest possible diff.
