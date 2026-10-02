@@ -1,6 +1,7 @@
 //! Document ingestion and publication-export layer.
 //! V1 supports UTF-8 plain text, DOCX, EPUB, and text-based PDF files, plus chapter segmentation.
 
+pub mod book_ir;
 pub mod chapter;
 pub mod docx;
 pub mod epub;
@@ -16,6 +17,10 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
+pub use book_ir::{
+    BookBlock, BookIr, BookIrError, HeadingBlock, InlineRun, ParagraphBlock, ProtectedKind,
+    RunProtection, SceneBreakBlock, TextDirection, BOOK_IR_SCHEMA_VERSION,
+};
 pub use chapter::split_into_chapters;
 pub use docx::load_docx_file;
 pub use epub::load_epub_file;
