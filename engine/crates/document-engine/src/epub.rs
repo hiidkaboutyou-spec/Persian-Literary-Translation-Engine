@@ -394,15 +394,20 @@ fn extract_metadata_title(xml: &str) -> Option<String> {
 }
 
 const MAX_IMPORTED_METADATA_CHARS: usize = 16_384;
-const AO3_DOMAINS: [&str; 8] = [
+const AO3_DOMAINS: [&str; 13] = [
     "archiveofourown.org",
     "archiveofourown.com",
     "archiveofourown.net",
     "archiveofourown.gay",
+    "www.archiveofourown.org",
+    "www.archiveofourown.com",
+    "www.archiveofourown.net",
+    "www.archiveofourown.gay",
     "download.archiveofourown.org",
     "download.archiveofourown.com",
     "download.archiveofourown.net",
     "ao3.org",
+    "www.ao3.org",
 ];
 
 fn read_epub_package_xml(path: &Path) -> Result<String, DocumentError> {
@@ -499,23 +504,33 @@ fn extract_ao3_work_id(input: &str) -> Option<String> {
     let lower = input.to_ascii_lowercase();
     for domain in AO3_DOMAINS {
         let marker = format!("{domain}/works/");
-        let Some(position) = lower.find(&marker) else {
-            continue;
-        };
-        let start = position + marker.len();
-        let digits = lower[start..]
-            .chars()
-            .take_while(|value| value.is_ascii_digit())
-            .collect::<String>();
-        if digits.is_empty() {
-            continue;
+        let mut search_from = 0usize;
+        while let Some(relative_position) = lower[search_from..].find(&marker) {
+            let position = search_from + relative_position;
+            let prefix = &lower[..position];
+            let valid_host_boundary =
+                position == 0 || prefix.ends_with("://") || prefix.ends_with("//");
+            let start = position + marker.len();
+            search_from = start;
+
+            if !valid_host_boundary {
+                continue;
+            }
+
+            let digits = lower[start..]
+                .chars()
+                .take_while(|value| value.is_ascii_digit())
+                .collect::<String>();
+            if digits.is_empty() {
+                continue;
+            }
+            let normalized = digits.trim_start_matches('0');
+            return Some(if normalized.is_empty() {
+                "0".to_string()
+            } else {
+                normalized.to_string()
+            });
         }
-        let normalized = digits.trim_start_matches('0');
-        return Some(if normalized.is_empty() {
-            "0".to_string()
-        } else {
-            normalized.to_string()
-        });
     }
     None
 }
@@ -757,6 +772,14 @@ mod tests {
         assert_eq!(
             extract_ao3_work_id("https://ao3.org/works/42/chapters/99").as_deref(),
             Some("42")
+        );
+        assert_eq!(
+            extract_ao3_work_id("https://www.archiveofourown.org/works/77").as_deref(),
+            Some("77")
+        );
+        assert_eq!(
+            extract_ao3_work_id("https://evilarchiveofourown.org/works/42"),
+            None
         );
         assert_eq!(extract_ao3_work_id("https://example.com/works/42"), None);
     }
