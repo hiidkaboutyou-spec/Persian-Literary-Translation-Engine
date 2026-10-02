@@ -60,6 +60,21 @@ The permanent Phase 22 workflow validates the desktop backend and an Apple Silic
 
 ## Distribution status
 
+The `Phase 23 Trusted Release` workflow now retains the Apple Silicon app it
+builds as `literary-desktop-macos-arm64-<commit>`. Previously CI discarded the
+app and retained only integrity metadata, so a successful build did not give
+the owner anything to install. Run this workflow on the intended revision,
+check its result and commit, and download that artifact. Verify `SHA256SUMS`,
+then open the inner ZIP and move the application to Applications. The archive
+preserves the bundle's executable permissions; CI verifies the signature again
+after extraction. This is an ad-hoc-signed local-use build, not a notarized
+public release. If macOS requires approval, use its normal Privacy & Security
+approval flow; do not disable Gatekeeper.
+
+The artifact includes the source commit, executable/lockfile hashes and SBOM.
+It expires after 30 days and can be rebuilt by dispatching the workflow again.
+No source manuscripts, credentials or project data are included.
+
 Phase 22 produces a macOS app bundle on Apple Silicon. Public direct distribution still requires an Apple Developer signing identity and notarization credentials. Those secrets are deliberately not embedded in the repository.
 
 The Tauri updater is deferred until an authenticated release endpoint and updater signing key are explicitly configured and tested. A local/session build must never silently weaken that requirement.

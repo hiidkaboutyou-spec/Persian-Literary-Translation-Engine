@@ -241,3 +241,32 @@ jobs:
             desktop/src-tauri/phase23-integrity-manifest.txt
           if-no-files-found: error
           retention-days: 7
+
+      - name: Package verified local-use macOS app
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP_DIR='desktop/src-tauri/target/release/bundle/macos/Persian Literary Translation Engine.app'
+          codesign --verify --deep --strict "$APP_DIR"
+          mkdir -p desktop-delivery
+          ditto -c -k --sequesterRsrc --keepParent "$APP_DIR" desktop-delivery/Persian-Literary-Translation-Engine-macos-arm64.zip
+          cp desktop/src-tauri/phase23-integrity-manifest.txt desktop-delivery/
+          cp desktop/src-tauri/phase23-desktop.cdx.json desktop-delivery/
+          cd desktop-delivery
+          shasum -a 256 Persian-Literary-Translation-Engine-macos-arm64.zip > SHA256SUMS
+          ditto -x -k Persian-Literary-Translation-Engine-macos-arm64.zip verify
+          test -x 'verify/Persian Literary Translation Engine.app/Contents/MacOS/persian-literary-translation'
+          codesign --verify --deep --strict 'verify/Persian Literary Translation Engine.app'
+
+      - name: Upload installable local-use macOS app
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: literary-desktop-macos-arm64-${{ github.sha }}
+          path: |
+            desktop-delivery/*.zip
+            desktop-delivery/SHA256SUMS
+            desktop-delivery/phase23-integrity-manifest.txt
+            desktop-delivery/phase23-desktop.cdx.json
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
