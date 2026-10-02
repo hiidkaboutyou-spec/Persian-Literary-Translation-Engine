@@ -415,10 +415,7 @@ fn read_epub_package_xml(path: &Path) -> Result<String, DocumentError> {
     read_zip_entry(&mut archive, &opf_path)
 }
 
-fn merge_package_metadata(
-    metadata: &mut std::collections::BTreeMap<String, String>,
-    xml: &str,
-) {
+fn merge_package_metadata(metadata: &mut std::collections::BTreeMap<String, String>, xml: &str) {
     for (key, names) in [
         ("epub_identifier", &["dc:identifier", "identifier"][..]),
         ("epub_publisher", &["dc:publisher", "publisher"][..]),
@@ -728,7 +725,10 @@ mod tests {
 
         merge_package_metadata(&mut metadata, xml);
 
-        assert_eq!(metadata.get("ao3_work_id").map(String::as_str), Some("12345"));
+        assert_eq!(
+            metadata.get("ao3_work_id").map(String::as_str),
+            Some("12345")
+        );
         assert_eq!(
             metadata.get("source_url").map(String::as_str),
             Some("https://archiveofourown.org/works/12345")
