@@ -115,7 +115,9 @@ pub fn app_capabilities() -> ApplicationCapabilities {
 }
 
 #[tauri::command]
-pub fn pick_project_folder(app: AppHandle) -> CommandResult<Option<String>> {
+pub async fn pick_project_folder(app: AppHandle) -> CommandResult<Option<String>> {
+    // Tauri runs async commands off the main event loop. The blocking native
+    // picker needs that loop free to display and complete its dialog.
     let selected = app
         .dialog()
         .file()
@@ -131,7 +133,7 @@ pub fn pick_project_folder(app: AppHandle) -> CommandResult<Option<String>> {
 }
 
 #[tauri::command]
-pub fn pick_source_file(app: AppHandle) -> CommandResult<Option<String>> {
+pub async fn pick_source_file(app: AppHandle) -> CommandResult<Option<String>> {
     let selected = app
         .dialog()
         .file()
@@ -516,6 +518,20 @@ pub fn project_history(project_root: String) -> CommandResult<Vec<HistoryEvent>>
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn native_picker_commands_use_async_dispatch() {
+        // Reverting either command to sync would dispatch its blocking picker
+        // on the UI thread and deadlock macOS before a dialog can appear.
+        fn assert_async<F, Fut>(_: F)
+        where
+            F: Fn(AppHandle) -> Fut,
+            Fut: std::future::Future<Output = CommandResult<Option<String>>> + Send,
+        {
+        }
+        assert_async(pick_project_folder);
+        assert_async(pick_source_file);
+    }
 
     #[test]
     fn desktop_translation_input_maps_all_bounded_application_knobs() {
