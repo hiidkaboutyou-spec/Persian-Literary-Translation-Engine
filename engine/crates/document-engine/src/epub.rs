@@ -209,6 +209,9 @@ fn parse_epub_bookforge(path: &Path) -> Result<ParsedDocument, DocumentError> {
     metadata.insert("spine_count".into(), book.spine.len().to_string());
     metadata.insert("section_count".into(), book.sections.len().to_string());
     metadata.insert("block_count".into(), book.blocks.len().to_string());
+    if let Ok(opf_xml) = read_epub_package_xml(path) {
+        merge_package_metadata(&mut metadata, &opf_xml);
+    }
     if let Some(value) = &author {
         metadata.insert("author".into(), value.clone());
     }
@@ -358,6 +361,7 @@ fn parse_epub_builtin(path: &Path) -> Result<ParsedDocument, DocumentError> {
     if let Some(value) = &language {
         metadata.insert("language".into(), value.clone());
     }
+    merge_package_metadata(&mut metadata, &opf);
     Ok(ParsedDocument {
         title,
         author,
@@ -387,6 +391,148 @@ fn extract_rootfile_path(xml: &str) -> Option<String> {
 
 fn extract_metadata_title(xml: &str) -> Option<String> {
     extract_element_text(xml, "dc:title").or_else(|| extract_element_text(xml, "title"))
+}
+
+const MAX_IMPORTED_METADATA_CHARS: usize = 16_384;
+const AO3_DOMAINS: [&str; 13] = [
+    "archiveofourown.org",
+    "archiveofourown.com",
+    "archiveofourown.net",
+    "archiveofourown.gay",
+    "www.archiveofourown.org",
+    "www.archiveofourown.com",
+    "www.archiveofourown.net",
+    "www.archiveofourown.gay",
+    "download.archiveofourown.org",
+    "download.archiveofourown.com",
+    "download.archiveofourown.net",
+    "ao3.org",
+    "www.ao3.org",
+];
+
+fn read_epub_package_xml(path: &Path) -> Result<String, DocumentError> {
+    let file = File::open(path)?;
+    let mut archive = ZipArchive::new(file).map_err(DocumentError::Zip)?;
+    let container_xml = read_zip_entry(&mut archive, "META-INF/container.xml")?;
+    let opf_path = extract_rootfile_path(&container_xml).ok_or_else(|| {
+        DocumentError::InvalidStructure("EPUB container has no rootfile".to_string())
+    })?;
+    read_zip_entry(&mut archive, &opf_path)
+}
+
+fn merge_package_metadata(metadata: &mut std::collections::BTreeMap<String, String>, xml: &str) {
+    for (key, names) in [
+        ("epub_identifier", &["dc:identifier", "identifier"][..]),
+        ("epub_publisher", &["dc:publisher", "publisher"][..]),
+        ("epub_source", &["dc:source", "source"][..]),
+        ("epub_description", &["dc:description", "description"][..]),
+        ("epub_rights", &["dc:rights", "rights"][..]),
+        ("epub_date", &["dc:date", "date"][..]),
+    ] {
+        if let Some(value) = first_metadata_text(xml, names) {
+            metadata.entry(key.to_string()).or_insert(value);
+        }
+    }
+
+    let mut subjects = metadata_texts(xml, &["dc:subject", "subject"]);
+    subjects.dedup();
+    if !subjects.is_empty() {
+        metadata
+            .entry("epub_subjects".to_string())
+            .or_insert_with(|| subjects.join(" | "));
+    }
+
+    if let Some(work_id) = extract_ao3_work_id(xml) {
+        metadata.insert("source_site".to_string(), "archiveofourown.org".to_string());
+        metadata.insert(
+            "source_url".to_string(),
+            format!("https://archiveofourown.org/works/{work_id}"),
+        );
+        metadata.insert("ao3_work_id".to_string(), work_id);
+    }
+}
+
+fn first_metadata_text(xml: &str, names: &[&str]) -> Option<String> {
+    names
+        .iter()
+        .find_map(|name| collect_element_texts(xml, name).into_iter().next())
+}
+
+fn metadata_texts(xml: &str, names: &[&str]) -> Vec<String> {
+    let mut values = Vec::new();
+    for name in names {
+        for value in collect_element_texts(xml, name) {
+            if !values.contains(&value) {
+                values.push(value);
+            }
+        }
+    }
+    values
+}
+
+fn collect_element_texts(xml: &str, name: &str) -> Vec<String> {
+    let open = format!("<{name}");
+    let close = format!("</{name}>");
+    let mut values = Vec::new();
+    let mut cursor = 0usize;
+
+    while let Some(relative_start) = xml[cursor..].find(&open) {
+        let start = cursor + relative_start;
+        let Some(relative_body_start) = xml[start..].find('>') else {
+            break;
+        };
+        let body_start = start + relative_body_start + 1;
+        let Some(relative_body_end) = xml[body_start..].find(&close) else {
+            break;
+        };
+        let body_end = body_start + relative_body_end;
+        let normalized = collapse_whitespace(&decode_entities(xml[body_start..body_end].trim()));
+        let bounded = normalized
+            .chars()
+            .take(MAX_IMPORTED_METADATA_CHARS)
+            .collect::<String>();
+        if !bounded.is_empty() {
+            values.push(bounded);
+        }
+        cursor = body_end + close.len();
+    }
+
+    values
+}
+
+fn extract_ao3_work_id(input: &str) -> Option<String> {
+    let lower = input.to_ascii_lowercase();
+    for domain in AO3_DOMAINS {
+        let marker = format!("{domain}/works/");
+        let mut search_from = 0usize;
+        while let Some(relative_position) = lower[search_from..].find(&marker) {
+            let position = search_from + relative_position;
+            let prefix = &lower[..position];
+            let valid_host_boundary =
+                position == 0 || prefix.ends_with("://") || prefix.ends_with("//");
+            let start = position + marker.len();
+            search_from = start;
+
+            if !valid_host_boundary {
+                continue;
+            }
+
+            let digits = lower[start..]
+                .chars()
+                .take_while(|value| value.is_ascii_digit())
+                .collect::<String>();
+            if digits.is_empty() {
+                continue;
+            }
+            let normalized = digits.trim_start_matches('0');
+            return Some(if normalized.is_empty() {
+                "0".to_string()
+            } else {
+                normalized.to_string()
+            });
+        }
+    }
+    None
 }
 
 fn extract_manifest_items(xml: &str) -> Vec<ManifestItem> {
@@ -575,6 +721,67 @@ mod tests {
             extract_rootfile_path(xml).as_deref(),
             Some("OEBPS/content.opf")
         );
+    }
+
+    #[test]
+    fn preserves_local_ao3_epub_provenance_without_network_access() {
+        let xml = r#"
+            <package xmlns:dc="http://purl.org/dc/elements/1.1/">
+              <metadata>
+                <dc:identifier>https://archiveofourown.org/works/0012345</dc:identifier>
+                <dc:publisher>Archive of Our Own</dc:publisher>
+                <dc:description>A  summary &amp; note.</dc:description>
+                <dc:subject>Fandom A</dc:subject>
+                <dc:subject>Relationship A/B</dc:subject>
+              </metadata>
+            </package>
+        "#;
+        let mut metadata = std::collections::BTreeMap::new();
+
+        merge_package_metadata(&mut metadata, xml);
+
+        assert_eq!(
+            metadata.get("ao3_work_id").map(String::as_str),
+            Some("12345")
+        );
+        assert_eq!(
+            metadata.get("source_url").map(String::as_str),
+            Some("https://archiveofourown.org/works/12345")
+        );
+        assert_eq!(
+            metadata.get("source_site").map(String::as_str),
+            Some("archiveofourown.org")
+        );
+        assert_eq!(
+            metadata.get("epub_description").map(String::as_str),
+            Some("A summary & note.")
+        );
+        assert_eq!(
+            metadata.get("epub_subjects").map(String::as_str),
+            Some("Fandom A | Relationship A/B")
+        );
+    }
+
+    #[test]
+    fn ao3_provenance_normalizes_known_download_aliases_only() {
+        assert_eq!(
+            extract_ao3_work_id("https://download.archiveofourown.net/works/987654/file.epub")
+                .as_deref(),
+            Some("987654")
+        );
+        assert_eq!(
+            extract_ao3_work_id("https://ao3.org/works/42/chapters/99").as_deref(),
+            Some("42")
+        );
+        assert_eq!(
+            extract_ao3_work_id("https://www.archiveofourown.org/works/77").as_deref(),
+            Some("77")
+        );
+        assert_eq!(
+            extract_ao3_work_id("https://evilarchiveofourown.org/works/42"),
+            None
+        );
+        assert_eq!(extract_ao3_work_id("https://example.com/works/42"), None);
     }
 
     #[test]
