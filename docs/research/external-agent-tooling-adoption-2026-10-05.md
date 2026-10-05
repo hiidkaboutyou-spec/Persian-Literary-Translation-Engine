@@ -2,14 +2,11 @@
 
 Scope: evaluate the supplied repositories/resources for the Persian Literary Translation Engine against its existing Rust architecture, privacy/rights boundaries, human-review authority, publishing workflow, and developer harness.
 
-## Immediate repository inconsistency found
+## Harness state recovered from current GitHub truth
 
-On current `main`, `AGENTS.md` already requires:
-- `.agents/skills/evidence-first-engineering/SKILL.md`
-- `.agents/skills/literary-production-acceptance/SKILL.md`
-- `.agents/skills/agent-session-safety/SKILL.md`
+Open PR #148 contains a mature repository-owned evidence/session/production-acceptance harness and its CI validator, but those harness files are not yet canonical on current `main`. Current `main` still has the project-next-stage protocol and extensive phase invariants, but not the #148 evidence/session skill set.
 
-but those files, the harness validator, and its workflow were absent from `main`. They existed on older open PR #148. This branch restores the focused harness surfaces on top of current `main` rather than merging the entire stale branch wholesale.
+This branch ports only the focused harness surfaces that remain applicable onto the current `main`, then adds the new external-tool orchestration policy. It does not merge #148 wholesale or import unrelated/stale branch changes.
 
 ## Decision matrix
 
