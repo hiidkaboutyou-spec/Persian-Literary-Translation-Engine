@@ -7,7 +7,7 @@ description: Execute the next substantial safe stage of the Persian Literary Tra
 
 Use this skill when the user asks to "do the next stage", "continue deeply", "advance the project", or equivalent without prescribing a narrow implementation.
 
-Read `AGENTS.md` and `docs/AGENT_NEXT_STAGE_PROTOCOL.md` first. Those files are authoritative.
+Read `AGENTS.md` and `docs/AGENT_NEXT_STAGE_PROTOCOL.md` first. Those files are authoritative. Also read `.agents/skills/agent-session-safety/SKILL.md` so resumed/scheduled work revalidates phase state and gates every mutation.
 
 ## Required behavior
 
