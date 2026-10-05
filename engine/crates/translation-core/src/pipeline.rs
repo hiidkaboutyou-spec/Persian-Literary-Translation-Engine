@@ -55,9 +55,10 @@ impl TranslationPipeline {
 
     /// Execute all provider-facing literary passes while bounding the amount of
     /// passage text sent in any single provider request. Oversized passages prefer
-    /// whitespace boundaries, fall back to Unicode-safe character boundaries, and
-    /// are reassembled before the next pass. This keeps long chapters from becoming
-    /// one unbounded API request while preserving deterministic chapter order.
+    /// nearby paragraph and sentence boundaries, then whitespace, and finally a
+    /// Unicode-safe character boundary. Chunks are reassembled before the next pass.
+    /// This keeps long chapters from becoming one unbounded API request while
+    /// preserving deterministic chapter order.
     pub fn execute<P: TranslationProvider + ?Sized>(
         &self,
         provider: &P,
@@ -173,8 +174,9 @@ fn preferred_semantic_boundary(candidate: &str, max_chars: usize) -> Option<usiz
     let ends_at_sentence_boundary = candidate
         .trim_end()
         .chars()
-        .last()
-        .is_some_and(|terminator| matches!(terminator, '.' | '!' | '?' | '؟' | '。' | '！' | '？'));
+        .rev()
+        .find(|character| !is_sentence_closer(*character))
+        .is_some_and(is_sentence_terminator);
     if ends_at_sentence_boundary && candidate.trim_end().len() >= min_byte {
         return Some(candidate.len());
     }
@@ -187,8 +189,11 @@ fn preferred_semantic_boundary(candidate: &str, max_chars: usize) -> Option<usiz
                 return None;
             }
             let before = candidate[..index].trim_end();
-            let terminator = before.chars().last()?;
-            matches!(terminator, '.' | '!' | '?' | '؟' | '。' | '！' | '？')
+            before
+                .chars()
+                .rev()
+                .find(|character| !is_sentence_closer(*character))
+                .is_some_and(is_sentence_terminator)
                 .then_some(index + character.len_utf8())
         });
     if sentence.is_some() {
@@ -201,6 +206,17 @@ fn preferred_semantic_boundary(candidate: &str, max_chars: usize) -> Option<usiz
         .find(|(_, character)| character.is_whitespace())
         .map(|(index, character)| index + character.len_utf8())
         .filter(|index| *index > 0)
+}
+
+fn is_sentence_terminator(character: char) -> bool {
+    matches!(character, '.' | '!' | '?' | '؟' | '。' | '！' | '？')
+}
+
+fn is_sentence_closer(character: char) -> bool {
+    matches!(
+        character,
+        '"' | '\'' | '”' | '’' | '»' | ')' | ']' | '}'
+    )
 }
 
 #[cfg(test)]
@@ -329,5 +345,51 @@ mod tests {
         assert_eq!(chunks[0], sentence);
         assert_eq!(chunks.concat(), text);
         assert!(chunks.iter().all(|chunk| chunk.chars().count() <= 30));
+    }
+
+    #[test]
+    fn project_owned_chunk_boundary_corpus_has_no_avoidable_first_split() {
+        let corpus: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../../benchmarks/phase21/chunk-boundary-corpus-v1.json"
+        ))
+        .expect("chunk-boundary corpus should be valid JSON");
+        assert_eq!(corpus["schema_version"], 1);
+        assert_eq!(corpus["provenance"]["rights_safe"], true);
+
+        let cases = corpus["cases"]
+            .as_array()
+            .expect("chunk-boundary corpus should contain cases");
+        assert_eq!(cases.len(), 3);
+
+        let mut avoidable_first_splits = Vec::new();
+        for case in cases {
+            let id = case["id"].as_str().expect("case id should be a string");
+            let text = case["source"]
+                .as_str()
+                .expect("case source should be a string");
+            let max_chars = case["max_chars"]
+                .as_u64()
+                .expect("max_chars should be an integer") as usize;
+            let expected_first_chunk = case["expected_first_chunk"]
+                .as_str()
+                .expect("expected_first_chunk should be a string");
+
+            let chunks = split_passage(text, max_chars);
+            assert_eq!(chunks.concat(), text, "case '{id}' must remain lossless");
+            assert!(
+                chunks
+                    .iter()
+                    .all(|chunk| chunk.chars().count() <= max_chars),
+                "case '{id}' must remain within the provider character cap"
+            );
+            if chunks.first().map(String::as_str) != Some(expected_first_chunk) {
+                avoidable_first_splits.push(id);
+            }
+        }
+
+        assert!(
+            avoidable_first_splits.is_empty(),
+            "avoidable first splits detected in: {avoidable_first_splits:?}"
+        );
     }
 }

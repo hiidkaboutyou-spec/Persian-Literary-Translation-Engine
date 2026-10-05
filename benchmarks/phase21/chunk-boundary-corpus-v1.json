@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "corpus_id": "phase21-project-owned-chunk-boundaries-v1",
+  "title": "Project-Owned Literary Chunk Boundary Challenge Set",
+  "provenance": {
+    "owner": "Persian-Literary-Translation-Engine project",
+    "license": "project-owned synthetic benchmark fixture",
+    "rights_safe": true,
+    "creation_note": "Every passage was written specifically for this repository. No third-party or user manuscript text is included."
+  },
+  "metric": {
+    "name": "avoidable_first_splits",
+    "passing_value": 0,
+    "description": "Counts cases where the first chunk misses the declared nearby paragraph or sentence boundary while preserving independent losslessness and maximum-size assertions."
+  },
+  "cases": [
+    {
+      "id": "english-paragraph-transition",
+      "failure_class": "paragraph_split",
+      "max_chars": 48,
+      "source": "The lamp guttered in the hall.\n\nMara crossed the landing, counting every locked door behind her.",
+      "expected_first_chunk": "The lamp guttered in the hall.\n\n"
+    },
+    {
+      "id": "english-dialogue-closing-quote",
+      "failure_class": "dialogue_sentence_split",
+      "max_chars": 60,
+      "source": "Without looking back, Mara whispered, “Stay here!” Then she stepped into the rain before he could answer.",
+      "expected_first_chunk": "Without looking back, Mara whispered, “Stay here!” "
+    },
+    {
+      "id": "persian-dialogue-closing-guillemet",
+      "failure_class": "persian_punctuation_split",
+      "max_chars": 50,
+      "source": "سارا بی‌آنکه برگردد گفت: «همین‌جا بمان!» بعد صدای قفل در راهرو پیچید و چراغ‌ها خاموش شدند.",
+      "expected_first_chunk": "سارا بی‌آنکه برگردد گفت: «همین‌جا بمان!» "
+    }
+  ]
+}

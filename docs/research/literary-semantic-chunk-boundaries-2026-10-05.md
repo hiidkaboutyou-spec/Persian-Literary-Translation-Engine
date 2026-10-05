@@ -72,3 +72,23 @@ Rollback: revert the focused translation-core commit.
 ## Validation status
 
 Exact-head Rust/CI validation is required before merge. Human literary evaluation is still needed to claim improved translation quality; this PR proves only that chunk boundaries preserve higher-level textual structure more often.
+
+## Deterministic benchmark follow-up
+
+The project-owned Phase-21 fixture
+`benchmarks/phase21/chunk-boundary-corpus-v1.json` records three rights-safe
+synthetic challenges: an English paragraph transition, quoted English dialogue,
+and Persian dialogue using guillemets and ZWNJ. Its narrow metric counts
+avoidable first splits while independently asserting exact reassembly and the
+provider character cap.
+
+The fixture exposed a concrete gap in the first semantic implementation:
+sentence terminators immediately before a closing quote or bracket were not
+recognized. The boundary detector now skips only a bounded set of closing
+characters (`"`, `'`, `”`, `’`, `»`, `)`, `]`, `}`) before checking the existing
+English, Persian and CJK terminators. It does not perform language detection,
+sentence tokenization, text rewriting or model-based scoring.
+
+This benchmark demonstrates structural boundary behavior only. It does not
+claim improved translation adequacy, voice, rhythm, subtext or human literary
+preference.
