@@ -89,10 +89,7 @@ fn push_legacy_content(book: &mut BookIr, chapter: &Chapter, language: Option<&s
     let normalized = chapter.content.replace("\r\n", "\n").replace('\r', "\n");
     let mut paragraph_ordinal = 0;
 
-    for (scene_index, scene_text) in normalized
-        .split(&format!("\n\n{DEFAULT_SCENE_BREAK}\n\n"))
-        .enumerate()
-    {
+    for (scene_index, scene_text) in normalized.split(LEGACY_SCENE_SEPARATOR).enumerate() {
         let paragraphs = split_paragraph_text(scene_text);
         if paragraphs.is_empty() {
             continue;
