@@ -174,7 +174,7 @@ For every substantive bugfix, feature, refactor, dependency/tool/model decision,
 1. Read and follow `.agents/skills/evidence-first-engineering/SKILL.md`.
 2. If the change affects manuscript ingestion, translation/provider behavior, literary memory/canon, review, persistence, DOCX/EPUB/PDF, RTL typography, desktop/application orchestration, or published artifacts, also read and follow `.agents/skills/literary-production-acceptance/SKILL.md`.
 3. For scheduled/hourly, resumed, long-running, or tool-heavy engineering work, also read and follow `.agents/skills/agent-session-safety/SKILL.md` before mutation.
-4. For multi-step agent execution or any decision to add/connect an external agent harness, MCP server, developer knowledge base, terminal, telemetry/evaluation platform, or training system, also read and follow `.agents/skills/verified-agent-orchestration/SKILL.md`.
+4. For multi-step agent execution, browser-assisted engineering, or any decision to add/connect an external agent harness, MCP server, developer knowledge base, persistent-memory system, decision model, browser agent, terminal, telemetry/evaluation platform, training system, or cluster orchestrator, also read and follow `.agents/skills/verified-agent-orchestration/SKILL.md`.
 5. Establish current repository/GitHub truth and concrete acceptance evidence before mutation.
 6. Reproduce bugs or gather equivalent concrete evidence before the real fix when feasible.
 7. Verify in a ladder from focused regression through affected CI/artifact/runtime/human evidence as applicable.
