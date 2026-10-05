@@ -252,7 +252,7 @@ footer {{ max-width:var(--measure); margin:1rem auto 3rem; display:flex; justify
     prev.disabled = index === 0;
     next.disabled = index === chapters.length - 1;
     history.replaceState(null, '', '#chapter-' + (index + 1));
-    window.scrollTo({{top: 0, behavior: 'instant'}});
+    window.scrollTo({{top: 0, behavior: 'auto'}});
   }};
   const hashIndex = Number((location.hash.match(/chapter-(\d+)/) || [])[1] || 1) - 1;
   show(Number.isFinite(hashIndex) ? hashIndex : 0);
