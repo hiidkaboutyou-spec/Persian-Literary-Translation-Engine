@@ -542,16 +542,18 @@ impl OllamaProvider {
     }
 
     pub fn from_env_with_model(model_override: Option<&str>) -> Result<Self, ProviderError> {
-        let model = model_override
-            .map(str::trim)
-            .filter(|value| !value.is_empty())
-            .map(ToOwned::to_owned)
-            .or_else(|| env::var("OLLAMA_MODEL").ok().filter(|value| !value.trim().is_empty()))
-            .ok_or_else(|| {
-                ProviderError::Unavailable(
-                    "OLLAMA_MODEL is not configured; choose a locally installed model".to_string(),
-                )
-            })?;
+        let model = match model_override.map(str::trim).filter(|value| !value.is_empty()) {
+            Some(model) => model.to_string(),
+            None => env::var("OLLAMA_MODEL")
+                .ok()
+                .filter(|value| !value.trim().is_empty())
+                .ok_or_else(|| {
+                    ProviderError::Unavailable(
+                        "OLLAMA_MODEL is not configured; choose a locally installed model"
+                            .to_string(),
+                    )
+                })?,
+        };
         let base_url = env::var("OLLAMA_BASE_URL")
             .ok()
             .filter(|value| !value.trim().is_empty())
