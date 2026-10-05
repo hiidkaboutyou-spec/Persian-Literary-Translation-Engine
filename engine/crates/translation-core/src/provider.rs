@@ -507,7 +507,6 @@ impl TranslationProvider for AtriaProvider {
     }
 }
 
-
 /// Experimental local Ollama provider for rights-safe qualification.
 ///
 /// This adapter intentionally uses Ollama's native local HTTP API and requires no
