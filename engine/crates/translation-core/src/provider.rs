@@ -706,7 +706,12 @@ impl TranslationProvider for OllamaProvider {
         if !status.is_success() {
             let detail = serde_json::from_str::<Value>(&body)
                 .ok()
-                .and_then(|value| value.get("error").and_then(Value::as_str).map(ToOwned::to_owned))
+                .and_then(|value| {
+                    value
+                        .get("error")
+                        .and_then(Value::as_str)
+                        .map(ToOwned::to_owned)
+                })
                 .unwrap_or_else(|| format!("HTTP {status}"));
             if status.as_u16() == 404 {
                 return Err(ProviderError::Unavailable(format!(
