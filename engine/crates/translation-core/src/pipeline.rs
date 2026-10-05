@@ -174,9 +174,7 @@ fn preferred_semantic_boundary(candidate: &str, max_chars: usize) -> Option<usiz
         .trim_end()
         .chars()
         .last()
-        .is_some_and(|terminator| {
-            matches!(terminator, '.' | '!' | '?' | '؟' | '。' | '！' | '？')
-        });
+        .is_some_and(|terminator| matches!(terminator, '.' | '!' | '?' | '؟' | '。' | '！' | '？'));
     if ends_at_sentence_boundary && candidate.trim_end().len() >= min_byte {
         return Some(candidate.len());
     }
