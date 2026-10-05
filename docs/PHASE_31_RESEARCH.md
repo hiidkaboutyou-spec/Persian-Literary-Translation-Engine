@@ -156,3 +156,19 @@ Phase 31 is complete when:
 12. a blind counterbalanced two-system review bundle can be generated without leaking system IDs into the reviewer file;
 13. Rust CI, Security, Phase 21 evaluation, Desktop Product, Trusted Release, and Project Memory regressions are green on the final head;
 14. Atria is not promoted to real-book translation merely because the integration compiles.
+
+
+## 2026-10-05 extension — local Ollama candidate
+
+The qualification laboratory now also accepts `--provider ollama`. This does not amend the
+production-admission decision above: Ollama is qualification-only and is not advertised by the
+ApplicationService.
+
+The adapter is a clean-room implementation of Ollama's public native `/api/chat` contract. It
+requires no API key, defaults to the local daemon, uses an explicit 32K context window, and reports
+native prompt/evaluation token counts when available. `OLLAMA_MODEL` must identify a locally
+installed model unless `--model` is supplied.
+
+The same rights-safe corpus, telemetry, deterministic challenge evidence, blind comparison, and human
+review requirements apply. "Runs locally" is treated as a privacy/deployment property, not evidence
+of English→Persian literary quality.

@@ -507,6 +507,237 @@ impl TranslationProvider for AtriaProvider {
     }
 }
 
+/// Experimental local Ollama provider for rights-safe qualification.
+///
+/// This adapter intentionally uses Ollama's native local HTTP API and requires no
+/// API key. It is not wired into the production ApplicationService selector:
+/// local models must first pass the same project-owned literary qualification and
+/// blind human review used for any other candidate provider.
+#[derive(Clone)]
+pub struct OllamaProvider {
+    model: String,
+    base_url: String,
+    timeout: Duration,
+    num_ctx: u32,
+}
+
+impl Debug for OllamaProvider {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("OllamaProvider")
+            .field("model", &self.model)
+            .field("base_url", &self.base_url)
+            .field("timeout", &self.timeout)
+            .field("num_ctx", &self.num_ctx)
+            .finish()
+    }
+}
+
+impl OllamaProvider {
+    pub const DEFAULT_BASE_URL: &'static str = "http://127.0.0.1:11434";
+    pub const DEFAULT_NUM_CTX: u32 = 32_768;
+    pub const MAX_NUM_CTX: u32 = 1_048_576;
+
+    pub fn from_env() -> Result<Self, ProviderError> {
+        Self::from_env_with_model(None)
+    }
+
+    pub fn from_env_with_model(model_override: Option<&str>) -> Result<Self, ProviderError> {
+        let model = match model_override
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+        {
+            Some(model) => model.to_string(),
+            None => env::var("OLLAMA_MODEL")
+                .ok()
+                .filter(|value| !value.trim().is_empty())
+                .ok_or_else(|| {
+                    ProviderError::Unavailable(
+                        "OLLAMA_MODEL is not configured; choose a locally installed model"
+                            .to_string(),
+                    )
+                })?,
+        };
+        let base_url = env::var("OLLAMA_BASE_URL")
+            .ok()
+            .filter(|value| !value.trim().is_empty())
+            .unwrap_or_else(|| Self::DEFAULT_BASE_URL.to_string());
+        let num_ctx = match env::var("OLLAMA_NUM_CTX") {
+            Ok(value) if !value.trim().is_empty() => value.trim().parse::<u32>().map_err(|_| {
+                ProviderError::InvalidRequest(
+                    "OLLAMA_NUM_CTX must be an integer in 1..=1048576".to_string(),
+                )
+            })?,
+            _ => Self::DEFAULT_NUM_CTX,
+        };
+
+        Self::new(model)?
+            .with_base_url(base_url)?
+            .with_num_ctx(num_ctx)
+    }
+
+    pub fn new(model: impl Into<String>) -> Result<Self, ProviderError> {
+        let model = model.into();
+        if model.trim().is_empty() {
+            return Err(ProviderError::InvalidRequest(
+                "Ollama model name is empty".to_string(),
+            ));
+        }
+        Ok(Self {
+            model,
+            base_url: Self::DEFAULT_BASE_URL.to_string(),
+            timeout: Duration::from_secs(180),
+            num_ctx: Self::DEFAULT_NUM_CTX,
+        })
+    }
+
+    pub fn model(&self) -> &str {
+        &self.model
+    }
+
+    pub fn with_base_url(mut self, base_url: impl Into<String>) -> Result<Self, ProviderError> {
+        let base_url = base_url.into();
+        let trimmed = base_url.trim().trim_end_matches('/');
+        if trimmed.is_empty()
+            || !(trimmed.starts_with("http://") || trimmed.starts_with("https://"))
+        {
+            return Err(ProviderError::InvalidRequest(
+                "OLLAMA_BASE_URL must be an http(s) URL".to_string(),
+            ));
+        }
+        self.base_url = trimmed.to_string();
+        Ok(self)
+    }
+
+    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = timeout;
+        self
+    }
+
+    pub fn with_num_ctx(mut self, num_ctx: u32) -> Result<Self, ProviderError> {
+        if !(1..=Self::MAX_NUM_CTX).contains(&num_ctx) {
+            return Err(ProviderError::InvalidRequest(format!(
+                "Ollama num_ctx must be in 1..={}",
+                Self::MAX_NUM_CTX
+            )));
+        }
+        self.num_ctx = num_ctx;
+        Ok(self)
+    }
+
+    fn endpoint(&self) -> String {
+        format!("{}/api/chat", self.base_url.trim_end_matches('/'))
+    }
+
+    fn payload(&self, request: &ProviderRequest) -> Value {
+        json!({
+            "model": self.model,
+            "stream": false,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": OpenAIProvider::instructions_for(
+                        &request.pass,
+                        &request.target_language
+                    )
+                },
+                {
+                    "role": "user",
+                    "content": OpenAIProvider::user_input(request)
+                }
+            ],
+            "options": {
+                "temperature": 0,
+                "num_ctx": self.num_ctx
+            }
+        })
+    }
+
+    fn extract_output_text(value: &Value) -> Result<String, ProviderError> {
+        let text = value
+            .pointer("/message/content")
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .ok_or_else(|| {
+                ProviderError::Failed("Ollama response contained no message content".into())
+            })?;
+        Ok(text.to_string())
+    }
+
+    fn extract_usage(value: &Value) -> Option<ProviderUsage> {
+        let input_tokens = value.get("prompt_eval_count")?.as_u64()?;
+        let output_tokens = value.get("eval_count")?.as_u64()?;
+        Some(ProviderUsage {
+            input_tokens,
+            output_tokens,
+        })
+    }
+}
+
+impl TranslationProvider for OllamaProvider {
+    fn name(&self) -> &str {
+        "ollama"
+    }
+
+    fn execute(&self, request: &ProviderRequest) -> Result<ProviderResponse, ProviderError> {
+        validate_request(request)?;
+
+        let client = Client::builder()
+            .timeout(self.timeout)
+            .build()
+            .map_err(|error| ProviderError::Unavailable(error.to_string()))?;
+
+        let response = client
+            .post(self.endpoint())
+            .json(&self.payload(request))
+            .send()
+            .map_err(|error| {
+                if error.is_timeout() {
+                    ProviderError::Timeout
+                } else {
+                    ProviderError::Unavailable(format!(
+                        "Ollama is unreachable at {}: {}",
+                        self.base_url, error
+                    ))
+                }
+            })?;
+
+        let status = response.status();
+        let body = response
+            .text()
+            .map_err(|error| ProviderError::Failed(error.to_string()))?;
+        if !status.is_success() {
+            let detail = serde_json::from_str::<Value>(&body)
+                .ok()
+                .and_then(|value| {
+                    value
+                        .get("error")
+                        .and_then(Value::as_str)
+                        .map(ToOwned::to_owned)
+                })
+                .unwrap_or_else(|| format!("HTTP {status}"));
+            if status.as_u16() == 404 {
+                return Err(ProviderError::Unavailable(format!(
+                    "Ollama model or endpoint unavailable: {detail}"
+                )));
+            }
+            return Err(ProviderError::Failed(detail));
+        }
+
+        let value: Value = serde_json::from_str(&body)
+            .map_err(|error| ProviderError::Failed(format!("invalid Ollama JSON: {error}")))?;
+        let text = Self::extract_output_text(&value)?;
+        let usage = Self::extract_usage(&value);
+
+        Ok(ProviderResponse {
+            text,
+            provider: self.name().to_owned(),
+            model: Some(self.model.clone()),
+            usage,
+        })
+    }
+}
+
 fn validate_request(request: &ProviderRequest) -> Result<(), ProviderError> {
     if request.source_text.trim().is_empty() {
         return Err(ProviderError::InvalidRequest("source text is empty".into()));
@@ -600,6 +831,73 @@ mod tests {
         assert!(AtriaProvider::new("secret", AtriaProvider::DEFAULT_MODEL)
             .unwrap()
             .with_max_output_tokens(65_537)
+            .is_err());
+    }
+
+    #[test]
+    fn ollama_provider_uses_native_no_key_chat_contract() {
+        let provider = OllamaProvider::new("qwen3:8b")
+            .unwrap()
+            .with_num_ctx(32_768)
+            .unwrap();
+        let request = ProviderRequest {
+            pass: PassKind::Translate,
+            source_text: "He did not answer.".into(),
+            target_language: "fa".into(),
+            context: "Keep the reply restrained.".into(),
+        };
+
+        let payload = provider.payload(&request);
+        assert_eq!(payload["model"], "qwen3:8b");
+        assert_eq!(payload["stream"], false);
+        assert_eq!(payload["options"]["num_ctx"], 32_768);
+        assert_eq!(payload["options"]["temperature"], 0);
+        assert_eq!(payload["messages"][0]["role"], "system");
+        assert!(payload["messages"][0]["content"]
+            .as_str()
+            .unwrap()
+            .contains("immutable placeholders"));
+        assert!(payload["messages"][1]["content"]
+            .as_str()
+            .unwrap()
+            .contains("PROJECT CONTEXT"));
+        assert!(payload.get("api_key").is_none());
+        assert!(payload.get("authorization").is_none());
+    }
+
+    #[test]
+    fn ollama_provider_extracts_native_text_and_usage() {
+        let value = json!({
+            "message": {"role": "assistant", "content": "جواب نداد."},
+            "prompt_eval_count": 123,
+            "eval_count": 45
+        });
+        assert_eq!(
+            OllamaProvider::extract_output_text(&value).unwrap(),
+            "جواب نداد."
+        );
+        assert_eq!(
+            OllamaProvider::extract_usage(&value),
+            Some(ProviderUsage {
+                input_tokens: 123,
+                output_tokens: 45,
+            })
+        );
+    }
+
+    #[test]
+    fn ollama_configuration_fails_closed_on_invalid_context_or_url() {
+        assert!(OllamaProvider::new("qwen3:8b")
+            .unwrap()
+            .with_num_ctx(0)
+            .is_err());
+        assert!(OllamaProvider::new("qwen3:8b")
+            .unwrap()
+            .with_num_ctx(OllamaProvider::MAX_NUM_CTX + 1)
+            .is_err());
+        assert!(OllamaProvider::new("qwen3:8b")
+            .unwrap()
+            .with_base_url("file:///tmp/ollama")
             .is_err());
     }
 
