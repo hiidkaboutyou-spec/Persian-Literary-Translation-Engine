@@ -10,7 +10,7 @@ SKILLS = ROOT / ".agents" / "skills"
 
 PROJECT_SKILLS = {
     "jeonghan-daily-review-bot": {"project-next-stage", "evidence-first-engineering", "hani-production-acceptance"},
-    "Persian-Literary-Translation-Engine": {"project-next-stage", "evidence-first-engineering", "literary-production-acceptance"},
+    "Persian-Literary-Translation-Engine": {"project-next-stage", "evidence-first-engineering", "literary-production-acceptance", "agent-session-safety"},
 }
 
 
