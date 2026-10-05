@@ -27,6 +27,39 @@ struct BlindComparisonCaseInput {
 }
 
 #[derive(Debug, Deserialize)]
+struct PreferenceBundleInput {
+    schema_version: u32,
+    corpus_id: String,
+    cases: Vec<PreferenceCaseInput>,
+}
+
+#[derive(Debug, Deserialize)]
+struct PreferenceCaseInput {
+    case_id: String,
+    source: String,
+    #[serde(default)]
+    context_before: Option<String>,
+    #[serde(default)]
+    context_after: Option<String>,
+    candidate_a: String,
+    candidate_b: String,
+}
+
+#[derive(Debug, Serialize)]
+struct HumanPreferenceRow {
+    schema_version: u32,
+    corpus_id: String,
+    case_id: String,
+    prompt: String,
+    chosen: String,
+    rejected: String,
+    chosen_system: String,
+    rejected_system: String,
+    reviewer_count: usize,
+    provenance: &'static str,
+}
+
+#[derive(Debug, Deserialize)]
 struct BlindComparisonKeyInput {
     schema_version: u32,
     corpus_id: String,
@@ -137,6 +170,7 @@ fn usage() -> &'static str {
         "  literary-engine blind-review record <ledger.json> <case-id> <a|b|tie|defer> --reason <text> [--adequacy-note <text>] [--voice-note <text>] [--culture-note <text>] [--continuity-note <text>]\n",
         "  literary-engine blind-review dossier <reveal-key.json> <dossier.json> <ledger.json> [ledger2.json ...]\n",
         "  literary-engine blind-review verify <blind-bundle.json> <reveal-key.json> <dossier.json> <ledger.json> [ledger2.json ...]\n",
+        "  literary-engine blind-review export-preferences <blind-bundle.json> <reveal-key.json> <output.jsonl> <ledger.json> [ledger2.json ...]\n",
         "  literary-engine blind-review sign-ledger <ledger.json> <signature.sig> --key <ssh-key>\n",
         "  literary-engine blind-review verify-ledger-signature <ledger.json> <signature.sig> --allowed-signers <allowed_signers> [--revocations <krl-or-revoked-keys>]\n",
         "  literary-engine blind-review verify-reviewer-authenticated <blind-bundle.json> <reveal-key.json> <dossier.json> <ledger.json> <signature.sig> [ledger2.json signature2.sig ...] --allowed-signers <allowed_signers> [--revocations <krl-or-revoked-keys>]\n\n",
@@ -153,6 +187,7 @@ pub(crate) fn run_provider_review(args: &[String]) -> Result<()> {
         "record" => run_record(&args[1..]),
         "dossier" => run_dossier(&args[1..]),
         "verify" => run_verify(&args[1..]),
+        "export-preferences" => run_export_preferences(&args[1..]),
         "sign-ledger" => run_sign_ledger(&args[1..]),
         "verify-ledger-signature" => run_verify_ledger_signature(&args[1..]),
         "verify-reviewer-authenticated" => run_verify_reviewer_authenticated(&args[1..]),
@@ -165,6 +200,161 @@ pub(crate) fn run_provider_review(args: &[String]) -> Result<()> {
         }
         _ => Err(usage().to_string()),
     }
+}
+
+fn preference_prompt(case: &PreferenceCaseInput) -> String {
+    let mut sections = vec![
+        "Translate the source into publication-quality Persian while preserving meaning, literary voice, character/relationship register, continuity, and cultural/pragmatic intent.".to_string(),
+    ];
+    if let Some(value) = case.context_before.as_deref().map(str::trim).filter(|v| !v.is_empty()) {
+        sections.push(format!("[CONTEXT BEFORE]\n{value}"));
+    }
+    sections.push(format!("[SOURCE]\n{}", case.source.trim()));
+    if let Some(value) = case.context_after.as_deref().map(str::trim).filter(|v| !v.is_empty()) {
+        sections.push(format!("[CONTEXT AFTER]\n{value}"));
+    }
+    sections.join("\n\n")
+}
+
+fn build_human_preference_rows(
+    bundle: &PreferenceBundleInput,
+    key: &BlindComparisonKeyInput,
+    ledgers: &[BlindReviewLedger],
+) -> Result<Vec<HumanPreferenceRow>> {
+    if bundle.schema_version != 1 {
+        return Err(format!(
+            "unsupported preference bundle schema {}; expected 1",
+            bundle.schema_version
+        ));
+    }
+    if bundle.corpus_id != key.corpus_id {
+        return Err("preference bundle and reveal key target different corpora".into());
+    }
+
+    // Reuse the existing dossier validation so duplicate reviewers, incomplete
+    // ledgers, mismatched case sets and reveal-key bindings fail closed.
+    let _ = build_dossier(key, ledgers)?;
+
+    let assignments = key
+        .assignments
+        .iter()
+        .map(|value| (value.case_id.as_str(), value))
+        .collect::<BTreeMap<_, _>>();
+    let cases = bundle
+        .cases
+        .iter()
+        .map(|value| (value.case_id.as_str(), value))
+        .collect::<BTreeMap<_, _>>();
+
+    if cases.len() != bundle.cases.len() {
+        return Err("preference bundle contains duplicate case ids".into());
+    }
+    let expected = assignments.keys().copied().collect::<BTreeSet<_>>();
+    let actual = cases.keys().copied().collect::<BTreeSet<_>>();
+    if expected != actual {
+        return Err("preference bundle and reveal key have different case ids".into());
+    }
+
+    let mut rows = Vec::new();
+    for (case_id, assignment) in assignments {
+        let mut decisions = ledgers
+            .iter()
+            .filter_map(|ledger| ledger.cases.iter().find(|case| case.case_id == case_id))
+            .map(|case| case.decision);
+        let Some(first) = decisions.next() else {
+            continue;
+        };
+        if !matches!(first, ReviewDecision::CandidateA | ReviewDecision::CandidateB)
+            || decisions.any(|decision| decision != first)
+        {
+            continue;
+        }
+
+        let case = cases
+            .get(case_id)
+            .copied()
+            .ok_or_else(|| format!("preference bundle is missing case '{case_id}'"))?;
+        let a = case.candidate_a.trim();
+        let b = case.candidate_b.trim();
+        if case.source.trim().is_empty() || a.is_empty() || b.is_empty() || a == b {
+            continue;
+        }
+
+        let (chosen, rejected, chosen_system, rejected_system) = match first {
+            ReviewDecision::CandidateA => (
+                a.to_string(),
+                b.to_string(),
+                assignment.candidate_a_system.clone(),
+                assignment.candidate_b_system.clone(),
+            ),
+            ReviewDecision::CandidateB => (
+                b.to_string(),
+                a.to_string(),
+                assignment.candidate_b_system.clone(),
+                assignment.candidate_a_system.clone(),
+            ),
+            _ => unreachable!("non-preference decisions were filtered above"),
+        };
+        rows.push(HumanPreferenceRow {
+            schema_version: 1,
+            corpus_id: bundle.corpus_id.clone(),
+            case_id: case_id.to_string(),
+            prompt: preference_prompt(case),
+            chosen,
+            rejected,
+            chosen_system,
+            rejected_system,
+            reviewer_count: ledgers.len(),
+            provenance: "unanimous_blind_human_preference",
+        });
+    }
+    Ok(rows)
+}
+
+fn run_export_preferences(args: &[String]) -> Result<()> {
+    let [bundle_path, key_path, output_path, ledger_paths @ ..] = args else {
+        return Err(usage().to_string());
+    };
+    if ledger_paths.is_empty() {
+        return Err("export-preferences requires at least one completed blind review ledger".into());
+    }
+
+    let mut inputs = vec![bundle_path.as_str(), key_path.as_str()];
+    inputs.extend(ledger_paths.iter().map(String::as_str));
+    ensure_unique_inputs(&inputs)?;
+    ensure_output_distinct(output_path, &inputs)?;
+
+    let bundle_bytes =
+        fs::read(bundle_path).map_err(|error| format!("failed to read {bundle_path}: {error}"))?;
+    let key_bytes =
+        fs::read(key_path).map_err(|error| format!("failed to read {key_path}: {error}"))?;
+    let (key, bundle_sha256) = validate_bundle_key_bytes(&bundle_bytes, &key_bytes, false)?;
+    let preference_bundle: PreferenceBundleInput = serde_json::from_slice(&bundle_bytes)
+        .map_err(|error| format!("blind bundle lacks preference-export fields: {error}"))?;
+
+    let ledger_bytes = ledger_paths
+        .iter()
+        .map(|path| fs::read(path).map_err(|error| format!("failed to read {path}: {error}")))
+        .collect::<Result<Vec<_>>>()?;
+    let ledgers =
+        validate_ledger_evidence(&bundle_bytes, &bundle_sha256, &key, &ledger_bytes, false)?;
+    let rows = build_human_preference_rows(&preference_bundle, &key, &ledgers)?;
+
+    let mut jsonl = Vec::new();
+    for row in &rows {
+        serde_json::to_writer(&mut jsonl, row)
+            .map_err(|error| format!("failed to serialize preference row: {error}"))?;
+        jsonl.push(b'\n');
+    }
+    write_bytes_new_atomic(Path::new(output_path), &jsonl)?;
+
+    println!("human preference pairs written: {output_path}");
+    println!("pairs: {}", rows.len());
+    println!("reviewers: {}", ledgers.len());
+    println!("ties/deferred/disagreement exported: 0");
+    println!("automatic training: disabled");
+    println!("production admission: NOT GRANTED");
+    Ok(())
 }
 
 fn run_reveal_authority(command: &str, args: &[String]) -> Result<()> {
@@ -1507,6 +1697,107 @@ mod tests {
         );
         let error = build_dossier(&key(), &[first, second]).unwrap_err();
         assert!(error.contains("appears more than once"));
+    }
+
+    fn preference_bundle() -> PreferenceBundleInput {
+        PreferenceBundleInput {
+            schema_version: 1,
+            corpus_id: "phase32-test".into(),
+            cases: vec![
+                PreferenceCaseInput {
+                    case_id: "case-1".into(),
+                    source: "She whispered before leaving.".into(),
+                    context_before: Some("A restrained farewell scene.".into()),
+                    context_after: None,
+                    candidate_a: "او پیش از رفتن آرام زمزمه کرد.".into(),
+                    candidate_b: "قبل از رفتن گفت.".into(),
+                },
+                PreferenceCaseInput {
+                    case_id: "case-2".into(),
+                    source: "He did not answer.".into(),
+                    context_before: None,
+                    context_after: Some("The silence continues.".into()),
+                    candidate_a: "جوابی نداد.".into(),
+                    candidate_b: "او پاسخ نداد.".into(),
+                },
+            ],
+        }
+    }
+
+    #[test]
+    fn preference_export_uses_only_unanimous_directional_judgments() {
+        let rows = build_human_preference_rows(
+            &preference_bundle(),
+            &key(),
+            &[
+                ledger(
+                    "reviewer-1",
+                    ReviewDecision::CandidateA,
+                    ReviewDecision::CandidateB,
+                ),
+                ledger(
+                    "reviewer-2",
+                    ReviewDecision::CandidateA,
+                    ReviewDecision::CandidateB,
+                ),
+            ],
+        )
+        .unwrap();
+
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0].case_id, "case-1");
+        assert_eq!(rows[0].chosen, "او پیش از رفتن آرام زمزمه کرد.");
+        assert_eq!(rows[0].rejected, "قبل از رفتن گفت.");
+        assert_eq!(rows[0].chosen_system, "system-one");
+        assert_eq!(rows[0].reviewer_count, 2);
+        assert!(rows[0].prompt.contains("[SOURCE]"));
+        assert!(rows[0].prompt.contains("[CONTEXT BEFORE]"));
+
+        assert_eq!(rows[1].case_id, "case-2");
+        assert_eq!(rows[1].chosen, "او پاسخ نداد.");
+        assert_eq!(rows[1].chosen_system, "system-one");
+        assert!(rows[1].prompt.contains("[CONTEXT AFTER]"));
+    }
+
+    #[test]
+    fn preference_export_excludes_ties_deferrals_and_disagreement() {
+        let rows = build_human_preference_rows(
+            &preference_bundle(),
+            &key(),
+            &[
+                ledger(
+                    "reviewer-1",
+                    ReviewDecision::CandidateA,
+                    ReviewDecision::Tie,
+                ),
+                ledger(
+                    "reviewer-2",
+                    ReviewDecision::CandidateB,
+                    ReviewDecision::Tie,
+                ),
+            ],
+        )
+        .unwrap();
+        assert!(rows.is_empty());
+    }
+
+    #[test]
+    fn preference_export_never_exports_reviewer_notes_or_reasons() {
+        let rows = build_human_preference_rows(
+            &preference_bundle(),
+            &key(),
+            &[ledger(
+                "private-reviewer",
+                ReviewDecision::CandidateA,
+                ReviewDecision::CandidateB,
+            )],
+        )
+        .unwrap();
+        let encoded = serde_json::to_string(&rows).unwrap();
+        assert!(!encoded.contains("reason one"));
+        assert!(!encoded.contains("reason two"));
+        assert!(!encoded.contains("private-reviewer"));
+        assert!(encoded.contains("unanimous_blind_human_preference"));
     }
 
     #[test]
