@@ -2,6 +2,7 @@
 //! V1 supports UTF-8 plain text, DOCX, EPUB, and text-based PDF files, plus chapter segmentation.
 
 pub mod book_ir;
+pub mod book_ir_adapter;
 pub mod chapter;
 pub mod docx;
 pub mod epub;
@@ -21,6 +22,7 @@ pub use book_ir::{
     BookBlock, BookIr, BookIrError, HeadingBlock, InlineRun, ParagraphBlock, ProtectedKind,
     RunProtection, SceneBreakBlock, TextDirection, BOOK_IR_SCHEMA_VERSION,
 };
+pub use book_ir_adapter::manuscript_to_book_ir;
 pub use chapter::split_into_chapters;
 pub use docx::load_docx_file;
 pub use epub::load_epub_file;
