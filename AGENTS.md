@@ -167,6 +167,23 @@ For Phase 20 publishing changes, run the dedicated `Phase 20 EPUB Round Trip` wo
 6. Open a concise pull request describing behavior, contracts, and validation.
 7. Merge only after required CI and security checks pass and the change is safe; otherwise record the blocker and leave the pull request open.
 
+## Mandatory evidence-first task contract
+
+For every substantive bugfix, feature, refactor, dependency/tool/model decision, performance/reliability change, persisted-contract change, publishing change, or task that could end with a claim such as "fixed", "works", "complete", "safe", or "production-ready":
+
+1. Read and follow `.agents/skills/evidence-first-engineering/SKILL.md`.
+2. If the change affects manuscript ingestion, translation/provider behavior, literary memory/canon, review, persistence, DOCX/EPUB/PDF, RTL typography, desktop/application orchestration, or published artifacts, also read and follow `.agents/skills/literary-production-acceptance/SKILL.md`.
+3. For scheduled/hourly, resumed, long-running, or tool-heavy engineering work, also read and follow `.agents/skills/agent-session-safety/SKILL.md` before mutation.
+4. For multi-step agent execution or any decision to add/connect an external agent harness, MCP server, developer knowledge base, terminal, telemetry/evaluation platform, or training system, also read and follow `.agents/skills/verified-agent-orchestration/SKILL.md`.
+5. Establish current repository/GitHub truth and concrete acceptance evidence before mutation.
+6. Reproduce bugs or gather equivalent concrete evidence before the real fix when feasible.
+7. Verify in a ladder from focused regression through affected CI/artifact/runtime/human evidence as applicable.
+8. Keep planning separate from mutation for material architecture/dependency/security/privacy/rights decisions.
+9. Never equate green helper/unit tests with literary approval, production readiness, publication correctness, or real-project success.
+10. Completion claims must name the strongest actually-proven level and explicitly state any human/editorial, artifact, release, or real-project evidence still missing.
+
+For broad next-stage requests, this contract applies in addition to `project-next-stage`; it does not permit phase skipping, unsafe scope expansion, or bypassing any existing invariant.
+
 ## Deep next-stage requests
 
 When the user asks to "do the next stage", "continue deeply", "advance the project", or gives an equivalent broad continuation request, do not interpret that as a request for the smallest possible diff.
