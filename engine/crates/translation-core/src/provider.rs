@@ -542,7 +542,10 @@ impl OllamaProvider {
     }
 
     pub fn from_env_with_model(model_override: Option<&str>) -> Result<Self, ProviderError> {
-        let model = match model_override.map(str::trim).filter(|value| !value.is_empty()) {
+        let model = match model_override
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+        {
             Some(model) => model.to_string(),
             None => env::var("OLLAMA_MODEL")
                 .ok()
