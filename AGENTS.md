@@ -182,7 +182,7 @@ For every substantive bugfix, feature, refactor, dependency/model/tool decision,
 9. Do not equate a generated artifact existing/opening with publication correctness; inspect the contract actually changed.
 10. Completion claims must name the strongest actually-proven level: implemented, regression verified, affected CI verified, artifact/runtime verified, editorially reviewed, merged, release/real-project verified.
 
-For broad next-stage requests, this contract applies **in addition to** `project-next-stage`; it does not reduce the required stage scope.
+For broad next-stage requests, this contract applies **in addition to** `project-next-stage`; it does not reduce the required stage scope.\n\nFor scheduled/hourly, long-running, resumed, or tool-heavy engineering work, also read and follow `.agents/skills/agent-session-safety/SKILL.md` before mutation. Revalidate prior checkpoints against current GitHub/phase truth, gate repository/external/destructive actions before execution, and verify the returned result after every mutation.
 
 ## Deep next-stage requests
 
