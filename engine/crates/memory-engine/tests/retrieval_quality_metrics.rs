@@ -1,8 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use memory_engine::{
-    evaluate_ranking, MemoryEntry, RetrievalConfig, TranslationMemory,
-};
+use memory_engine::{evaluate_ranking, MemoryEntry, RetrievalConfig, TranslationMemory};
 
 #[test]
 fn deterministic_memory_retrieval_has_measurable_ranking_quality() {
