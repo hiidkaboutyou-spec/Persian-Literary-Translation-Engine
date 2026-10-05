@@ -62,11 +62,7 @@ pub fn dcg_at_k(retrieved: &[String], graded_relevance: &HashMap<String, u32>, k
         .sum()
 }
 
-pub fn ndcg_at_k(
-    retrieved: &[String],
-    graded_relevance: &HashMap<String, u32>,
-    k: usize,
-) -> f64 {
+pub fn ndcg_at_k(retrieved: &[String], graded_relevance: &HashMap<String, u32>, k: usize) -> f64 {
     if k == 0 || graded_relevance.is_empty() {
         return 0.0;
     }
