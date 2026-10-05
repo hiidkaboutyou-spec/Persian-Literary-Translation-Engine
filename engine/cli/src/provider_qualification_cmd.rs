@@ -487,7 +487,7 @@ fn configured_lab_provider(provider: &str, model: Option<&str>) -> Result<LabPro
         }
         "ollama" => {
             let configured = OllamaProvider::from_env_with_model(
-                model.map(str::trim).filter(|value| !value.is_empty())
+                model.map(str::trim).filter(|value| !value.is_empty()),
             )
             .map_err(|error| error.to_string())?;
             let resolved_model = Some(configured.model().to_string());
