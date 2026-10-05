@@ -48,6 +48,7 @@ Added fixtures proving:
 - nearby paragraph boundary beats a later word boundary;
 - nearby sentence boundary beats a later word boundary when no paragraph boundary fits;
 - early natural boundaries do not force tiny chunks;
+- a sentence terminator exactly on the hard limit keeps the complete sentence in the current chunk;
 - existing Unicode/lossless and max-size properties remain.
 
 ## Before -> after
