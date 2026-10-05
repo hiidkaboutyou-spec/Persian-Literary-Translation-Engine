@@ -1815,6 +1815,90 @@ mod tests {
     }
 
     #[test]
+    fn export_preferences_command_writes_validated_jsonl_end_to_end() {
+        let dir = tempdir().unwrap();
+        let bundle = dir.path().join("bundle.json");
+        let reveal_key = dir.path().join("key.json");
+        let ledger_one = dir.path().join("reviewer-one.json");
+        let ledger_two = dir.path().join("reviewer-two.json");
+        let output = dir.path().join("preferences.jsonl");
+
+        let bundle_bytes = br#"{"schema_version":1,"corpus_id":"pref-e2e","cases":[{"case_id":"c1","source":"She whispered before leaving.","context_before":"A restrained farewell.","context_after":null,"candidate_a":"او پیش از رفتن آرام زمزمه کرد.","candidate_b":"قبل از رفتن گفت."}]}"#;
+        fs::write(&bundle, bundle_bytes).unwrap();
+        fs::write(
+            &reveal_key,
+            r#"{"schema_version":1,"corpus_id":"pref-e2e","system_one":"one","system_two":"two","assignments":[{"case_id":"c1","candidate_a_system":"one","candidate_b_system":"two"}]}"#,
+        )
+        .unwrap();
+
+        let bundle_path = bundle.to_string_lossy().into_owned();
+        let key_path = reveal_key.to_string_lossy().into_owned();
+        let one_path = ledger_one.to_string_lossy().into_owned();
+        let two_path = ledger_two.to_string_lossy().into_owned();
+        let output_path = output.to_string_lossy().into_owned();
+
+        for (ledger_path, reviewer) in [
+            (one_path.clone(), "reviewer-one"),
+            (two_path.clone(), "reviewer-two"),
+        ] {
+            run_provider_review(&[
+                "init".into(),
+                bundle_path.clone(),
+                ledger_path.clone(),
+                "--reviewer".into(),
+                reviewer.into(),
+            ])
+            .unwrap();
+            run_provider_review(&[
+                "record".into(),
+                ledger_path,
+                "c1".into(),
+                "a".into(),
+                "--reason".into(),
+                "Candidate A preserves the restrained voice.".into(),
+            ])
+            .unwrap();
+        }
+
+        run_provider_review(&[
+            "export-preferences".into(),
+            bundle_path,
+            key_path,
+            output_path.clone(),
+            one_path,
+            two_path,
+        ])
+        .unwrap();
+
+        let lines = fs::read_to_string(&output).unwrap();
+        let rows = lines.lines().collect::<Vec<_>>();
+        assert_eq!(rows.len(), 1);
+        let row: serde_json::Value = serde_json::from_str(rows[0]).unwrap();
+        assert_eq!(row["schema_version"], 1);
+        assert_eq!(row["corpus_id"], "pref-e2e");
+        assert_eq!(row["case_id"], "c1");
+        assert_eq!(row["chosen"], "او پیش از رفتن آرام زمزمه کرد.");
+        assert_eq!(row["rejected"], "قبل از رفتن گفت.");
+        assert_eq!(row["chosen_system"], "one");
+        assert_eq!(row["reviewer_count"], 2);
+        assert_eq!(row["provenance"], "unanimous_blind_human_preference");
+        assert!(row["prompt"].as_str().unwrap().contains("[SOURCE]"));
+        assert!(!lines.contains("reviewer-one"));
+        assert!(!lines.contains("Candidate A preserves"));
+
+        let overwrite = run_provider_review(&[
+            "export-preferences".into(),
+            bundle.to_string_lossy().into_owned(),
+            reveal_key.to_string_lossy().into_owned(),
+            output_path,
+            ledger_one.to_string_lossy().into_owned(),
+            ledger_two.to_string_lossy().into_owned(),
+        ])
+        .unwrap_err();
+        assert!(overwrite.contains("without overwrite"));
+    }
+
+    #[test]
     fn artifact_collision_is_fail_closed() {
         let dir = tempdir().unwrap();
         let input = dir.path().join("bundle.json");
