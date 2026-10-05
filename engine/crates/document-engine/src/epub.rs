@@ -394,18 +394,15 @@ fn extract_metadata_title(xml: &str) -> Option<String> {
 }
 
 const MAX_IMPORTED_METADATA_CHARS: usize = 16_384;
-const AO3_DOMAINS: [&str; 13] = [
+const MAX_IMPORTED_SUBJECTS: usize = 256;
+const AO3_DOMAINS: [&str; 9] = [
     "archiveofourown.org",
     "archiveofourown.com",
     "archiveofourown.net",
-    "archiveofourown.gay",
     "www.archiveofourown.org",
     "www.archiveofourown.com",
     "www.archiveofourown.net",
-    "www.archiveofourown.gay",
     "download.archiveofourown.org",
-    "download.archiveofourown.com",
-    "download.archiveofourown.net",
     "ao3.org",
     "www.ao3.org",
 ];
@@ -436,13 +433,21 @@ fn merge_package_metadata(metadata: &mut std::collections::BTreeMap<String, Stri
 
     let mut subjects = metadata_texts(xml, &["dc:subject", "subject"]);
     subjects.dedup();
-    if !subjects.is_empty() {
+    let bounded_subjects = subjects
+        .into_iter()
+        .take(MAX_IMPORTED_SUBJECTS)
+        .collect::<Vec<_>>()
+        .join(" | ")
+        .chars()
+        .take(MAX_IMPORTED_METADATA_CHARS)
+        .collect::<String>();
+    if !bounded_subjects.is_empty() {
         metadata
             .entry("epub_subjects".to_string())
-            .or_insert_with(|| subjects.join(" | "));
+            .or_insert(bounded_subjects);
     }
 
-    if let Some(work_id) = extract_ao3_work_id(xml) {
+    if let Some(work_id) = extract_ao3_work_id_from_metadata(xml) {
         metadata.insert("source_site".to_string(), "archiveofourown.org".to_string());
         metadata.insert(
             "source_url".to_string(),
@@ -498,6 +503,15 @@ fn collect_element_texts(xml: &str, name: &str) -> Vec<String> {
     }
 
     values
+}
+
+fn extract_ao3_work_id_from_metadata(xml: &str) -> Option<String> {
+    metadata_texts(
+        xml,
+        &["dc:identifier", "identifier", "dc:source", "source"],
+    )
+    .into_iter()
+    .find_map(|value| extract_ao3_work_id(&value))
 }
 
 fn extract_ao3_work_id(input: &str) -> Option<String> {
@@ -782,6 +796,48 @@ mod tests {
             None
         );
         assert_eq!(extract_ao3_work_id("https://example.com/works/42"), None);
+    }
+
+    #[test]
+    fn ao3_provenance_uses_identity_fields_and_bounds_subject_metadata() {
+        let description_only = r#"
+            <package xmlns:dc="http://purl.org/dc/elements/1.1/">
+              <metadata>
+                <dc:description>Inspired by https://archiveofourown.org/works/42</dc:description>
+              </metadata>
+            </package>
+        "#;
+        let mut metadata = std::collections::BTreeMap::new();
+
+        merge_package_metadata(&mut metadata, description_only);
+
+        assert!(!metadata.contains_key("source_url"));
+        assert!(!metadata.contains_key("ao3_work_id"));
+
+        let subjects = (0..(MAX_IMPORTED_SUBJECTS + 10))
+            .map(|index| format!("<dc:subject>subject-{index:03}</dc:subject>"))
+            .collect::<String>();
+        let xml = format!(
+            r#"<package xmlns:dc="http://purl.org/dc/elements/1.1/"><metadata>
+                <dc:source>https://archiveofourown.org/works/42</dc:source>
+                {subjects}
+            </metadata></package>"#
+        );
+        merge_package_metadata(&mut metadata, &xml);
+
+        assert_eq!(
+            metadata.get("source_url").map(String::as_str),
+            Some("https://archiveofourown.org/works/42")
+        );
+        let imported_subjects = metadata
+            .get("epub_subjects")
+            .expect("bounded subjects should be imported");
+        assert!(imported_subjects.chars().count() <= MAX_IMPORTED_METADATA_CHARS);
+        assert_eq!(
+            imported_subjects.split(" | ").count(),
+            MAX_IMPORTED_SUBJECTS
+        );
+        assert!(!imported_subjects.contains("subject-256"));
     }
 
     #[test]
