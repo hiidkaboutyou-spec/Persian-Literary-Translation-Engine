@@ -119,6 +119,10 @@ Reference for print-book CSS techniques only. Recreate layouts with original pro
 
 ### Reference / QA only
 
+#### DozenTwelve/Papermorph — MIT
+
+Adapt only its self-contained local book-preview and chapter-delivery QA ideas. The project-owned `tools/epub_web_preview/` surface may render a generated EPUB into a local interactive RTL reader for reviewer diagnostics, but it must remain non-canonical and offline: no manuscript upload, remote TTS, public bookshelf, external runtime assets, or mutation of Book IR/EPUB state. Do not adopt Papermorph's SVG teaching engine, quizzes, or PDF-first authoring model as publication architecture.
+
 #### ali2000hos/persian-writing — MIT
 
 Excellent QA/reference material for Persian orthography, RTL Word structure, font usage, pagination, and document verification. Use it to derive independent fixtures and acceptance tests. Do not make an external agent skill the runtime authority of the engine.
