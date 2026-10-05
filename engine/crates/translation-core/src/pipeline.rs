@@ -135,13 +135,7 @@ fn split_passage(text: &str, max_chars: usize) -> Vec<String> {
             .map(|(index, _)| index)
             .unwrap_or(remaining.len());
         let candidate = &remaining[..hard_end];
-        let boundary = candidate
-            .char_indices()
-            .rev()
-            .find(|(_, character)| character.is_whitespace())
-            .map(|(index, character)| index + character.len_utf8())
-            .filter(|index| *index > 0)
-            .unwrap_or(hard_end);
+        let boundary = preferred_semantic_boundary(candidate, max_chars).unwrap_or(hard_end);
 
         chunks.push(remaining[..boundary].to_owned());
         remaining = &remaining[boundary..];
@@ -151,6 +145,62 @@ fn split_passage(text: &str, max_chars: usize) -> Vec<String> {
         chunks.push(remaining.to_owned());
     }
     chunks
+}
+
+fn preferred_semantic_boundary(candidate: &str, max_chars: usize) -> Option<usize> {
+    // Avoid creating a very small chunk just because an early paragraph/sentence
+    // boundary exists. Natural boundaries are preferred only in the final 40%
+    // of the current capacity; otherwise keep filling toward the hard limit.
+    let min_chars = max_chars.saturating_mul(3) / 5;
+    let min_byte = candidate
+        .char_indices()
+        .nth(min_chars)
+        .map(|(index, _)| index)
+        .unwrap_or(0);
+
+    let paragraph = [
+        candidate.rfind("\r\n\r\n").map(|index| index + 4),
+        candidate.rfind("\n\n").map(|index| index + 2),
+    ]
+    .into_iter()
+    .flatten()
+    .filter(|index| *index >= min_byte)
+    .max();
+    if paragraph.is_some() {
+        return paragraph;
+    }
+
+    let ends_at_sentence_boundary = candidate
+        .trim_end()
+        .chars()
+        .last()
+        .is_some_and(|terminator| matches!(terminator, '.' | '!' | '?' | '؟' | '。' | '！' | '？'));
+    if ends_at_sentence_boundary && candidate.trim_end().len() >= min_byte {
+        return Some(candidate.len());
+    }
+
+    let sentence = candidate
+        .char_indices()
+        .rev()
+        .find_map(|(index, character)| {
+            if index < min_byte || !character.is_whitespace() {
+                return None;
+            }
+            let before = candidate[..index].trim_end();
+            let terminator = before.chars().last()?;
+            matches!(terminator, '.' | '!' | '?' | '؟' | '。' | '！' | '？')
+                .then_some(index + character.len_utf8())
+        });
+    if sentence.is_some() {
+        return sentence;
+    }
+
+    candidate
+        .char_indices()
+        .rev()
+        .find(|(_, character)| character.is_whitespace())
+        .map(|(index, character)| index + character.len_utf8())
+        .filter(|index| *index > 0)
 }
 
 #[cfg(test)]
@@ -238,5 +288,46 @@ mod tests {
     fn splitting_prefers_whitespace_over_cutting_words() {
         let chunks = split_passage("alpha beta gamma", 10);
         assert_eq!(chunks, vec!["alpha ", "beta gamma"]);
+    }
+
+    #[test]
+    fn splitting_prefers_nearby_paragraph_boundary_over_later_word_boundary() {
+        let text = "123456789012345678\n\nsecond part words";
+        let chunks = split_passage(text, 30);
+
+        assert_eq!(chunks[0], "123456789012345678\n\n");
+        assert_eq!(chunks.concat(), text);
+        assert!(chunks.iter().all(|chunk| chunk.chars().count() <= 30));
+    }
+
+    #[test]
+    fn splitting_prefers_nearby_sentence_boundary_when_no_paragraph_fits() {
+        let text = "One sentence ends here. Next sentence keeps going";
+        let chunks = split_passage(text, 35);
+
+        assert_eq!(chunks[0], "One sentence ends here. ");
+        assert_eq!(chunks.concat(), text);
+        assert!(chunks.iter().all(|chunk| chunk.chars().count() <= 35));
+    }
+
+    #[test]
+    fn early_natural_boundary_does_not_force_pathologically_small_chunk() {
+        let text = "Short. alpha beta gamma delta epsilon";
+        let chunks = split_passage(text, 24);
+
+        assert_ne!(chunks[0], "Short. ");
+        assert_eq!(chunks.concat(), text);
+        assert!(chunks.iter().all(|chunk| chunk.chars().count() <= 24));
+    }
+
+    #[test]
+    fn sentence_ending_exactly_at_hard_limit_stays_whole() {
+        let sentence = format!("{}.", "a".repeat(29));
+        let text = format!("{sentence} next sentence");
+        let chunks = split_passage(&text, 30);
+
+        assert_eq!(chunks[0], sentence);
+        assert_eq!(chunks.concat(), text);
+        assert!(chunks.iter().all(|chunk| chunk.chars().count() <= 30));
     }
 }
