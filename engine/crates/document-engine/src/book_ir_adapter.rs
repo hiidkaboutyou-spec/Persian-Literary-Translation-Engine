@@ -29,11 +29,7 @@ pub fn manuscript_to_book_ir(manuscript: &Manuscript) -> Result<BookIr, BookIrEr
             .collect();
 
         if populated_scenes.is_empty() {
-            push_legacy_content(
-                &mut book,
-                chapter,
-                manuscript.book.language.as_deref(),
-            );
+            push_legacy_content(&mut book, chapter, manuscript.book.language.as_deref());
         } else {
             push_structured_scenes(
                 &mut book,
@@ -54,12 +50,11 @@ fn push_heading(book: &mut BookIr, chapter: &Chapter, language: Option<&str>) {
     } else {
         chapter.title.clone()
     };
-    book.blocks
-        .push(BookBlock::ChapterHeading(HeadingBlock {
-            id: format!("{}:heading", chapter.id),
-            level: 1,
-            runs: vec![editable_run(title, language)],
-        }));
+    book.blocks.push(BookBlock::ChapterHeading(HeadingBlock {
+        id: format!("{}:heading", chapter.id),
+        level: 1,
+        runs: vec![editable_run(title, language)],
+    }));
 }
 
 fn push_structured_scenes(
@@ -239,15 +234,22 @@ mod tests {
         };
 
         let original = manuscript_to_book_ir(&build("First.\n\n***\n\nSecond.")).unwrap();
-        let edited =
-            manuscript_to_book_ir(&build("Rewritten.\n\n***\n\nAlso rewritten.")).unwrap();
+        let edited = manuscript_to_book_ir(&build("Rewritten.\n\n***\n\nAlso rewritten.")).unwrap();
 
         assert_eq!(
-            original.blocks.iter().map(BookBlock::id).collect::<Vec<_>>(),
+            original
+                .blocks
+                .iter()
+                .map(BookBlock::id)
+                .collect::<Vec<_>>(),
             edited.blocks.iter().map(BookBlock::id).collect::<Vec<_>>()
         );
         assert_eq!(
-            original.blocks.iter().map(BookBlock::id).collect::<Vec<_>>(),
+            original
+                .blocks
+                .iter()
+                .map(BookBlock::id)
+                .collect::<Vec<_>>(),
             vec![
                 "legacy-chapter:heading",
                 "legacy-chapter:paragraph:1",
