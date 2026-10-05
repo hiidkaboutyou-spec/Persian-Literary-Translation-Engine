@@ -6,6 +6,7 @@
 
 pub mod context;
 pub mod context_v2;
+pub mod evaluation;
 pub mod glossary;
 pub mod hybrid;
 pub mod models;
@@ -18,6 +19,10 @@ pub use context_v2::{
     build_context_packet_v2, native_memory_candidates, stable_evidence_id, ContextAuthority,
     ContextCandidate, ContextItem, ContextKind, ContextPacketBudget, ContextPacketConfig,
     ContextPacketV2, CONTEXT_PACKET_SCHEMA_VERSION,
+};
+pub use evaluation::{
+    dcg_at_k, evaluate_ranking, ndcg_at_k, precision_at_k, recall_at_k, reciprocal_rank,
+    RetrievalMetrics,
 };
 pub use hybrid::{hybrid_memory_candidates, HybridMemoryCandidates, SemanticRetrievalStatus};
 pub use models::MemoryEntry;
