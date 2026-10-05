@@ -6,6 +6,7 @@ use crate::models::{Chapter, Manuscript, Scene};
 use crate::parser::split_paragraph_text;
 
 const DEFAULT_SCENE_BREAK: &str = "***";
+const LEGACY_SCENE_SEPARATOR: &str = "\n\n***\n\n";
 
 /// Convert the current ingestion model into the canonical, format-neutral Book IR.
 ///
