@@ -40,3 +40,38 @@ This branch:
 ## Revisit criteria
 
 A direct integration requires a measured gap plus comparative evidence for maintenance, license/rights, security, privacy, platform cost, architecture fit, quality/reliability gain, and rollback.
+
+
+## 2026-10-05 follow-up: Paperclip, Jev Ultrafast, Laya, AX, Hindsight
+
+| Source | Useful pattern | Decision for this engine | Boundary |
+| --- | --- | --- | --- |
+| `paperclipai/paperclip` (MIT) | role/authority separation, approvals, budgets/hard stops, heartbeats, audit receipts, conservative no-replay semantics | **Adapt strongly** | Developer-agent governance only. Do not add Paperclip as a second project/task/persistence authority. |
+| `browser-use/jev-ultrafast` (MIT) | observed indexed actions, freshness/occlusion validation, no mutation retry, independent verifier | **Adapt browser contract; defer runtime** | Useful for UI QA/research. It requires external TypeSafe/text-model credentials for its live path and has DOM coverage limits; never make it a translation dependency. |
+| `NandhaKishorM/laya` (Apache-2.0 code) | multilingual choice/score/yes-no, confidence calibration, abstention | **Research benchmark only** | Python package pulls Torch/Transformers/Safetensors/Hugging Face checkpoints. No measured literary routing gap currently justifies this stack in production. |
+| `google/ax` (Apache-2.0) | sandbox/workspace fencing, resource limits, suspend/resume | **Adapt concepts; reject direct install** | Current upstream is pre-stable and requires Kubernetes + Agent Substrate; disproportionate for this desktop/Rust product and repository workflow. |
+| `vectorize-io/hindsight` (MIT) | world/experience/observation memory types, semantic/BM25/graph/temporal recall, reranking | **Shadow retrieval research only** | Native Character Bible/glossary/translation memory/human review already own authority. Test multi-arm retrieval through existing retrieval-ranking metrics before considering another memory service. |
+
+### Hindsight vs current literary memory
+
+The strongest transferable idea is multi-arm recall, not an external source of truth. The engine already has authority-aware literary memory and has added offline retrieval-ranking metrics before RAG expansion. Therefore any Hindsight-inspired experiment should implement or simulate additional retrieval arms behind the existing metrics first. It must prove better ranking/recall without stale or cross-character contamination before an external service is considered.
+
+Hindsight-style generated observations, opinions, or mental models must remain inferred evidence and can never mutate Character Bible canon or human-review authority.
+
+### Laya admission criteria
+
+Laya becomes relevant only if a concrete bounded decision problem appears (for example review triage or routing) where deterministic logic/current providers are measurably inadequate. Admission requires a rights-safe labeled corpus, per-class error analysis, calibrated abstention, latency/RAM/cold-start measurements, long-input testing, checkpoint/data license review, and proof that low-confidence output fails closed.
+
+No Laya/Torch/Transformers/Hugging Face dependency or checkpoint is added by this review.
+
+### Jev browser contract
+
+Any future browser-assisted QA/research must act only on current observed controls, validate target freshness before input, never retry an uncertain mutation, and independently verify the final state. A model emitting `DONE` is not evidence that a DOCX/EPUB/UI/provider task succeeded.
+
+### Paperclip/AX governance boundary
+
+The useful features are approval/authority separation, budgets, audit receipts, workload fencing and resumability. The engine does not need another control plane. Paperclip, AX, Kubernetes and Agent Substrate remain outside runtime/CI unless a future scale/isolation benchmark demonstrates a concrete gap.
+
+### Additional runtime/dependency changes
+
+None. This follow-up adds governance and admission rules only; it adds no model, server, browser runtime, cluster, database, or manuscript data path.
