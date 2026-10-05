@@ -255,6 +255,23 @@ paragraph position.
 New formats can be added by implementing `ManuscriptParser` and registering the parser with
 `DocumentIngestor`, without changing the manuscript model or downstream translation pipeline.
 
+### Local AO3 / fanfiction source interoperability
+
+AO3 and FanFicFare EPUB downloads can be imported through the normal local EPUB path. During
+ingestion the document engine preserves bounded OPF metadata such as identifier, publisher, source,
+description, rights, date, and subjects. If the package metadata contains a recognized AO3 work URL,
+the manuscript metadata also records:
+
+- `source_site=archiveofourown.org`
+- a normalized `source_url=https://archiveofourown.org/works/<id>`
+- `ao3_work_id=<id>`
+
+This is deliberately a **local-file interoperability boundary**, not an AO3 client. The translation
+engine does not log in to AO3, store passwords/cookies, scrape reading history/bookmarks, or perform
+account actions such as kudos, comments, subscriptions, or bookmark changes. Those concerns remain
+outside the literary runtime so source provenance can improve without expanding the credential or
+network attack surface. See `docs/AO3_SOURCE_INTEROPERABILITY.md`.
+
 ## Repository Map
 
 - `engine/` — Rust workspace and executable runtime
