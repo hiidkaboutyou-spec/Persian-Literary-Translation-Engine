@@ -776,7 +776,7 @@ mod tests {
     #[test]
     fn ao3_provenance_normalizes_known_download_aliases_only() {
         assert_eq!(
-            extract_ao3_work_id("https://download.archiveofourown.net/works/987654/file.epub")
+            extract_ao3_work_id("https://download.archiveofourown.org/works/987654/file.epub")
                 .as_deref(),
             Some("987654")
         );
