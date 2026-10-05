@@ -1823,8 +1823,8 @@ mod tests {
         let ledger_two = dir.path().join("reviewer-two.json");
         let output = dir.path().join("preferences.jsonl");
 
-        let bundle_bytes = br#"{"schema_version":1,"corpus_id":"pref-e2e","cases":[{"case_id":"c1","source":"She whispered before leaving.","context_before":"A restrained farewell.","context_after":null,"candidate_a":"او پیش از رفتن آرام زمزمه کرد.","candidate_b":"قبل از رفتن گفت."}]}"#;
-        fs::write(&bundle, bundle_bytes).unwrap();
+        let bundle_text = r#"{"schema_version":1,"corpus_id":"pref-e2e","cases":[{"case_id":"c1","source":"She whispered before leaving.","context_before":"A restrained farewell.","context_after":null,"candidate_a":"او پیش از رفتن آرام زمزمه کرد.","candidate_b":"قبل از رفتن گفت."}]}"#;
+        fs::write(&bundle, bundle_text.as_bytes()).unwrap();
         fs::write(
             &reveal_key,
             r#"{"schema_version":1,"corpus_id":"pref-e2e","system_one":"one","system_two":"two","assignments":[{"case_id":"c1","candidate_a_system":"one","candidate_b_system":"two"}]}"#,
