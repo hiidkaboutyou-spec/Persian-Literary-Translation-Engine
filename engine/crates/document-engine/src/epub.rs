@@ -506,12 +506,9 @@ fn collect_element_texts(xml: &str, name: &str) -> Vec<String> {
 }
 
 fn extract_ao3_work_id_from_metadata(xml: &str) -> Option<String> {
-    metadata_texts(
-        xml,
-        &["dc:identifier", "identifier", "dc:source", "source"],
-    )
-    .into_iter()
-    .find_map(|value| extract_ao3_work_id(&value))
+    metadata_texts(xml, &["dc:identifier", "identifier", "dc:source", "source"])
+        .into_iter()
+        .find_map(|value| extract_ao3_work_id(&value))
 }
 
 fn extract_ao3_work_id(input: &str) -> Option<String> {
