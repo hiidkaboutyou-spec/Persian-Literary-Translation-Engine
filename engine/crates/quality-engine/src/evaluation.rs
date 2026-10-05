@@ -59,8 +59,11 @@ pub fn evaluate_translation(
         if source_chars > 0 {
             let ratio = output_chars as f32 / source_chars as f32;
             if ratio < 0.20 {
-                warnings.push(format!(
-                    "translation may be severely truncated: output/source character ratio {ratio:.2}"
+                // Losing more than 80% of non-whitespace content is not a stylistic
+                // preference: it is a likely omission/truncation failure. Fail closed
+                // so the application cannot persist this chapter as completed.
+                blocking_errors.push(format!(
+                    "translation is severely truncated: output/source character ratio {ratio:.2}"
                 ));
             } else if ratio > 5.0 {
                 warnings.push(format!(
@@ -173,10 +176,15 @@ mod tests {
     }
 
     #[test]
-    fn severe_truncation_is_reported() {
+    fn severe_truncation_is_blocking() {
         let source = "This is a deliberately long source passage with many words and details that should not disappear during translation. It continues with additional narrative material, dialogue, reactions, atmosphere, and emotional context.";
         let result = evaluate_translation(source, "کوتاه", &[]);
+        assert!(!result.passes());
         assert!(result
+            .blocking_errors
+            .iter()
+            .any(|error| error.contains("severely truncated")));
+        assert!(!result
             .warnings
             .iter()
             .any(|warning| warning.contains("severely truncated")));
