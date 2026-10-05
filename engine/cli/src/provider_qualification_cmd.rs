@@ -10,8 +10,8 @@ use std::fs;
 use std::sync::Mutex;
 use std::time::Instant;
 use translation_core::{
-    AtriaProvider, EchoProvider, OpenAIProvider, PipelineInput, ProviderError, ProviderRequest,
-    ProviderResponse, TranslationPipeline, TranslationProvider,
+    AtriaProvider, EchoProvider, OllamaProvider, OpenAIProvider, PipelineInput, ProviderError,
+    ProviderRequest, ProviderResponse, TranslationPipeline, TranslationProvider,
 };
 
 type Result<T> = std::result::Result<T, String>;
@@ -146,7 +146,7 @@ pub(crate) fn run_qualify_provider(args: &[String], format: &OutputFormat) -> Re
     let corpus_path = positional(args, 0).ok_or_else(|| qualification_usage().to_string())?;
     let submission_path = positional(args, 1).ok_or_else(|| qualification_usage().to_string())?;
     let provider_name = flag_value(args, "--provider").ok_or_else(|| {
-        "qualify-provider requires explicit --provider echo|openai|atria".to_string()
+        "qualify-provider requires explicit --provider echo|openai|atria|ollama".to_string()
     })?;
 
     let corpus_text = fs::read_to_string(corpus_path)
@@ -436,7 +436,7 @@ fn build_blind_comparison(
 }
 
 fn qualification_usage() -> &'static str {
-    "usage: literary-engine qualify-provider <corpus.json> <submission.json> --provider echo|openai|atria [--model <id>] [--max-cases <n>] [--format json]"
+    "usage: literary-engine qualify-provider <corpus.json> <submission.json> --provider echo|openai|atria|ollama [--model <id>] [--max-cases <n>] [--format json]"
 }
 
 fn configured_lab_provider(provider: &str, model: Option<&str>) -> Result<LabProvider> {
@@ -485,8 +485,20 @@ fn configured_lab_provider(provider: &str, model: Option<&str>) -> Result<LabPro
                 model: resolved_model,
             })
         }
+        "ollama" => {
+            let configured = OllamaProvider::from_env_with_model(
+                model.map(str::trim).filter(|value| !value.is_empty())
+            )
+            .map_err(|error| error.to_string())?;
+            let resolved_model = Some(configured.model().to_string());
+            Ok(LabProvider {
+                provider: Box::new(configured),
+                provider_name: "ollama".to_string(),
+                model: resolved_model,
+            })
+        }
         other => Err(format!(
-            "unsupported qualification provider '{other}'; expected echo, openai, or atria"
+            "unsupported qualification provider '{other}'; expected echo, openai, atria, or ollama"
         )),
     }
 }
