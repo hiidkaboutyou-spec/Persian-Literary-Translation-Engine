@@ -206,11 +206,21 @@ fn preference_prompt(case: &PreferenceCaseInput) -> String {
     let mut sections = vec![
         "Translate the source into publication-quality Persian while preserving meaning, literary voice, character/relationship register, continuity, and cultural/pragmatic intent.".to_string(),
     ];
-    if let Some(value) = case.context_before.as_deref().map(str::trim).filter(|v| !v.is_empty()) {
+    if let Some(value) = case
+        .context_before
+        .as_deref()
+        .map(str::trim)
+        .filter(|v| !v.is_empty())
+    {
         sections.push(format!("[CONTEXT BEFORE]\n{value}"));
     }
     sections.push(format!("[SOURCE]\n{}", case.source.trim()));
-    if let Some(value) = case.context_after.as_deref().map(str::trim).filter(|v| !v.is_empty()) {
+    if let Some(value) = case
+        .context_after
+        .as_deref()
+        .map(str::trim)
+        .filter(|v| !v.is_empty())
+    {
         sections.push(format!("[CONTEXT AFTER]\n{value}"));
     }
     sections.join("\n\n")
@@ -264,8 +274,10 @@ fn build_human_preference_rows(
         let Some(first) = decisions.next() else {
             continue;
         };
-        if !matches!(first, ReviewDecision::CandidateA | ReviewDecision::CandidateB)
-            || decisions.any(|decision| decision != first)
+        if !matches!(
+            first,
+            ReviewDecision::CandidateA | ReviewDecision::CandidateB
+        ) || decisions.any(|decision| decision != first)
         {
             continue;
         }
@@ -316,7 +328,9 @@ fn run_export_preferences(args: &[String]) -> Result<()> {
         return Err(usage().to_string());
     };
     if ledger_paths.is_empty() {
-        return Err("export-preferences requires at least one completed blind review ledger".into());
+        return Err(
+            "export-preferences requires at least one completed blind review ledger".into(),
+        );
     }
 
     let mut inputs = vec![bundle_path.as_str(), key_path.as_str()];
