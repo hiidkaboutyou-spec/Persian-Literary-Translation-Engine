@@ -213,10 +213,7 @@ fn is_sentence_terminator(character: char) -> bool {
 }
 
 fn is_sentence_closer(character: char) -> bool {
-    matches!(
-        character,
-        '"' | '\'' | '”' | '’' | '»' | ')' | ']' | '}'
-    )
+    matches!(character, '"' | '\'' | '”' | '’' | '»' | ')' | ']' | '}')
 }
 
 #[cfg(test)]
