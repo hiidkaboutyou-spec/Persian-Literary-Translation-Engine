@@ -170,6 +170,17 @@ fn preferred_semantic_boundary(candidate: &str, max_chars: usize) -> Option<usiz
         return paragraph;
     }
 
+    let ends_at_sentence_boundary = candidate
+        .trim_end()
+        .chars()
+        .last()
+        .is_some_and(|terminator| {
+            matches!(terminator, '.' | '!' | '?' | '؟' | '。' | '！' | '？')
+        });
+    if ends_at_sentence_boundary && candidate.trim_end().len() >= min_byte {
+        return Some(candidate.len());
+    }
+
     let sentence = candidate
         .char_indices()
         .rev()
@@ -309,5 +320,16 @@ mod tests {
         assert_ne!(chunks[0], "Short. ");
         assert_eq!(chunks.concat(), text);
         assert!(chunks.iter().all(|chunk| chunk.chars().count() <= 24));
+    }
+
+    #[test]
+    fn sentence_ending_exactly_at_hard_limit_stays_whole() {
+        let sentence = format!("{}.", "a".repeat(29));
+        let text = format!("{sentence} next sentence");
+        let chunks = split_passage(&text, 30);
+
+        assert_eq!(chunks[0], sentence);
+        assert_eq!(chunks.concat(), text);
+        assert!(chunks.iter().all(|chunk| chunk.chars().count() <= 30));
     }
 }
