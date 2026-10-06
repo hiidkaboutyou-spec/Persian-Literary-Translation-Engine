@@ -25,6 +25,7 @@ The product's own UI direction requires an Editorial Translation Atelier / Livin
 - Preserved all current command bindings and DOM IDs required by the Rust/Tauri application surface.
 - Kept Pilot Review and current human-review flows intact.
 - Turned the Translation Editor into a source ↔ Persian reading desk.
+- Added a manuscript-first `New manuscript` flow that uses the existing backend contract to choose a source book, choose a project folder, create the project, and import the source in one guided action.
 - Added a safe `Preset · 1 chapter` control. It only sets the bounded chapter count and literary style; it does not trigger provider work.
 - Added narrow-window/mobile-sized responsive behavior instead of the historical UI branch's desktop-only minimum width.
 - Added a repository-owned UI Contract workflow that checks:
