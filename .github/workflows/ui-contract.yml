@@ -1,0 +1,96 @@
+name: UI Contract
+
+on:
+  pull_request:
+    paths:
+      - 'desktop/ui/**'
+      - 'docs/UI_REDESIGN_2026_10_07.md'
+      - '.github/workflows/ui-contract.yml'
+  push:
+    branches:
+      - 'feat/living-manuscript-ui-20261007'
+    paths:
+      - 'desktop/ui/**'
+      - 'docs/UI_REDESIGN_2026_10_07.md'
+      - '.github/workflows/ui-contract.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ui-contract-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static-ui-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Keep frontend local and inspectable
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -R -nE 'https?://|<script[^>]+src=["'\'' ]*https?:|@import[[:space:]]+url\(' desktop/ui
+          ! grep -R -n 'innerHTML' desktop/ui
+          ! grep -R -nE 'localStorage|sessionStorage' desktop/ui
+          test ! -f desktop/package.json
+          test ! -f desktop/ui/package.json
+
+      - name: Verify JavaScript syntax
+        run: node --check desktop/ui/app.js
+
+      - name: Verify HTML IDs and current-main bindings
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          import re
+          from pathlib import Path
+
+          class IdParser(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.ids = []
+              def handle_starttag(self, tag, attrs):
+                  for key, value in attrs:
+                      if key == "id" and value:
+                          self.ids.append(value)
+
+          html = Path("desktop/ui/index.html").read_text()
+          js = Path("desktop/ui/app.js").read_text()
+          parser = IdParser()
+          parser.feed(html)
+
+          duplicates = sorted({item for item in parser.ids if parser.ids.count(item) > 1})
+          if duplicates:
+              raise SystemExit(f"duplicate ids: {duplicates}")
+
+          required = sorted(set(re.findall(r'\$\("([A-Za-z0-9_-]+)"\)', js)))
+          missing = [item for item in required if item not in parser.ids]
+          if missing:
+              raise SystemExit(f"IDs referenced by app.js but missing from HTML: {missing}")
+
+          must_keep = {
+              "pilot-target-list", "pilot-context", "record-pilot-review",
+              "open-pilot-editor", "translation-max", "status-text",
+              "one-chapter-preset",
+          }
+          absent = sorted(must_keep - set(parser.ids))
+          if absent:
+              raise SystemExit(f"current-main UI contract missing: {absent}")
+
+          print(f"validated {len(parser.ids)} unique ids and {len(required)} JS references")
+          PY
+
+      - name: Verify accessibility and responsive contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q ':focus-visible' desktop/ui/styles.css
+          grep -q 'prefers-reduced-motion: reduce' desktop/ui/styles.css
+          grep -q '@media (max-width: 760px)' desktop/ui/styles.css
+          grep -q 'aria-current' desktop/ui/app.js
+          grep -q 'direction: rtl' desktop/ui/styles.css
