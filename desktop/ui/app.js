@@ -55,11 +55,26 @@ function textNode(tag, value, className) {
 
 function setView(name) {
   document.querySelectorAll(".nav-item").forEach((button) => {
-    button.classList.toggle("active", button.dataset.view === name);
+    const active = button.dataset.view === name;
+    button.classList.toggle("active", active);
+    if (active) {
+      button.setAttribute("aria-current", "page");
+    } else {
+      button.removeAttribute("aria-current");
+    }
   });
   document.querySelectorAll("[data-view-panel]").forEach((panel) => {
-    panel.classList.toggle("active", panel.dataset.viewPanel === name);
+    const active = panel.dataset.viewPanel === name;
+    panel.classList.toggle("active", active);
+    if (active) {
+      panel.classList.remove("view-enter");
+      void panel.offsetWidth;
+      panel.classList.add("view-enter");
+    } else {
+      panel.classList.remove("view-enter");
+    }
   });
+  document.body.dataset.view = name;
   const titles = {
     home: ["Project", "Open or create a translation project."],
     workflow: ["Workflow", "Explicit analysis, translation and publication stages."],
@@ -101,7 +116,7 @@ function snapshotItem(label, value) {
 function renderSnapshot(snapshot) {
   state.snapshot = snapshot;
   $("current-project").textContent = snapshot ? snapshot.name : "None";
-  $("status-pill").textContent = snapshot ? snapshot.status : "No project";
+  $("status-text").textContent = snapshot ? snapshot.status : "No project";
   $("status-pill").className = snapshot ? "status-pill" : "status-pill muted";
 
   const grid = $("snapshot-grid");
@@ -714,8 +729,33 @@ function renderHistory(items) {
   });
 }
 
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+function bindCardGlow() {
+  document.querySelectorAll(".card").forEach((card) => {
+    card.addEventListener("pointermove", (event) => {
+      if (reducedMotion.matches) return;
+      const rect = card.getBoundingClientRect();
+      const x = ((event.clientX - rect.left) / rect.width) * 100;
+      const y = ((event.clientY - rect.top) / rect.height) * 100;
+      card.style.setProperty("--pointer-x", x.toFixed(1) + "%");
+      card.style.setProperty("--pointer-y", y.toFixed(1) + "%");
+    });
+    card.addEventListener("pointerleave", () => {
+      card.style.setProperty("--pointer-x", "50%");
+      card.style.setProperty("--pointer-y", "50%");
+    });
+  });
+}
+
 document.querySelectorAll(".nav-item").forEach((button) => {
   button.addEventListener("click", () => setView(button.dataset.view));
+});
+
+$("one-chapter-preset").addEventListener("click", () => {
+  $("translation-max").value = "1";
+  $("style-profile").value = "literary";
+  showNotice("One-chapter test selected. Review provider and model, then start translation.");
 });
 
 $("pick-open-root").addEventListener("click", async () => {
@@ -957,3 +997,5 @@ $("check-provider").addEventListener("click", async () => {
 
 setProjectEnabled(false);
 renderSnapshot(null);
+setView("home");
+bindCardGlow();
