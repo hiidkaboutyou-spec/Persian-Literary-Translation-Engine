@@ -752,6 +752,31 @@ document.querySelectorAll(".nav-item").forEach((button) => {
   button.addEventListener("click", () => setView(button.dataset.view));
 });
 
+$("new-manuscript").addEventListener("click", async () => {
+  const source = await call("pick_source_file");
+  if (!source) return;
+
+  const root = await call("pick_project_folder");
+  if (!root) return;
+
+  const filename = source.split(/[\\/]/).pop() || "Untitled Translation";
+  const inferredName = filename.replace(/\.[^.]+$/, "").trim() || "Untitled Translation";
+  const snapshot = await call("create_project", {
+    projectRoot: root,
+    name: inferredName,
+    sourcePath: source,
+  });
+
+  state.projectRoot = root;
+  state.sourcePath = source;
+  invalidatePilotUi("New manuscript imported. Translate and review before refreshing the pilot workspace.");
+  $("source-path").textContent = source;
+  setProjectEnabled(true);
+  renderSnapshot(snapshot);
+  setView("workflow");
+  showNotice("Manuscript workspace created and source imported. Run analysis when ready.");
+});
+
 $("one-chapter-preset").addEventListener("click", () => {
   $("translation-max").value = "1";
   $("style-profile").value = "literary";
