@@ -1605,3 +1605,34 @@ main {
   .snapshot-grid { grid-template-columns: 1fr; }
   .list-row .actions { flex-wrap: wrap; }
 }
+
+
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 0 18px;
+  flex-wrap: wrap;
+}
+.hero-actions > span {
+  max-width: 360px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.hero-actions .primary {
+  min-height: 44px;
+  padding-inline: 19px;
+}
+@media (max-width: 760px) {
+  .hero-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .hero-actions .primary {
+    width: 100%;
+  }
+  .hero-actions > span {
+    max-width: none;
+  }
+}
