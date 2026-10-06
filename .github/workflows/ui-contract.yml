@@ -76,7 +76,7 @@ jobs:
           must_keep = {
               "pilot-target-list", "pilot-context", "record-pilot-review",
               "open-pilot-editor", "translation-max", "status-text",
-              "one-chapter-preset",
+              "one-chapter-preset", "new-manuscript",
           }
           absent = sorted(must_keep - set(parser.ids))
           if absent:
