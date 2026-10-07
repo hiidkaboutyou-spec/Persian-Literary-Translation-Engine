@@ -95,3 +95,6 @@ jobs:
           grep -q '@media (max-width: 760px)' desktop/ui/styles.css
           grep -q 'aria-current' desktop/ui/app.js
           grep -q 'direction: rtl' desktop/ui/styles.css
+          grep -q -- '--lavender:' desktop/ui/styles.css
+          grep -q 'magic-star' desktop/ui/index.html
+          grep -q 'prefers-reduced-motion: reduce' desktop/ui/styles.css
