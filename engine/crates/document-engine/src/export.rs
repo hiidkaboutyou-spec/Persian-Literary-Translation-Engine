@@ -5,9 +5,7 @@ use std::path::Path;
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipWriter};
 
-use crate::{
-    BookBlock, BookIr, Chapter, DocumentError, InlineRun, RunProtection, TextDirection,
-};
+use crate::{BookBlock, BookIr, Chapter, DocumentError, InlineRun, RunProtection, TextDirection};
 
 pub fn export_persian_docx(
     path: impl AsRef<Path>,
@@ -33,9 +31,8 @@ pub fn export_book_ir_persian_docx(
     path: impl AsRef<Path>,
     book: &BookIr,
 ) -> Result<(), DocumentError> {
-    book.validate().map_err(|error| {
-        DocumentError::InvalidStructure(format!("invalid Book IR: {error:?}"))
-    })?;
+    book.validate()
+        .map_err(|error| DocumentError::InvalidStructure(format!("invalid Book IR: {error:?}")))?;
     if book.blocks.is_empty() {
         return Err(DocumentError::InvalidStructure(
             "cannot export a DOCX without Book IR blocks".to_string(),
@@ -334,12 +331,11 @@ mod tests {
     fn book_ir_export_preserves_protected_ltr_runs_inside_rtl_paragraphs() {
         let path = temp_docx();
         let mut book = BookIr::new("book-1", "رمان آزمایشی");
-        book.blocks
-            .push(BookBlock::ChapterHeading(HeadingBlock {
-                id: "heading-1".to_string(),
-                level: 1,
-                runs: vec![InlineRun::persian("فصل یک")],
-            }));
+        book.blocks.push(BookBlock::ChapterHeading(HeadingBlock {
+            id: "heading-1".to_string(),
+            level: 1,
+            runs: vec![InlineRun::persian("فصل یک")],
+        }));
         book.blocks.push(BookBlock::Paragraph(ParagraphBlock {
             id: "paragraph-1".to_string(),
             runs: vec![
@@ -372,7 +368,9 @@ mod tests {
             "<w:rtl w:val=\"0\"/><w:lang w:val=\"en-US\"/></w:rPr><w:t xml:space=\"preserve\">https://example.com"
         ));
         assert!(document.contains("می\u{200c}روم به "));
-        assert!(loaded.text.contains("می\u{200c}روم به https://example.com؛ تمام."));
+        assert!(loaded
+            .text
+            .contains("می\u{200c}روم به https://example.com؛ تمام."));
         assert!(loaded.text.contains("***"));
     }
 

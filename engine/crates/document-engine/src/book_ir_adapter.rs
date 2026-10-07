@@ -199,16 +199,16 @@ fn protected_span_at(text: &str, start: usize) -> Option<(usize, ProtectedKind)>
 
 fn is_token_boundary(text: &str, index: usize) -> bool {
     index == 0
-        || text[..index]
-            .chars()
-            .next_back()
-            .map_or(true, |character| {
-                character.is_whitespace() || is_opening_delimiter(character)
-            })
+        || text[..index].chars().next_back().map_or(true, |character| {
+            character.is_whitespace() || is_opening_delimiter(character)
+        })
 }
 
 fn is_opening_delimiter(character: char) -> bool {
-    matches!(character, '(' | '[' | '{' | '<' | '«' | '“' | '‘' | '\'' | '"')
+    matches!(
+        character,
+        '(' | '[' | '{' | '<' | '«' | '“' | '‘' | '\'' | '"'
+    )
 }
 
 fn trim_token_edges(text: &str, start: usize, end: usize) -> (usize, usize) {
@@ -225,7 +225,10 @@ fn trim_token_edges(text: &str, start: usize, end: usize) -> (usize, usize) {
     }
     while core_start < core_end {
         let character = text[core_start..core_end].chars().next_back().unwrap();
-        if matches!(character, ')' | ']' | '}' | '>' | '»' | '”' | '’' | ',' | ';' | ':' | '!' | '?' | '،' | '؛' | '؟') {
+        if matches!(
+            character,
+            ')' | ']' | '}' | '>' | '»' | '”' | '’' | ',' | ';' | ':' | '!' | '?' | '،' | '؛' | '؟'
+        ) {
             core_end -= character.len_utf8();
         } else if character == '.' && !text[core_start..core_end - 1].ends_with('.') {
             core_end -= 1;
