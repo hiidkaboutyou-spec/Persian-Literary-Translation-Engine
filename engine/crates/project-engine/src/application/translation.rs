@@ -1475,7 +1475,7 @@ mod phase22_provider_tests {
 
     #[test]
     fn docx_boundary_preserves_stable_ids_and_protected_translated_tokens() {
-        let translated_text = "او به OpenAI.com رفت\u{200c}وآمد کرد.";
+        let translated_text = "او به https://OpenAI.com رفت\u{200c}وآمد کرد.";
         let artifacts = vec![artifact(vec![TranslatedParagraph {
             paragraph_id: "paragraph-1".to_string(),
             source: "Source paragraph.".to_string(),
@@ -1515,7 +1515,7 @@ mod phase22_provider_tests {
             translated_text
         );
         assert!(paragraph.runs.iter().any(|run| {
-            run.text == "OpenAI.com"
+            run.text == "https://OpenAI.com"
                 && run.protection == RunProtection::Protected(ProtectedKind::Url)
         }));
     }

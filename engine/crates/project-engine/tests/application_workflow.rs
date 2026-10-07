@@ -339,7 +339,7 @@ fn application_docx_export_reopens_mixed_script_text_without_loss() {
     let (project, root) = fresh_project("book-ir-docx-boundary");
     let source = project.layout.root.join("mixed.md");
     let paragraph =
-        "Shirin گفت به OpenAI.com ایمیل test@example.com بزن؛ رفت\u{200c}وآمد ادامه داشت.";
+        "Shirin گفت به https://OpenAI.com ایمیل test@example.com بزن؛ رفت\u{200c}وآمد ادامه داشت.";
     std::fs::write(&source, format!("# Chapter 1\n\n{paragraph}\n")).unwrap();
 
     let mut sink = silent_sink();
@@ -353,7 +353,7 @@ fn application_docx_export_reopens_mixed_script_text_without_loss() {
     let reopened =
         document_engine::load_docx_file(root.join("exports").join(&export.relative_path)).unwrap();
     assert!(reopened.text.contains(paragraph));
-    assert!(reopened.text.contains("OpenAI.com"));
+    assert!(reopened.text.contains("https://OpenAI.com"));
     assert!(reopened.text.contains("test@example.com"));
     assert!(reopened.text.contains("رفت\u{200c}وآمد"));
 }
