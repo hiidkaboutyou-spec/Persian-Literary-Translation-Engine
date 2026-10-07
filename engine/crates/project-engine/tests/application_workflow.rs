@@ -345,7 +345,7 @@ fn application_docx_export_reopens_mixed_script_text_without_loss() {
     std::fs::write(
         &source,
         format!(
-            "# Chapter 1\n\n{paragraph}\n\nFarhad watched from the terrace, his hands trembling.\n"
+            "# Chapter 1\n\n{paragraph}\n\nFarhad watched from the terrace. Farhad remembered the garden.\n"
         ),
     )
     .unwrap();
