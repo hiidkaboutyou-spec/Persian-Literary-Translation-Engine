@@ -20,7 +20,8 @@ This slice is accepted when:
    incorrectly frozen as protected Latin text;
 3. a Book-IR-aware DOCX path writes RTL paragraphs structurally and writes
    protected/LTR runs with `w:rtl w:val="0"`;
-4. the existing `Chapter`-based exporter remains backward compatible;
+4. the existing `Chapter`-based application path remains API-compatible and
+   emits explicit LTR display runs for embedded ASCII text;
 5. tests inspect the produced OOXML and re-open the DOCX, rather than treating
    successful ZIP creation as proof of a healthy document.
 
@@ -65,7 +66,9 @@ Changed files:
 - `engine/crates/document-engine/src/book_ir_adapter.rs`: conservative span
   segmentation with exact-text and false-positive regression tests.
 - `engine/crates/document-engine/src/export.rs`: validated Book IR export path,
-  explicit inline direction in OOXML, package inspection and re-open test.
+  explicit inline direction in OOXML, a display-only compatibility bridge for
+  the current flattened-chapter application path, package inspection and
+  re-open tests.
 - `engine/crates/document-engine/src/lib.rs`: public Book IR exporter.
 
 Local verification available in this runner is limited to repository/static
@@ -81,3 +84,15 @@ available and unchanged. The next step after exact-head CI is green is to pass
 translated Book IR through the application export boundary, then add a real
 fixture opened in Word or LibreOffice before retiring draft PR #147's legacy
 heuristic direction.
+
+### Convergence addendum
+
+Exact-head review found that the application still calls the legacy
+`export_persian_docx` API. Merely adding the Book IR exporter would therefore
+leave the active user path unchanged. The same PR now includes a bounded
+compatibility bridge: at DOCX serialization time only, ASCII graphic spans
+with letters or digits receive LTR direction while every run remains editable.
+This cannot freeze source prose or affect translation because it executes after
+translation and does not assign `RunProtection::Protected`. A regression opens
+the legacy-exported DOCX and verifies mixed Persian, Latin, URL, email, ISBN and
+ZWNJ text. Canonical future behavior still belongs to explicit Book IR runs.

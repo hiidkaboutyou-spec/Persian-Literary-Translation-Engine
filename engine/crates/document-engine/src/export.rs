@@ -203,11 +203,47 @@ fn book_ir_document_xml(book: &BookIr) -> String {
 }
 
 fn paragraph_xml(text: &str, style: &str) -> String {
-    format!(
-        "<w:p><w:pPr><w:pStyle w:val=\"{}\"/><w:bidi/></w:pPr><w:r><w:rPr><w:rtl/><w:lang w:val=\"fa-IR\" w:bidi=\"fa-IR\"/></w:rPr><w:t xml:space=\"preserve\">{}</w:t></w:r></w:p>",
-        escape_xml(style),
-        escape_xml(text)
-    )
+    inline_paragraph_xml(&legacy_directional_runs(text), style)
+}
+
+/// Recover display direction at the legacy flattened-chapter boundary.
+///
+/// This runs only after translation, while serializing DOCX. It does not mark
+/// text as protected and cannot influence translation or Book IR authority.
+/// New code should carry explicit direction through Book IR instead.
+fn legacy_directional_runs(text: &str) -> Vec<InlineRun> {
+    let mut runs = Vec::new();
+    let mut start = 0;
+    let mut current = None;
+
+    for (index, character) in text.char_indices() {
+        let ascii_graphic = character.is_ascii_graphic();
+        if let Some(previous) = current {
+            if previous != ascii_graphic {
+                runs.push(legacy_directional_run(&text[start..index], previous));
+                start = index;
+            }
+        }
+        current = Some(ascii_graphic);
+    }
+    if let Some(ascii_graphic) = current {
+        runs.push(legacy_directional_run(&text[start..], ascii_graphic));
+    }
+    runs
+}
+
+fn legacy_directional_run(text: &str, ascii_graphic: bool) -> InlineRun {
+    let ltr = ascii_graphic && text.bytes().any(|byte| byte.is_ascii_alphanumeric());
+    InlineRun {
+        text: text.to_string(),
+        direction: if ltr {
+            TextDirection::Ltr
+        } else {
+            TextDirection::Rtl
+        },
+        protection: RunProtection::Editable,
+        lang: Some(if ltr { "en-US" } else { "fa-IR" }.to_string()),
+    }
 }
 
 fn inline_paragraph_xml(runs: &[InlineRun], style: &str) -> String {
@@ -312,6 +348,54 @@ mod tests {
         assert!(loaded.text.contains("فصل ۱"));
         assert!(loaded.text.contains("این پاراگراف دوم است"));
         assert!(loaded.text.contains("پایان داستان"));
+    }
+
+    #[test]
+    fn legacy_export_preserves_mixed_script_direction_and_exact_text() {
+        let path = temp_docx();
+        let original =
+            "به OpenAI.com و user@example.org نگاه کن؛ ISBN 978-1-4028-9462-6. می\u{200c}رود.";
+        let chapters = vec![Chapter::translated(0, "فصل ۱", original)];
+
+        export_persian_docx(&path, "نمونه", &chapters).unwrap();
+
+        let file = File::open(&path).unwrap();
+        let mut archive = zip::ZipArchive::new(file).unwrap();
+        let mut document = String::new();
+        archive
+            .by_name("word/document.xml")
+            .unwrap()
+            .read_to_string(&mut document)
+            .unwrap();
+        drop(archive);
+        let loaded = load_docx_file(&path).unwrap();
+        fs::remove_file(path).ok();
+
+        assert!(document.contains(
+            "<w:rtl w:val=\"0\"/><w:lang w:val=\"en-US\"/></w:rPr><w:t xml:space=\"preserve\">OpenAI.com"
+        ));
+        assert!(document.contains(
+            "<w:rtl w:val=\"0\"/><w:lang w:val=\"en-US\"/></w:rPr><w:t xml:space=\"preserve\">user@example.org"
+        ));
+        assert!(document.contains("می\u{200c}رود"));
+        assert!(loaded.text.contains(original));
+    }
+
+    #[test]
+    fn legacy_direction_inference_is_display_only_and_byte_preserving() {
+        let original = "«سلام» A&B <tag> کتاب\u{200c}ها ۱۲۳";
+        let runs = legacy_directional_runs(original);
+
+        assert_eq!(
+            runs.iter().map(|run| run.text.as_str()).collect::<String>(),
+            original
+        );
+        assert!(runs
+            .iter()
+            .all(|run| run.protection == RunProtection::Editable));
+        assert!(runs
+            .iter()
+            .any(|run| run.text == "A&B" && run.direction == TextDirection::Ltr));
     }
 
     #[test]
