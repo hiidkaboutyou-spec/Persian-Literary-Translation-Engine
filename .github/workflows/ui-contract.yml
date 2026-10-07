@@ -8,6 +8,7 @@ on:
       - '.github/workflows/ui-contract.yml'
   push:
     branches:
+      - 'main'
       - 'feat/living-manuscript-ui-20261007'
     paths:
       - 'desktop/ui/**'

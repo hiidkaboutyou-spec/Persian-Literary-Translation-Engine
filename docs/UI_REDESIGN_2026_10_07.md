@@ -1,6 +1,8 @@
 # Living Manuscript UI redesign — 2026-10-07
 
-Base: `main@caa9f2a04836da1b9f5080c4b81830b42857185f`
+Initial base: `main@caa9f2a04836da1b9f5080c4b81830b42857185f`
+
+Converged with: `main@c8f0a5da71d7a8037a01a68e4f7c0600e9ba68c4`
 
 ## User problem
 
@@ -35,6 +37,8 @@ The product's own UI direction requires an Editorial Translation Atelier / Livin
   - unique HTML IDs and all JS-referenced IDs;
   - preservation of current Pilot Review bindings;
   - keyboard focus, reduced motion, RTL and narrow-window contracts.
+- The UI Contract runs for relevant pull requests, the focused feature branch,
+  and `main`, so the merged product surface receives its own post-merge proof.
 
 ## Explicit non-adoptions
 
