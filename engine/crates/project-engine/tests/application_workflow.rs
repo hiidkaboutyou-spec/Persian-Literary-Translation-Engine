@@ -340,7 +340,15 @@ fn application_docx_export_reopens_mixed_script_text_without_loss() {
     let source = project.layout.root.join("mixed.md");
     let paragraph =
         "Shirin گفت به https://OpenAI.com ایمیل test@example.com بزن؛ رفت\u{200c}وآمد ادامه داشت.";
-    std::fs::write(&source, format!("# Chapter 1\n\n{paragraph}\n")).unwrap();
+    // Keep a second narrative paragraph so deterministic analysis produces a
+    // promotable character item before the real review/translation/export path.
+    std::fs::write(
+        &source,
+        format!(
+            "# Chapter 1\n\n{paragraph}\n\nFarhad watched from the terrace, his hands trembling.\n"
+        ),
+    )
+    .unwrap();
 
     let mut sink = silent_sink();
     service.import_book(&project, &source, &mut sink).unwrap();
