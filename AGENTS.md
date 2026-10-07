@@ -309,3 +309,12 @@ For Phase 27 changes, run the dedicated `Phase 27 Real-Book Pilot Readiness` wor
 - The dedicated Phase-31 workflow must prove the experimental adapter, offline EchoProvider qualification path, no accidental production wiring, no dependency-manifest change, and Apple Silicon compatibility.
 
 - Qualification must measure provider-call latency and capture Responses input/output token usage when returned; absence of token telemetry must be explicit rather than silently treated as zero.
+
+## Blind human preference export invariants
+
+- Preference export may consume only the existing rights-safe blind-comparison bundle, its validated reveal key, and completed review ledgers.
+- Export a `chosen/rejected` pair only when every supplied reviewer records the same directional Candidate A or Candidate B preference. Tie, defer, pending, mixed A/B disagreement, empty source, empty candidate or identical candidates must not become training preference labels.
+- Reuse the existing bundle fingerprint/SHA-256, reveal-key and ledger validation paths. Do not create a weaker parallel evidence-binding scheme for preference export.
+- Never include reviewer identity, reviewer-authored reasons/notes, credentials, user manuscripts, private translations, or pilot-review text in exported preference rows.
+- Preference artifacts are local research/evaluation data. They never auto-train a model, mutate canon, change provider admission, or count as human approval of the production engine.
+- Do not add PyTorch, TRL, PEFT, PPO/GRPO/DPO training runtime, or model weights to default dependencies merely because preference pairs can now be exported. Any future fine-tuning experiment requires a separate measured gap, model/data license review, compute/privacy review, holdout evaluation, and explicit production-admission decision.
