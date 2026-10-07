@@ -1488,7 +1488,10 @@ mod phase22_provider_tests {
         let translated =
             translated_manuscript_for_docx(&structured_manuscript(), &artifacts, "کتاب").unwrap();
         assert_eq!(translated.book.language.as_deref(), Some("fa-IR"));
-        assert_eq!(translated.chapters[0].scenes[0].paragraphs[0].id, "paragraph-1");
+        assert_eq!(
+            translated.chapters[0].scenes[0].paragraphs[0].id,
+            "paragraph-1"
+        );
         assert_eq!(
             translated.chapters[0].scenes[0].paragraphs[0].original_text,
             translated_text
@@ -1499,9 +1502,7 @@ mod phase22_provider_tests {
             .blocks
             .iter()
             .find_map(|block| match block {
-                BookBlock::Paragraph(paragraph) if paragraph.id == "paragraph-1" => {
-                    Some(paragraph)
-                }
+                BookBlock::Paragraph(paragraph) if paragraph.id == "paragraph-1" => Some(paragraph),
                 _ => None,
             })
             .expect("translated paragraph should retain its stable ID");

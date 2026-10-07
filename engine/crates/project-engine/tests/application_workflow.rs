@@ -350,10 +350,8 @@ fn application_docx_export_reopens_mixed_script_text_without_loss() {
     start_echo_translation(&project, None);
 
     let export = service.export_project(&project, &mut sink).unwrap();
-    let reopened = document_engine::load_docx_file(
-        root.join("exports").join(&export.relative_path),
-    )
-    .unwrap();
+    let reopened =
+        document_engine::load_docx_file(root.join("exports").join(&export.relative_path)).unwrap();
     assert!(reopened.text.contains(paragraph));
     assert!(reopened.text.contains("OpenAI.com"));
     assert!(reopened.text.contains("test@example.com"));
