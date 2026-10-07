@@ -92,3 +92,17 @@ sentence tokenization, text rewriting or model-based scoring.
 This benchmark demonstrates structural boundary behavior only. It does not
 claim improved translation adequacy, voice, rhythm, subtext or human literary
 preference.
+
+## Permanent Phase-21 gate ownership
+
+The first merged fixture was covered by the workspace-wide Rust CI, but the
+Phase-21 workflow did not trigger for `translation-core`-only changes and did
+not execute the fixture's owning regression directly. That left a future
+chunker-only pull request able to avoid the benchmark gate even though the
+fixture lives under `benchmarks/phase21`.
+
+The Phase-21 workflow now watches `engine/crates/translation-core/**` and runs
+`project_owned_chunk_boundary_corpus_has_no_avoidable_first_split` explicitly
+on Linux and Apple Silicon. This is CI ownership for the deterministic
+structural metric; it does not add a model score, dependency, provider call or
+claim of human literary approval.
