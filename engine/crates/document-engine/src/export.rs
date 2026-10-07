@@ -5,7 +5,9 @@ use std::path::Path;
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipWriter};
 
-use crate::{Chapter, DocumentError};
+use crate::{
+    BookBlock, BookIr, Chapter, DocumentError, InlineRun, RunProtection, TextDirection,
+};
 
 pub fn export_persian_docx(
     path: impl AsRef<Path>,
@@ -18,6 +20,36 @@ pub fn export_persian_docx(
         ));
     }
 
+    write_docx_package(path, title, &document_xml(title, chapters))
+}
+
+/// Export the canonical Book IR to a Persian DOCX without re-inferring inline direction.
+///
+/// Protected or explicitly LTR runs are represented with `w:rtl w:val="0"` inside
+/// RTL paragraphs. Editable runs default to RTL unless their direction is explicitly
+/// LTR. This keeps technical tokens stable while preserving the existing Persian
+/// paragraph layout.
+pub fn export_book_ir_persian_docx(
+    path: impl AsRef<Path>,
+    book: &BookIr,
+) -> Result<(), DocumentError> {
+    book.validate().map_err(|error| {
+        DocumentError::InvalidStructure(format!("invalid Book IR: {error:?}"))
+    })?;
+    if book.blocks.is_empty() {
+        return Err(DocumentError::InvalidStructure(
+            "cannot export a DOCX without Book IR blocks".to_string(),
+        ));
+    }
+
+    write_docx_package(path, &book.title, &book_ir_document_xml(book))
+}
+
+fn write_docx_package(
+    path: impl AsRef<Path>,
+    title: &str,
+    document: &str,
+) -> Result<(), DocumentError> {
     let file = File::create(path)?;
     let mut archive = ZipWriter::new(file);
     let stored = SimpleFileOptions::default().compression_method(CompressionMethod::Stored);
@@ -43,12 +75,7 @@ pub fn export_persian_docx(
         document_relationships(),
         deflated,
     )?;
-    write_part(
-        &mut archive,
-        "word/document.xml",
-        &document_xml(title, chapters),
-        deflated,
-    )?;
+    write_part(&mut archive, "word/document.xml", document, deflated)?;
 
     archive.finish().map_err(DocumentError::Zip)?;
     Ok(())
@@ -149,12 +176,73 @@ fn document_xml(title: &str, chapters: &[Chapter]) -> String {
     )
 }
 
+fn book_ir_document_xml(book: &BookIr) -> String {
+    let mut body = String::new();
+    body.push_str(&paragraph_xml(&book.title, "Title"));
+
+    for block in &book.blocks {
+        match block {
+            BookBlock::ChapterHeading(heading) => {
+                body.push_str(&inline_paragraph_xml(&heading.runs, "Heading1"));
+            }
+            BookBlock::Paragraph(paragraph) => {
+                body.push_str(&inline_paragraph_xml(&paragraph.runs, "Normal"));
+            }
+            BookBlock::SceneBreak(scene_break) => {
+                body.push_str(&paragraph_xml(
+                    scene_break.marker.as_deref().unwrap_or("***"),
+                    "Normal",
+                ));
+            }
+        }
+    }
+
+    format!(
+        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>{body}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1276" w:bottom="1134" w:left="1276" w:header="708" w:footer="708" w:gutter="0"/><w:cols w:space="708"/><w:docGrid w:linePitch="360"/></w:sectPr></w:body>
+</w:document>"#
+    )
+}
+
 fn paragraph_xml(text: &str, style: &str) -> String {
     format!(
         "<w:p><w:pPr><w:pStyle w:val=\"{}\"/><w:bidi/></w:pPr><w:r><w:rPr><w:rtl/><w:lang w:val=\"fa-IR\" w:bidi=\"fa-IR\"/></w:rPr><w:t xml:space=\"preserve\">{}</w:t></w:r></w:p>",
         escape_xml(style),
         escape_xml(text)
     )
+}
+
+fn inline_paragraph_xml(runs: &[InlineRun], style: &str) -> String {
+    let mut xml = format!(
+        "<w:p><w:pPr><w:pStyle w:val=\"{}\"/><w:bidi/></w:pPr>",
+        escape_xml(style)
+    );
+    for run in runs {
+        let ltr = run.direction == TextDirection::Ltr
+            || matches!(&run.protection, RunProtection::Protected(_));
+        let language = run
+            .lang
+            .as_deref()
+            .unwrap_or(if ltr { "en-US" } else { "fa-IR" });
+        let properties = if ltr {
+            format!(
+                "<w:rtl w:val=\"0\"/><w:lang w:val=\"{}\"/>",
+                escape_xml(language)
+            )
+        } else {
+            format!(
+                "<w:rtl/><w:lang w:val=\"{}\" w:bidi=\"fa-IR\"/>",
+                escape_xml(language)
+            )
+        };
+        xml.push_str(&format!(
+            "<w:r><w:rPr>{properties}</w:rPr><w:t xml:space=\"preserve\">{}</w:t></w:r>",
+            escape_xml(&run.text)
+        ));
+    }
+    xml.push_str("</w:p>");
+    xml
 }
 
 fn split_paragraphs(text: &str) -> Vec<&str> {
@@ -198,7 +286,9 @@ fn escape_xml(text: &str) -> String {
 mod tests {
     use super::*;
     use crate::load_docx_file;
+    use crate::{HeadingBlock, ParagraphBlock, ProtectedKind, SceneBreakBlock};
     use std::fs;
+    use std::io::Read;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     fn temp_docx() -> std::path::PathBuf {
@@ -238,5 +328,68 @@ mod tests {
         let error = export_persian_docx(&path, "خالی", &[]).unwrap_err();
         assert!(error.to_string().contains("without chapters"));
         fs::remove_file(path).ok();
+    }
+
+    #[test]
+    fn book_ir_export_preserves_protected_ltr_runs_inside_rtl_paragraphs() {
+        let path = temp_docx();
+        let mut book = BookIr::new("book-1", "رمان آزمایشی");
+        book.blocks
+            .push(BookBlock::ChapterHeading(HeadingBlock {
+                id: "heading-1".to_string(),
+                level: 1,
+                runs: vec![InlineRun::persian("فصل یک")],
+            }));
+        book.blocks.push(BookBlock::Paragraph(ParagraphBlock {
+            id: "paragraph-1".to_string(),
+            runs: vec![
+                InlineRun::persian("می\u{200c}روم به "),
+                InlineRun::protected_ltr("https://example.com", ProtectedKind::Url),
+                InlineRun::persian("؛ تمام."),
+            ],
+        }));
+        book.blocks.push(BookBlock::SceneBreak(SceneBreakBlock {
+            id: "break-1".to_string(),
+            marker: None,
+        }));
+
+        export_book_ir_persian_docx(&path, &book).unwrap();
+
+        let file = File::open(&path).unwrap();
+        let mut archive = zip::ZipArchive::new(file).unwrap();
+        let mut document = String::new();
+        archive
+            .by_name("word/document.xml")
+            .unwrap()
+            .read_to_string(&mut document)
+            .unwrap();
+        drop(archive);
+        let loaded = load_docx_file(&path).unwrap();
+        fs::remove_file(path).ok();
+
+        assert!(document.contains("<w:pPr><w:pStyle w:val=\"Normal\"/><w:bidi/></w:pPr>"));
+        assert!(document.contains(
+            "<w:rtl w:val=\"0\"/><w:lang w:val=\"en-US\"/></w:rPr><w:t xml:space=\"preserve\">https://example.com"
+        ));
+        assert!(document.contains("می\u{200c}روم به "));
+        assert!(loaded.text.contains("می\u{200c}روم به https://example.com؛ تمام."));
+        assert!(loaded.text.contains("***"));
+    }
+
+    #[test]
+    fn book_ir_export_rejects_invalid_ir_before_writing() {
+        let path = temp_docx();
+        let mut book = BookIr::new("book-1", "نمونه");
+        for _ in 0..2 {
+            book.blocks.push(BookBlock::Paragraph(ParagraphBlock {
+                id: "duplicate".to_string(),
+                runs: vec![InlineRun::persian("متن")],
+            }));
+        }
+
+        let error = export_book_ir_persian_docx(&path, &book).unwrap_err();
+
+        assert!(error.to_string().contains("DuplicateId"));
+        assert!(!path.exists());
     }
 }
