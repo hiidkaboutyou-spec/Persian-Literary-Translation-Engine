@@ -333,6 +333,39 @@ fn full_workflow_through_application_apis() {
     );
 }
 
+#[test]
+fn application_docx_export_reopens_mixed_script_text_without_loss() {
+    let service = ApplicationService;
+    let (project, root) = fresh_project("book-ir-docx-boundary");
+    let source = project.layout.root.join("mixed.md");
+    let paragraph =
+        "Shirin گفت به https://OpenAI.com ایمیل test@example.com بزن؛ رفت\u{200c}وآمد ادامه داشت.";
+    // Keep a second narrative paragraph so deterministic analysis produces a
+    // promotable character item before the real review/translation/export path.
+    std::fs::write(
+        &source,
+        format!(
+            "# Chapter 1\n\n{paragraph}\n\nFarhad watched from the terrace. Farhad remembered the garden.\n"
+        ),
+    )
+    .unwrap();
+
+    let mut sink = silent_sink();
+    service.import_book(&project, &source, &mut sink).unwrap();
+    run_analysis(&project);
+    let approved = approve_all_pending(&project);
+    promote(&project, &approved);
+    start_echo_translation(&project, None);
+
+    let export = service.export_project(&project, &mut sink).unwrap();
+    let reopened =
+        document_engine::load_docx_file(root.join("exports").join(&export.relative_path)).unwrap();
+    assert!(reopened.text.contains(paragraph));
+    assert!(reopened.text.contains("https://OpenAI.com"));
+    assert!(reopened.text.contains("test@example.com"));
+    assert!(reopened.text.contains("رفت\u{200c}وآمد"));
+}
+
 // ---------------------------------------------------------------------------
 // Snapshot accuracy across stages
 // ---------------------------------------------------------------------------

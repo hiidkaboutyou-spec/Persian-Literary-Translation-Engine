@@ -96,3 +96,59 @@ This cannot freeze source prose or affect translation because it executes after
 translation and does not assign `RunProtection::Protected`. A regression opens
 the legacy-exported DOCX and verifies mixed Persian, Latin, URL, email, ISBN and
 ZWNJ text. Canonical future behavior still belongs to explicit Book IR runs.
+
+## Application-boundary integration addendum
+
+Date: 2026-10-07 16:04 UTC. Run:
+`2026-10-07T16:04Z-book-ir-application-export`. Stacked base:
+`12ddd51eddf27c18a13aa6f29f1bffae4ab44025` from PR #166.
+
+Fresh frontier inspection confirmed that the persisted application path still
+flattened each translated chapter and called the compatibility exporter. The
+canonical exporter therefore existed and was tested, but real application
+exports did not consume it. The bounded acceptance contract for this addendum
+is:
+
+1. rebuild translated document structure from plan-validated chapter
+   artifacts without changing their persistence schema;
+2. preserve parser-owned chapter/scene/paragraph IDs when artifact paragraph
+   IDs still match exactly;
+3. make an explicit flattened compatibility representation when an older or
+   provider-collapsed artifact cannot be mapped honestly, preserving all
+   translated text rather than fabricating provenance;
+4. route application DOCX export through
+   `manuscript_to_book_ir -> export_book_ir_persian_docx`;
+5. cover the real `ApplicationService` route with a DOCX re-open regression
+   containing Latin tokens and Persian ZWNJ.
+
+Options considered:
+
+| Option | Result | Decision |
+| --- | --- | --- |
+| Continue calling the legacy exporter | Leaves Book IR semantics outside the real product path | Rejected |
+| Change the persisted chapter-artifact schema | Could store Book IR directly but requires migration and invalidates compatible projects | Deferred |
+| Rebuild a translated manuscript in memory, preserving exact IDs where supported | Uses existing validated artifacts and schemas; bounded rollback | Selected |
+| Fail every unaligned legacy artifact | Strongest structure guarantee but would make previously exportable completed projects unusable | Rejected for DOCX compatibility |
+
+The compatibility case clears source scenes before adapting the translated
+chapter, which makes the loss of exact source alignment explicit and causes
+the existing adapter to derive deterministic structural IDs. It never claims
+source block provenance. Exact mappings retain parser-owned paragraph IDs and
+scene breaks. Both paths are converted to Book IR before DOCX serialization,
+so protected-token semantics and explicit inline direction reach the real
+application boundary.
+
+Changed surfaces for this addendum:
+
+- `engine/crates/project-engine/src/application/translation.rs`: translated
+  manuscript reconstruction, identity checks, canonical Book IR export call,
+  and focused structure/protected-run regressions;
+- `engine/crates/project-engine/tests/application_workflow.rs`: end-to-end
+  `ApplicationService` export and DOCX re-open with URL, email and ZWNJ;
+- this research/handoff record.
+
+No provider, model, persisted schema, dependency, credential, network service,
+font or cost changes are introduced. Rollback is the application-boundary
+commit only; PR #166's lower-level Book IR and compatibility exporter remain
+separately reviewable. Automated re-open is not visual Word/LibreOffice QA and
+does not prove production deployment.
