@@ -53,3 +53,21 @@ The product's own UI direction requires an Editorial Translation Atelier / Livin
 The change is frontend-only plus a CI contract and this record. It does not modify translation algorithms, Book IR, provider admission, persistence or exports.
 
 Rollback is a revert of the UI PR. Current main remains the recovery point.
+
+
+## Pastel fantasy visual refinement — 2026-10-07
+
+The owner explicitly asked for a much more fantasy/cute/soft interface rather than the restrained editorial skin.
+
+Refinement applied on the same PR:
+- Lavender Dream / Strawberry Milk / Cloud Blue / Buttercream / Mint Milk palette.
+- Softer pillowy radii and candy-like primary controls.
+- CSS-only floating cloud shapes, sparkles, pastel glows and a morphing hero blob.
+- Gentle bob/twinkle/breathe/candy-gradient animations.
+- Pastel dark theme instead of a brown/ink dark theme.
+- Reading/editor surfaces intentionally remain calmer and lower-motion than the product shell.
+- No remote assets, motion library, framework or CDN were introduced.
+- Existing `prefers-reduced-motion` contract continues to suppress decorative motion.
+- Tauri CSP/local-asset guidance was rechecked through current Context7 docs.
+- Firecrawl developer research was used only as implementation-pattern research for CSS/SVG motion and reduced-motion practices; no third-party visual identity was copied.
+- PostHog was consulted for replay/autocapture privacy context, but no analytics/replay SDK was added because manuscript/review content remains local-first.
