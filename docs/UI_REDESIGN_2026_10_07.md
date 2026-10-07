@@ -1,0 +1,120 @@
+# Living Manuscript UI redesign — 2026-10-07
+
+Initial base: `main@caa9f2a04836da1b9f5080c4b81830b42857185f`
+
+Converged with: `main@c8f0a5da71d7a8037a01a68e4f7c0600e9ba68c4`
+
+## User problem
+
+The product engine has substantially outgrown its interface. Current main already contains real manuscript import, translation, canon, literary review, pilot review, local EPUB preview, provider qualification and publishing foundations, but the desktop surface still presents those capabilities as a dense form/dashboard.
+
+The product's own UI direction requires an Editorial Translation Atelier / Living Manuscript experience, strong Persian/RTL treatment, manuscript-first composition, reduced-motion support and a safe one-chapter first test.
+
+## Research used
+
+- Current repository state, open PRs, Issue #138 and the canonical UI/publishing design documents were reviewed before implementation.
+- Tauri 2 current documentation was checked through Context7. The existing static local HTML/CSS/JS frontend remains a supported architecture; Rust commands stay behind the existing Tauri invoke boundary.
+- Firecrawl developer research confirmed that modern Tauri products can retain a local static frontend while still using responsive, accessible interface patterns.
+- The historical Phase-25 UI PR was treated as a design/reference branch only. It was not merged because it predates current-main Pilot Review and other newer product behavior.
+- PostHog guidance was reviewed only to decide whether analytics should be added. It was deliberately not adopted in this change because manuscript text, review notes and private reading behavior must remain local-first. Any future analytics should be explicit opt-in and limited to non-textual product events.
+
+## Implementation
+
+- Rebuilt application chrome around the manuscript instead of a generic dashboard.
+- Grouped navigation into Manuscript / Editorial / System without removing any current-main view.
+- Added editorial paper/ink visual tokens, restrained motion, dark-mode tokens and visible focus states.
+- Added a manuscript hero and contextual view introductions.
+- Preserved all current command bindings and DOM IDs required by the Rust/Tauri application surface.
+- Kept Pilot Review and current human-review flows intact.
+- Turned the Translation Editor into a source ↔ Persian reading desk.
+- Added a manuscript-first `New manuscript` flow that uses the existing backend contract to choose a source book, choose a project folder, create the project, and import the source in one guided action.
+- Added a safe `Preset · 1 chapter` control. It only sets the bounded chapter count and literary style; it does not trigger provider work.
+- Added narrow-window/mobile-sized responsive behavior instead of the historical UI branch's desktop-only minimum width.
+- Added a repository-owned UI Contract workflow that checks:
+  - no remote frontend content;
+  - no `innerHTML` or browser storage;
+  - JavaScript syntax;
+  - unique HTML IDs and all JS-referenced IDs;
+  - preservation of current Pilot Review bindings;
+  - keyboard focus, reduced motion, RTL and narrow-window contracts.
+- The UI Contract runs for relevant pull requests, the focused feature branch,
+  and `main`, so the merged product surface receives its own post-merge proof.
+
+## Explicit non-adoptions
+
+- No React, Tailwind, shadcn, Tiptap, Framer Motion, Vite or frontend package manager.
+- No remote fonts, scripts, images or CDNs.
+- No analytics SDK, session replay or manuscript telemetry.
+- No merge of the old Phase-25 UI branch.
+- No change to Rust domain/application authority.
+
+## Risk and rollback
+
+The change is frontend-only plus a CI contract and this record. It does not modify translation algorithms, Book IR, provider admission, persistence or exports.
+
+Rollback is a revert of the UI PR. Current main remains the recovery point.
+
+
+## Pastel fantasy visual refinement — 2026-10-07
+
+The owner explicitly asked for a much more fantasy/cute/soft interface rather than the restrained editorial skin.
+
+Refinement applied on the same PR:
+- Lavender Dream / Strawberry Milk / Cloud Blue / Buttercream / Mint Milk palette.
+- Softer pillowy radii and candy-like primary controls.
+- CSS-only floating cloud shapes, sparkles, pastel glows and a morphing hero blob.
+- Gentle bob/twinkle/breathe/candy-gradient animations.
+- Pastel dark theme instead of a brown/ink dark theme.
+- Reading/editor surfaces intentionally remain calmer and lower-motion than the product shell.
+- No remote assets, motion library, framework or CDN were introduced.
+- Existing `prefers-reduced-motion` contract continues to suppress decorative motion.
+- Tauri CSP/local-asset guidance was rechecked through current Context7 docs.
+- Firecrawl developer research was used only as implementation-pattern research for CSS/SVG motion and reduced-motion practices; no third-party visual identity was copied.
+- PostHog was consulted for replay/autocapture privacy context, but no analytics/replay SDK was added because manuscript/review content remains local-first.
+
+
+## Lunaria Atelier design-system rebuild — 2026-10-07
+
+The earlier pastel pass was rejected as insufficiently art-directed. The stylesheet was therefore rebuilt as one coherent system instead of accumulating visual overrides.
+
+### Theme concept
+
+**Lunaria Atelier**: a professional literary workspace with restrained pastel fantasy cues drawn from bookbinding, moonlight, botanical stationery and editorial marginalia. The product should feel authored, not templated or generically "kawaii."
+
+### Foundation
+
+- Palette uses low-chroma lilac, dusty rose, cloud blue, mint and parchment with dark ink anchors.
+- Semantic token layer separates palette from surfaces/text/borders/status colors.
+- Typography is deliberately editorial: system UI sans for controls, Iowan/New York/Palatino fallback stack for literary display, and a dedicated Persian stack for RTL reading.
+- Spacing, radii, shadows and motion all use a bounded scale rather than per-component improvisation.
+
+### Component language
+
+- Glass is restricted to framing/navigation surfaces; content cards remain materially clearer and more opaque.
+- Navigation uses quiet grouped hierarchy rather than decorative pills everywhere.
+- Cards use restrained depth and pointer lighting, not floating toy tiles.
+- The manuscript hero uses paper layers, orbit lines and small geometric star ornaments as a controlled signature motif.
+- The translation editor is intentionally calmer than the shell: near-white reading surfaces, explicit source/target separation and minimal decorative motion.
+
+### Motion grammar
+
+- fast: control feedback;
+- base: hover/state response;
+- panel: view transition;
+- ambient: slow decorative field;
+- all decorative motion collapses under `prefers-reduced-motion`.
+
+### Research decisions
+
+- Current Tauri 2 documentation (Context7) supports the existing static bundled frontend and recommends restrictive CSP plus avoidance of remote content; Lunaria therefore remains fully local and dependency-free.
+- Firecrawl research reinforced three principles used here: authored design systems over isolated effects, purposeful motion over decorative animation, and glass only when it improves hierarchy/legibility.
+- PostHog replay/autocapture guidance was consulted, but no replay or analytics SDK is introduced because manuscript/editorial content remains local-first and private.
+
+### Non-goals
+
+- no Dribbble-style glass everywhere;
+- no random emoji decoration;
+- no neon gradient overload;
+- no component-library aesthetic;
+- no external font/CDN dependency;
+- no telemetry added for visual polish.
