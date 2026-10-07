@@ -441,6 +441,90 @@ fn join_translated(paragraphs: &[TranslatedParagraph]) -> String {
         .join("\n\n")
 }
 
+/// Rebuild the imported manuscript with the persisted translated text while
+/// retaining parser-owned structure whenever the chapter artifact still has
+/// an exact paragraph-ID mapping.
+///
+/// Older or provider-collapsed artifacts may contain one aggregate paragraph.
+/// Those chapters take an explicit flattened compatibility path so export does
+/// not drop text or pretend that paragraph provenance survived. The canonical
+/// Book IR adapter will assign deterministic structural IDs to that content.
+fn translated_manuscript_for_docx(
+    manuscript: &document_engine::Manuscript,
+    artifacts: &[TranslatedChapter],
+    title: &str,
+) -> Result<document_engine::Manuscript, ApplicationError> {
+    if manuscript.chapters.len() != artifacts.len() {
+        return Err(ApplicationError::ExportUnavailable(format!(
+            "DOCX export expected {} translated chapter artifacts but found {}",
+            manuscript.chapters.len(),
+            artifacts.len()
+        )));
+    }
+
+    let mut translated = manuscript.clone();
+    translated.book.title = title.to_string();
+    translated.book.language = Some("fa-IR".to_string());
+
+    for (chapter, artifact) in translated.chapters.iter_mut().zip(artifacts) {
+        if artifact.chapter_index != chapter.index || artifact.chapter_id != chapter.id {
+            return Err(ApplicationError::ExportUnavailable(format!(
+                "chapter {} translation identity does not match the imported manuscript",
+                chapter.index + 1
+            )));
+        }
+
+        chapter.title = artifact
+            .translated_title
+            .clone()
+            .unwrap_or_else(|| chapter.title.clone());
+
+        let source_paragraph_count = chapter
+            .scenes
+            .iter()
+            .map(|scene| scene.paragraphs.len())
+            .sum::<usize>();
+        let by_id = artifact
+            .paragraphs
+            .iter()
+            .map(|paragraph| (paragraph.paragraph_id.as_str(), paragraph))
+            .collect::<BTreeMap<_, _>>();
+        let exact_mapping = source_paragraph_count > 0
+            && source_paragraph_count == artifact.paragraphs.len()
+            && by_id.len() == artifact.paragraphs.len()
+            && chapter
+                .scenes
+                .iter()
+                .flat_map(|scene| &scene.paragraphs)
+                .all(|paragraph| by_id.contains_key(paragraph.id.as_str()));
+
+        if exact_mapping {
+            for scene in &mut chapter.scenes {
+                for paragraph in &mut scene.paragraphs {
+                    paragraph.original_text = by_id[paragraph.id.as_str()].translated.clone();
+                }
+                scene.text = scene
+                    .paragraphs
+                    .iter()
+                    .map(|paragraph| paragraph.original_text.as_str())
+                    .collect::<Vec<_>>()
+                    .join("\n\n");
+            }
+            chapter.content = chapter
+                .scenes
+                .iter()
+                .map(|scene| scene.text.as_str())
+                .collect::<Vec<_>>()
+                .join("\n\n***\n\n");
+        } else {
+            chapter.content = join_translated(&artifact.paragraphs);
+            chapter.scenes.clear();
+        }
+    }
+
+    Ok(translated)
+}
+
 // ---------------------------------------------------------------------------
 // Translation run
 // ---------------------------------------------------------------------------
@@ -1159,7 +1243,7 @@ fn export_docx(
     manifest: &super::models::ProjectFile,
     manuscript: &document_engine::Manuscript,
 ) -> Result<super::models::ExportRecord, ApplicationError> {
-    let mut translated = Vec::new();
+    let mut artifacts = Vec::new();
     for chapter in &manuscript.chapters {
         let stem = chapter_stem(&chapter.title, chapter.index);
         let artifact = load_chapter_artifact(layout, &stem)?.ok_or_else(|| {
@@ -1168,23 +1252,22 @@ fn export_docx(
                 chapter.index + 1
             ))
         })?;
-        translated.push(document_engine::Chapter::translated(
-            chapter.index,
-            artifact
-                .translated_title
-                .clone()
-                .unwrap_or_else(|| chapter.title.clone()),
-            join_translated(&artifact.paragraphs),
-        ));
+        artifacts.push(artifact);
     }
+    let translated = translated_manuscript_for_docx(manuscript, &artifacts, &manifest.name)?;
+    let book = document_engine::manuscript_to_book_ir(&translated).map_err(|error| {
+        ApplicationError::ExportUnavailable(format!(
+            "DOCX export could not build canonical Book IR: {error:?}"
+        ))
+    })?;
     let path = layout.export_dir.join("manuscript.docx");
-    document_engine::export_persian_docx(&path, &manifest.name, &translated).map_err(|error| {
+    document_engine::export_book_ir_persian_docx(&path, &book).map_err(|error| {
         ApplicationError::ExportUnavailable(format!("DOCX export failed: {error}"))
     })?;
     Ok(super::models::ExportRecord {
         format: "docx".to_string(),
         relative_path: "manuscript.docx".to_string(),
-        chapters: translated.len(),
+        chapters: translated.chapters.len(),
         created_at: Utc::now(),
     })
 }
@@ -1309,7 +1392,69 @@ fn load_translation_memory() -> Result<TranslationMemory, ApplicationError> {
 
 #[cfg(test)]
 mod phase22_provider_tests {
-    use super::resolved_openai_model;
+    use super::{
+        resolved_openai_model, translated_manuscript_for_docx, CHAPTER_ARTIFACT_SCHEMA_VERSION,
+    };
+    use crate::application::models::{TranslatedChapter, TranslatedParagraph};
+    use document_engine::{
+        manuscript_to_book_ir, Book, BookBlock, Chapter, DocumentFormat, ImportanceMetadata,
+        Manuscript, Paragraph, ProtectedKind, RunProtection, Scene, SourceLocation,
+    };
+    use std::collections::BTreeMap;
+
+    fn structured_manuscript() -> Manuscript {
+        let source = SourceLocation::new("source.md", DocumentFormat::Markdown);
+        Manuscript {
+            book: Book {
+                id: "book-1".to_string(),
+                title: "Source title".to_string(),
+                author: Some("Author".to_string()),
+                language: Some("en".to_string()),
+                metadata: BTreeMap::new(),
+            },
+            chapters: vec![Chapter {
+                id: "chapter-1".to_string(),
+                title: "Chapter one".to_string(),
+                order: 1,
+                index: 0,
+                content: "Source paragraph.".to_string(),
+                scenes: vec![Scene {
+                    id: "scene-1".to_string(),
+                    chapter_id: "chapter-1".to_string(),
+                    order: 1,
+                    text: "Source paragraph.".to_string(),
+                    importance: ImportanceMetadata::default(),
+                    paragraphs: vec![Paragraph {
+                        id: "paragraph-1".to_string(),
+                        scene_id: "scene-1".to_string(),
+                        original_text: "Source paragraph.".to_string(),
+                        position: 0,
+                        source: source.clone(),
+                    }],
+                    source: source.clone(),
+                }],
+                source: source.clone(),
+            }],
+            source,
+        }
+    }
+
+    fn artifact(paragraphs: Vec<TranslatedParagraph>) -> TranslatedChapter {
+        TranslatedChapter {
+            schema_version: CHAPTER_ARTIFACT_SCHEMA_VERSION,
+            chapter_index: 0,
+            chapter_id: "chapter-1".to_string(),
+            title: "Chapter one".to_string(),
+            source_fingerprint: "source".to_string(),
+            context_fingerprint: "context".to_string(),
+            translation_plan_fingerprint: "plan".to_string(),
+            style_profile: "literary".to_string(),
+            title_source_block_id: None,
+            translated_title: Some("فصل یک".to_string()),
+            paragraphs,
+            quality_stale: false,
+        }
+    }
 
     #[test]
     fn explicit_model_overrides_environment_model() {
@@ -1326,5 +1471,95 @@ mod phase22_provider_tests {
             "gpt-environment"
         );
         assert_eq!(resolved_openai_model(Some("   "), None), "gpt-5.6");
+    }
+
+    #[test]
+    fn docx_boundary_preserves_stable_ids_and_protected_translated_tokens() {
+        let translated_text = "او به OpenAI.com رفت\u{200c}وآمد کرد.";
+        let artifacts = vec![artifact(vec![TranslatedParagraph {
+            paragraph_id: "paragraph-1".to_string(),
+            source: "Source paragraph.".to_string(),
+            source_block_id: None,
+            translated: translated_text.to_string(),
+            origin: "provider".to_string(),
+            revisions: Vec::new(),
+        }])];
+
+        let translated =
+            translated_manuscript_for_docx(&structured_manuscript(), &artifacts, "کتاب").unwrap();
+        assert_eq!(translated.book.language.as_deref(), Some("fa-IR"));
+        assert_eq!(translated.chapters[0].scenes[0].paragraphs[0].id, "paragraph-1");
+        assert_eq!(
+            translated.chapters[0].scenes[0].paragraphs[0].original_text,
+            translated_text
+        );
+
+        let book = manuscript_to_book_ir(&translated).unwrap();
+        let paragraph = book
+            .blocks
+            .iter()
+            .find_map(|block| match block {
+                BookBlock::Paragraph(paragraph) if paragraph.id == "paragraph-1" => {
+                    Some(paragraph)
+                }
+                _ => None,
+            })
+            .expect("translated paragraph should retain its stable ID");
+        assert_eq!(
+            paragraph
+                .runs
+                .iter()
+                .map(|run| run.text.as_str())
+                .collect::<String>(),
+            translated_text
+        );
+        assert!(paragraph.runs.iter().any(|run| {
+            run.text == "OpenAI.com"
+                && run.protection == RunProtection::Protected(ProtectedKind::Url)
+        }));
+    }
+
+    #[test]
+    fn docx_boundary_flattens_unaligned_artifacts_without_dropping_text() {
+        let artifacts = vec![artifact(vec![
+            TranslatedParagraph {
+                paragraph_id: "aggregate-a".to_string(),
+                source: "Source paragraph.".to_string(),
+                source_block_id: None,
+                translated: "بند اول".to_string(),
+                origin: "provider".to_string(),
+                revisions: Vec::new(),
+            },
+            TranslatedParagraph {
+                paragraph_id: "aggregate-b".to_string(),
+                source: String::new(),
+                source_block_id: None,
+                translated: "بند دوم".to_string(),
+                origin: "manual".to_string(),
+                revisions: Vec::new(),
+            },
+        ])];
+
+        let translated =
+            translated_manuscript_for_docx(&structured_manuscript(), &artifacts, "کتاب").unwrap();
+        assert!(translated.chapters[0].scenes.is_empty());
+        assert_eq!(translated.chapters[0].content, "بند اول\n\nبند دوم");
+
+        let book = manuscript_to_book_ir(&translated).unwrap();
+        let text = book
+            .blocks
+            .iter()
+            .filter_map(|block| match block {
+                BookBlock::Paragraph(paragraph) => Some(
+                    paragraph
+                        .runs
+                        .iter()
+                        .map(|run| run.text.as_str())
+                        .collect::<String>(),
+                ),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(text, vec!["بند اول", "بند دوم"]);
     }
 }
