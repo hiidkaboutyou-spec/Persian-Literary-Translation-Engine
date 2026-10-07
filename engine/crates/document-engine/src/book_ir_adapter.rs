@@ -199,9 +199,10 @@ fn protected_span_at(text: &str, start: usize) -> Option<(usize, ProtectedKind)>
 
 fn is_token_boundary(text: &str, index: usize) -> bool {
     index == 0
-        || text[..index].chars().next_back().is_none_or(|character| {
-            character.is_whitespace() || is_opening_delimiter(character)
-        })
+        || text[..index]
+            .chars()
+            .next_back()
+            .is_none_or(|character| character.is_whitespace() || is_opening_delimiter(character))
 }
 
 fn is_opening_delimiter(character: char) -> bool {
