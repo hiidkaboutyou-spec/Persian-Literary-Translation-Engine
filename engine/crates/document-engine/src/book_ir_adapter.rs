@@ -199,7 +199,7 @@ fn protected_span_at(text: &str, start: usize) -> Option<(usize, ProtectedKind)>
 
 fn is_token_boundary(text: &str, index: usize) -> bool {
     index == 0
-        || text[..index].chars().next_back().map_or(true, |character| {
+        || text[..index].chars().next_back().is_none_or(|character| {
             character.is_whitespace() || is_opening_delimiter(character)
         })
 }
@@ -296,7 +296,7 @@ fn isbn_span_end(text: &str, start: usize) -> Option<usize> {
     let rest = &text[start..];
     if !rest
         .get(..4)
-        .map_or(false, |prefix| prefix.eq_ignore_ascii_case("isbn"))
+        .is_some_and(|prefix| prefix.eq_ignore_ascii_case("isbn"))
     {
         return None;
     }
