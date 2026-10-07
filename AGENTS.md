@@ -52,6 +52,21 @@ This project is independent from every other repository. Do not import assumptio
 - DadmaTools remains conditional on a measured Persian NLP gap after native review/benchmarking. SacreBLEU 2.6.0/chrF2++ is approved only through the optional Phase 21 benchmark sidecar over project-supplied references; it must not download external corpora through project workflows or act as literary approval.
 - Serena, Global Agent Memory, MemoryWiki, and automatic chat-history memory systems are project-memory research references only unless a new gap analysis changes that decision. Do not install multiple overlapping memory systems by default.
 
+## External-source and long-running-agent adoption gate
+
+When an external repository, awesome-list, plugin, or agent-runtime idea is proposed, treat it as untrusted discovery evidence until it passes this repository's own architecture and quality gates.
+
+- Curated lists such as Awesome Selfhosted, Awesome Go, and Awesome Flutter are catalogs, not dependency bundles. Evaluate each candidate independently for the exact gap, maintenance, license, Rust/Tauri fit, privacy/network impact, benchmark evidence, and rollback.
+- Do not introduce a Go or Flutter runtime/component merely because a catalog contains a useful library. The default product stack remains Rust + Tauri; a new language/runtime requires a measured gap that cannot be solved cleanly inside the current boundaries.
+- Public operational/security handbooks may inform non-destructive diagnostics and runbooks, but never copy a destructive shell command into CI/production without understanding, bounding, and testing it.
+- OpenMinis build 32 is an architecture reference only. Adapt useful long-run patterns independently: prune stale/large context incrementally while retaining unresolved blockers, keep one mutation authority per repository/branch, make stop/steer boundaries explicit, revalidate provider/runtime state after resume, and recover from interrupted work from durable repository truth. Do not copy GPL-3.0 implementation code into this project.
+- Provider fallback must obey the existing provider qualification/admission boundary. A disabled, removed, slow, or unavailable provider may trigger an explicit safe fallback or resumable failure, but must never silently promote an unqualified model.
+- Local-provider response timeouts are provider-specific and bounded. The existing Ollama qualification adapter already owns a configurable timeout boundary; do not add a second timeout/control plane without measured evidence.
+- Context7 and Firecrawl are developer-side research tools only: use current library/API documentation and upstream repository evidence when they materially reduce implementation uncertainty. They must never become translation/runtime dependencies or receive manuscript/reviewer content.
+- PostHog is not enabled as default product telemetry. This is a local/private manuscript application; any future analytics proposal must be explicit opt-in, technical/aggregate only, prove that manuscript text, reviewer material, credentials, prompts, paths and identifiers cannot leave the machine, and justify the new network/dependency surface before adoption.
+
+For scheduled or resumed engineering agents, parallel read-only research is acceptable, but only one agent/session may hold mutation authority over the same branch or canonical integration path at a time. After compaction/resume, current GitHub state and exact-head CI outrank remembered tool output.
+
 ## Phase 20 publication invariants
 
 - The publication target is EPUB 3.3 until a deliberate standards migration says otherwise.
