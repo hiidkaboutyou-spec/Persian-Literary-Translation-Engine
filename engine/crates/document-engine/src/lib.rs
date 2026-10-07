@@ -27,7 +27,7 @@ pub use chapter::split_into_chapters;
 pub use docx::load_docx_file;
 pub use epub::load_epub_file;
 pub use epub_export::{export_translated_epub, EpubBlockTranslation, EpubExportReport};
-pub use export::export_persian_docx;
+pub use export::{export_book_ir_persian_docx, export_persian_docx};
 pub use models::{
     Book, Chapter, DocumentFormat, ImportanceMetadata, Manuscript, Paragraph, Scene, SourceLocation,
 };

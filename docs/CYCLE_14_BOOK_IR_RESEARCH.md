@@ -103,3 +103,16 @@ the new exact-head workflow result.
 Next gate after green CI: connect one real importer fixture to the adapter and
 prove stable identity through edit → export → re-import before migrating any
 DOCX/EPUB/PDF exporter.
+
+## Protected-run DOCX checkpoint (2026-10-07)
+
+Run `2026-10-07T11:04Z-book-ir-protected-runs` continues from merged PR #153 on
+`main@c8f0a5da71d7a8037a01a68e4f7c0600e9ba68c4`. The bounded implementation,
+acceptance criteria, alternatives, verification limits, risk and next gate are
+recorded in
+`docs/research/cycle-14-protected-runs-docx-2026-10-07.md`.
+
+The key decision is to protect only high-confidence technical tokens in the
+canonical Book IR and let the DOCX writer consume explicit run semantics.
+Ordinary English prose remains editable. The old chapter exporter is retained,
+and no dependency, provider, model, credential or network service changes.
