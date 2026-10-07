@@ -71,3 +71,50 @@ Refinement applied on the same PR:
 - Tauri CSP/local-asset guidance was rechecked through current Context7 docs.
 - Firecrawl developer research was used only as implementation-pattern research for CSS/SVG motion and reduced-motion practices; no third-party visual identity was copied.
 - PostHog was consulted for replay/autocapture privacy context, but no analytics/replay SDK was added because manuscript/review content remains local-first.
+
+
+## Lunaria Atelier design-system rebuild — 2026-10-07
+
+The earlier pastel pass was rejected as insufficiently art-directed. The stylesheet was therefore rebuilt as one coherent system instead of accumulating visual overrides.
+
+### Theme concept
+
+**Lunaria Atelier**: a professional literary workspace with restrained pastel fantasy cues drawn from bookbinding, moonlight, botanical stationery and editorial marginalia. The product should feel authored, not templated or generically "kawaii."
+
+### Foundation
+
+- Palette uses low-chroma lilac, dusty rose, cloud blue, mint and parchment with dark ink anchors.
+- Semantic token layer separates palette from surfaces/text/borders/status colors.
+- Typography is deliberately editorial: system UI sans for controls, Iowan/New York/Palatino fallback stack for literary display, and a dedicated Persian stack for RTL reading.
+- Spacing, radii, shadows and motion all use a bounded scale rather than per-component improvisation.
+
+### Component language
+
+- Glass is restricted to framing/navigation surfaces; content cards remain materially clearer and more opaque.
+- Navigation uses quiet grouped hierarchy rather than decorative pills everywhere.
+- Cards use restrained depth and pointer lighting, not floating toy tiles.
+- The manuscript hero uses paper layers, orbit lines and small geometric star ornaments as a controlled signature motif.
+- The translation editor is intentionally calmer than the shell: near-white reading surfaces, explicit source/target separation and minimal decorative motion.
+
+### Motion grammar
+
+- fast: control feedback;
+- base: hover/state response;
+- panel: view transition;
+- ambient: slow decorative field;
+- all decorative motion collapses under `prefers-reduced-motion`.
+
+### Research decisions
+
+- Current Tauri 2 documentation (Context7) supports the existing static bundled frontend and recommends restrictive CSP plus avoidance of remote content; Lunaria therefore remains fully local and dependency-free.
+- Firecrawl research reinforced three principles used here: authored design systems over isolated effects, purposeful motion over decorative animation, and glass only when it improves hierarchy/legibility.
+- PostHog replay/autocapture guidance was consulted, but no replay or analytics SDK is introduced because manuscript/editorial content remains local-first and private.
+
+### Non-goals
+
+- no Dribbble-style glass everywhere;
+- no random emoji decoration;
+- no neon gradient overload;
+- no component-library aesthetic;
+- no external font/CDN dependency;
+- no telemetry added for visual polish.
