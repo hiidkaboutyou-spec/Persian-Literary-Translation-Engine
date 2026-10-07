@@ -5,6 +5,7 @@ on:
     paths:
       - 'desktop/ui/**'
       - 'docs/UI_REDESIGN_2026_10_07.md'
+      - 'docs/LUNARIA_DESIGN_SYSTEM.md'
       - '.github/workflows/ui-contract.yml'
   push:
     branches:
@@ -13,6 +14,7 @@ on:
     paths:
       - 'desktop/ui/**'
       - 'docs/UI_REDESIGN_2026_10_07.md'
+      - 'docs/LUNARIA_DESIGN_SYSTEM.md'
       - '.github/workflows/ui-contract.yml'
 
 permissions:
@@ -95,6 +97,10 @@ jobs:
           grep -q '@media (max-width: 760px)' desktop/ui/styles.css
           grep -q 'aria-current' desktop/ui/app.js
           grep -q 'direction: rtl' desktop/ui/styles.css
-          grep -q -- '--lavender:' desktop/ui/styles.css
+          grep -q 'data-theme="lunaria"' desktop/ui/index.html
+          grep -q -- '--p-lilac-650:' desktop/ui/styles.css
+          grep -q -- '--surface-editor:' desktop/ui/styles.css
+          grep -q -- '--motion-panel:' desktop/ui/styles.css
           grep -q 'magic-star' desktop/ui/index.html
-          grep -q 'prefers-reduced-motion: reduce' desktop/ui/styles.css
+          grep -q 'Lunaria Atelier' desktop/ui/index.html
+          grep -q 'Accessibility: collapse the entire motion grammar' desktop/ui/styles.css
