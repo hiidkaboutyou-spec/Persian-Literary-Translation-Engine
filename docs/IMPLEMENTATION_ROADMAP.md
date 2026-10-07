@@ -376,26 +376,32 @@ The documentation-only canonical handoff PR #129 then merged at `b8c9f17d2323f1f
 
 Research: `docs/PHASE_36_RESEARCH.md`.
 
-### Phase 37 — Authenticated Reviewer Ledger Evidence with Offline SSHSIG — in progress
+### Phase 37 — Authenticated Reviewer Ledger Evidence with Offline SSHSIG — canonical
 
-Branch: `phase-37-authenticated-reviewer-evidence`.
+PR #131; merge `396fb780fa225eedd0c3eb393ec6fd755add7b01`. The durable handoff followed on main at `a6c9b69e9344d748e96a4c81dca9a889f7f7a562`.
 
-Goal: close the reviewer-authenticity gap without building a custom PKI or introducing hosted identity/network dependencies.
+Delivered offline OpenSSH SSHSIG authentication for completed schema-v2 reviewer ledgers with verifier-controlled `allowed_signers`, fixed namespace separation, optional KRL revocation, external trust material, and no new runtime dependency. Phase 37 authenticates reviewer-ledger evidence only; reveal-authority provenance was deliberately left to Phase 38.
 
-Current scope:
+### Phase 38 — Reveal-Authority Provenance — canonical
 
-- optional `ssh-keygen -Y sign/verify` process boundary over exact completed schema-v2 ledger bytes;
-- fixed `blind-review@persian-literary-translation-engine` namespace for signature domain separation;
-- verifier-controlled OpenSSH `allowed_signers` trust root mapped to the ledger reviewer principal;
-- optional KRL/revoked-key enforcement;
-- private signing keys, trust roots and revocation files remain external to project state;
-- reviewer-authenticated verification reuses the same in-memory ledger bytes for Phase-36 SHA-256/dossier consistency checks and SSHSIG verification;
-- legacy v1 evidence remains supported by the existing unsigned verification path but cannot claim authenticated status;
-- no new Rust/Python/npm package, provider, production selector or manuscript-transfer capability.
+PR #134; final validated head `8e8fd081520ce004db6687020d5e7f40688af4b6`; merge `914781a103679dbb9964583668bbeabb0104f879`.
 
-Research and exit criteria: `docs/PHASE_37_RESEARCH.md`.
+Delivered canonical CLI signing/verification of the exact schema-v2 hidden reveal key against the exact blind bundle and project/review context, using a distinct SSHSIG namespace and external allowed-signers/revocation trust. Parallel prototypes were removed. All 32 observed exact-head checks passed before merge. Canonical handoff: `docs/PHASE_38_CANONICAL_HANDOFF.md`.
 
-Next measured frontier: Phase 38 reveal-authority provenance. The hidden reveal-key mapping is not authenticated by reviewer ledger signatures, so do not claim end-to-end evidence authenticity until its creation/reveal authority has an independently verifiable provenance mechanism that preserves blindness.
+### Phase 39 — Hosted Provider Governance Evidence & Representative EN→FA Qualification — in progress
+
+Branch: `phase-39-openai-governance-evidence`; draft PR #146.
+
+Goal: establish authoritative, non-secret account/project data-handling evidence and a rights-safe representative blind human English→Persian literary qualification before any hosted provider can become eligible for production consideration.
+
+Current rules:
+- unknown retention/ZDR/residency/data-sharing/endpoint/budget evidence remains fail-closed;
+- do not send private or rights-sensitive manuscript text merely to qualify a provider;
+- use the repository-owned Phase 32–38 blind-review/provenance path rather than adopting a new hosted evaluation dependency;
+- human literary review remains authoritative;
+- production admission remains NOT GRANTED and still requires the existing governance assessment plus separate explicit owner authorization.
+
+Evidence and exit criteria: `docs/PHASE_39_HOSTED_PROVIDER_GOVERNANCE.md`.
 
 ## Next Action Rule
 
