@@ -7,6 +7,7 @@ on:
       - phase-21-literary-evaluation-benchmarking
     paths:
       - 'engine/crates/literary-evaluation-engine/**'
+      - 'engine/crates/translation-core/**'
       - 'engine/cli/**'
       - 'engine/Cargo.toml'
       - 'engine/Cargo.lock'
@@ -22,6 +23,7 @@ on:
   pull_request:
     paths:
       - 'engine/crates/literary-evaluation-engine/**'
+      - 'engine/crates/translation-core/**'
       - 'engine/cli/**'
       - 'engine/Cargo.toml'
       - 'engine/Cargo.lock'
@@ -70,6 +72,10 @@ jobs:
       - name: Test Phase 21 surfaces
         working-directory: engine
         run: cargo test --locked -p literary-evaluation-engine -p literary-engine
+
+      - name: Exercise literary chunk-boundary benchmark
+        working-directory: engine
+        run: cargo test --locked -p translation-core project_owned_chunk_boundary_corpus_has_no_avoidable_first_split
 
       - name: Exercise benchmark CLI
         shell: bash
@@ -137,8 +143,9 @@ jobs:
       - name: Compile and test benchmark surfaces
         working-directory: engine
         run: |
-          cargo check --locked -p literary-evaluation-engine -p literary-engine
+          cargo check --locked -p literary-evaluation-engine -p literary-engine -p translation-core
           cargo test --locked -p literary-evaluation-engine
+          cargo test --locked -p translation-core project_owned_chunk_boundary_corpus_has_no_avoidable_first_split
 
       - name: Verify optional SacreBLEU install on Apple Silicon
         shell: bash
