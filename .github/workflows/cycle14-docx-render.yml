@@ -81,6 +81,7 @@ jobs:
             "$artifact_dir"
           test -s "$artifact_dir/rendered.pdf"
           test -s "$artifact_dir/rendered.txt"
+          test -s "$artifact_dir/content-page.txt"
           test -s "$artifact_dir/cover-page.png"
           test -s "$artifact_dir/content-page.png"
 
@@ -93,6 +94,7 @@ jobs:
             /tmp/cycle14-docx-render-project/exports/manuscript.docx
             /tmp/cycle14-docx-render-artifacts/rendered.pdf
             /tmp/cycle14-docx-render-artifacts/rendered.txt
+            /tmp/cycle14-docx-render-artifacts/content-page.txt
             /tmp/cycle14-docx-render-artifacts/cover-page.png
             /tmp/cycle14-docx-render-artifacts/content-page.png
           if-no-files-found: error

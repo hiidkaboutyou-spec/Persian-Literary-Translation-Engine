@@ -162,3 +162,63 @@ from run #2's retained PDF with the same Poppler options. Inspection showed the
 `Chapter 1` heading and the complete right-aligned Persian/mixed-script line,
 with joined glyphs, intact URL/email and no obvious clipping or overlap. The
 corrected exact-head artifact must reproduce this evidence directly.
+
+## Page-to-content binding checkpoint
+
+Date: 2026-10-08 03:10 UTC. Run:
+`2026-10-08T03:10Z-cycle14-docx-page-binding`. Base/head before this
+checkpoint: `135a377946260e15bc8ede398b2f71d7aa5dbd19` on PR #169;
+canonical `main` remained
+`963707d3ca61dc97d6835982e2fb82e228709144`. PRs #166, #167 and #169
+were still open, non-draft and mergeable with unchanged heads; #169 had no
+review or unresolved thread, so the existing owned branch was extended instead
+of opening a parallel PR.
+
+The retained `content-page.png` was non-empty and was manually inspected, but
+the automated gate only proved that expected tokens existed somewhere in the
+PDF. A later title, note or blank final page could therefore leave a valid PNG
+that was not the page carrying the tested paragraph. Acceptance now requires
+page-range extraction of the exact final page, all expected URL/email/ZWNJ
+tokens on that page, a retained `content-page.txt`, and the existing bounded
+PNG of that same page. A missing token on the selected page must fail even when
+the token exists elsewhere in the document.
+
+Evidence and dependency decision:
+
+- Context7 resolved Poppler's closest maintained documentation as
+  `/fdawgs/node-poppler`; its current `pdfToText` API maps
+  `firstPageToConvert`, `lastPageToConvert` and `maintainLayout` to the same
+  already-installed Poppler CLI. No Node wrapper or new dependency is needed.
+- Firecrawl developer search followed by a full scrape of Debian testing's
+  Poppler manpage confirmed `pdftotext -f` selects the first converted page,
+  `-l` the last, `-layout` best preserves physical layout, and UTF-8 is the
+  default. Source:
+  https://manpages.debian.org/testing/poppler-utils/pdftotext.1.en.html.
+- PostHog's `triaging-visual-review-runs` guidance was loaded. The applicable
+  principle is to bind each reviewed screenshot to the changed content and
+  inspect the image rather than infer correctness from metadata. There is no
+  connected PostHog Visual Review run or known product event schema for this
+  repository, so no event, property, metric or baseline was queried or guessed.
+
+This is a CI-only evidence improvement using the existing Poppler package. It
+adds no runtime, provider, model, credential, network service, telemetry, font
+or cost. The fixture remains synthetic/rights-safe. Rollback is removal of the
+page-scoped extraction/assertion and its text artifact; application export is
+unchanged. Exact-head CI and inspection of the resulting content PNG remain
+required before completion; Microsoft Word and production are not claimed.
+
+Local verification on the implementation branch:
+
+- `bash -n tools/docx-render-validator/validate.sh`, YAML parsing with PyYAML
+  and `git diff --check`: passed.
+- Positive two-page DOCX: expected URL, email and both ZWNJ words were placed
+  only on page 2. Validation passed with `pages=2`; `content-page.txt` retained
+  all four tokens and all five generated render files were non-empty.
+- Page-binding negative control: the same tokens were placed only on page 1
+  and an unrelated page 2 was selected for the screenshot. Full-document text
+  validation passed first, then the new page-scoped assertion failed as
+  required with `rendered content-page text is missing expected tokens`.
+- The positive `content-page.png` was opened at original resolution. It showed
+  the page-2 Persian/mixed-script sentence with joined Persian glyphs, visible
+  URL/email and no obvious clipping or overlap. This is local LibreOffice
+  evidence only; exact-head CI inspection is still pending.

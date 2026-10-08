@@ -72,13 +72,18 @@ fi
 text="$work_dir/rendered.txt"
 pdftotext -enc UTF-8 -layout "$pdf" "$text"
 
-python3 - "$expected" "$text" <<'PY'
+assert_expected_tokens() {
+  local rendered_path=$1
+  local scope=$2
+
+  python3 - "$expected" "$rendered_path" "$scope" <<'PY'
 import pathlib
 import sys
 import unicodedata
 
 expected_path = pathlib.Path(sys.argv[1])
 rendered_path = pathlib.Path(sys.argv[2])
+scope = sys.argv[3]
 expected = [
     unicodedata.normalize("NFC", line)
     for line in expected_path.read_text(encoding="utf-8").splitlines()
@@ -88,16 +93,30 @@ rendered = unicodedata.normalize("NFC", rendered_path.read_text(encoding="utf-8"
 
 missing = [token for token in expected if token not in rendered]
 if missing:
-    print("rendered PDF text is missing expected tokens:", file=sys.stderr)
+    print(f"{scope} is missing expected tokens:", file=sys.stderr)
     for token in missing:
         print(f"- {token!r}", file=sys.stderr)
     raise SystemExit(1)
 PY
+}
+
+assert_expected_tokens "$text" "rendered PDF text"
 
 if [[ -n "$artifact_dir" ]]; then
+  content_text="$work_dir/content-page.txt"
+  pdftotext \
+    -f "$pages" \
+    -l "$pages" \
+    -enc UTF-8 \
+    -layout \
+    "$pdf" \
+    "$content_text"
+  assert_expected_tokens "$content_text" "rendered content-page text"
+
   mkdir -p "$artifact_dir"
   cp "$pdf" "$artifact_dir/rendered.pdf"
   cp "$text" "$artifact_dir/rendered.txt"
+  cp "$content_text" "$artifact_dir/content-page.txt"
   pdftoppm \
     -f 1 \
     -l 1 \
@@ -115,7 +134,7 @@ if [[ -n "$artifact_dir" ]]; then
     "$pdf" \
     "$artifact_dir/content-page"
 
-  for artifact in rendered.pdf rendered.txt cover-page.png content-page.png; do
+  for artifact in rendered.pdf rendered.txt content-page.txt cover-page.png content-page.png; do
     if [[ ! -f "$artifact_dir/$artifact" || ! -s "$artifact_dir/$artifact" ]]; then
       echo "render artifact is missing or empty: $artifact_dir/$artifact" >&2
       exit 1
