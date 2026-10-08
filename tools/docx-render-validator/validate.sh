@@ -105,9 +105,17 @@ if [[ -n "$artifact_dir" ]]; then
     -png \
     -r 144 \
     "$pdf" \
-    "$artifact_dir/first-page"
+    "$artifact_dir/cover-page"
+  pdftoppm \
+    -f "$pages" \
+    -l "$pages" \
+    -singlefile \
+    -png \
+    -r 144 \
+    "$pdf" \
+    "$artifact_dir/content-page"
 
-  for artifact in rendered.pdf rendered.txt first-page.png; do
+  for artifact in rendered.pdf rendered.txt cover-page.png content-page.png; do
     if [[ ! -f "$artifact_dir/$artifact" || ! -s "$artifact_dir/$artifact" ]]; then
       echo "render artifact is missing or empty: $artifact_dir/$artifact" >&2
       exit 1

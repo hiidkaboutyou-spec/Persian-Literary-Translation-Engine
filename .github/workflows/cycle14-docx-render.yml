@@ -81,7 +81,8 @@ jobs:
             "$artifact_dir"
           test -s "$artifact_dir/rendered.pdf"
           test -s "$artifact_dir/rendered.txt"
-          test -s "$artifact_dir/first-page.png"
+          test -s "$artifact_dir/cover-page.png"
+          test -s "$artifact_dir/content-page.png"
 
       - name: Upload rights-safe render bundle for human layout inspection
         if: success()
@@ -92,6 +93,7 @@ jobs:
             /tmp/cycle14-docx-render-project/exports/manuscript.docx
             /tmp/cycle14-docx-render-artifacts/rendered.pdf
             /tmp/cycle14-docx-render-artifacts/rendered.txt
-            /tmp/cycle14-docx-render-artifacts/first-page.png
+            /tmp/cycle14-docx-render-artifacts/cover-page.png
+            /tmp/cycle14-docx-render-artifacts/content-page.png
           if-no-files-found: error
           retention-days: 7

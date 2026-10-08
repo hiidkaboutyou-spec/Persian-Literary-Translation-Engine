@@ -94,9 +94,9 @@ checkpoint: `960b2faad782a10d5d2b578a6e9f20c610e180ad` on PR #169.
 
 Acceptance for this bounded follow-up is stricter than successful conversion:
 the same rights-safe application export must produce non-empty PDF, extracted
-text and first-page PNG artifacts; the PNG must be inspected for obvious glyph
-clipping, overlap and mixed-script ordering; exact-head CI must retain the
-bundle for independent human review. It still does not claim Microsoft Word
+text, cover-page PNG and final content-page PNG artifacts; the content PNG must
+be inspected for obvious glyph clipping, overlap and mixed-script ordering;
+exact-head CI must retain the bundle for independent human review. It still does not claim Microsoft Word
 compatibility, professional typography approval or complete-book pagination.
 
 Current evidence and decisions:
@@ -139,7 +139,7 @@ Local validation on the exact pre-push tree:
   negative control: rejected with the expected diagnostic;
 - local renderer versions: LibreOfficeDev 26.8.0.0.alpha0 and Poppler
   `pdftoppm` 26.05.0 (CI logs remain authoritative for Ubuntu versions);
-- direct inspection of the local first-page PNG found one right-aligned line,
+- direct inspection of the local content-page PNG found one right-aligned line,
   joined Persian glyphs, intact `https://example.com` and `user@example.org`,
   and no obvious clipping or overlap. This is a bounded smoke observation, not
   professional Persian layout approval.
@@ -147,3 +147,18 @@ Local validation on the exact pre-push tree:
 Exact-head CI and its retained bundle are still required before this checkpoint
 is considered complete. Production deployment and Microsoft Word were not
 tested.
+
+Exact-head run #2 initially passed and retained a one-page preview, but artifact
+inspection exposed a coverage defect: the application export is two pages and
+the first page contains only the generated title. The Persian paragraph is on
+page two. The gate was therefore corrected before merge to retain two bounded
+previews: page one (`cover-page.png`) and the final page
+(`content-page.png`). This avoids an unbounded image set for future fixtures
+while ensuring this tiny rights-safe smoke traverses the page containing the
+tested paragraph. Run #2 is evidence of the caught gap, not final acceptance.
+
+As a diagnostic before the corrected CI rerun, page two was also rasterized
+from run #2's retained PDF with the same Poppler options. Inspection showed the
+`Chapter 1` heading and the complete right-aligned Persian/mixed-script line,
+with joined glyphs, intact URL/email and no obvious clipping or overlap. The
+corrected exact-head artifact must reproduce this evidence directly.
