@@ -296,3 +296,27 @@ Local verification used the rights-safe DOCX downloaded from exact-head run #5:
   the exact content-page assertion with both expected diagnostic lines;
 - the negative artifact directory was not created, proving the expected failure
   cannot leave a bundle that looks reviewable.
+
+Exact-head negative-control evidence:
+
+- Published implementation commit:
+  `8ed013e5be331981dc7c1e132b1008b4e1b59f9f`.
+- Cycle 14 DOCX Render run #6 completed successfully on that exact SHA,
+  including the new `Prove page-bound validation rejects a cover-only token`
+  step:
+  https://github.com/hiidkaboutyou-spec/Persian-Literary-Translation-Engine/actions/runs/37747688528.
+- Artifact `11536249024` is 50,513 bytes with digest
+  `sha256:9730329c5962e831abc2519448e0596417e03d99996082c1e9b7919525239a52`
+  and expires 2026-10-15:
+  https://github.com/hiidkaboutyou-spec/Persian-Literary-Translation-Engine/actions/runs/37747688528/artifacts/11536249024.
+- The downloaded exact-head bundle contains six non-empty files. Its
+  `content-page.txt` contains the URL, email and ZWNJ token but not the
+  cover-only title. The 1191x1684 `content-page.png` was opened at original
+  resolution and showed `Chapter 1` plus the complete mixed Persian/Latin
+  line, with joined Persian glyphs and no obvious clipping or overlap.
+
+This proves the CI gate now exercises both acceptance and rejection paths for
+page-bound content. It still does not establish Microsoft Word compatibility,
+professional typography approval, complete-book pagination or a production
+deployment. PR #169 remains stacked behind #166 and #167; head-bound review
+and Word inspection remain the next external gates.
