@@ -222,3 +222,24 @@ Local verification on the implementation branch:
   the page-2 Persian/mixed-script sentence with joined Persian glyphs, visible
   URL/email and no obvious clipping or overlap. This is local LibreOffice
   evidence only; exact-head CI inspection is still pending.
+
+Exact-head completion evidence:
+
+- Published implementation commit:
+  `da8e8d31110d3c4318cc9bee4694cc4ead5bfb0d`.
+- Cycle 14 DOCX Render run #4 completed successfully on that exact SHA:
+  https://github.com/hiidkaboutyou-spec/Persian-Literary-Translation-Engine/actions/runs/37741187702.
+- Artifact `11533708786` is 50,518 bytes with digest
+  `sha256:ecc5fc42e098113bb56b3cf0572b7c54eeb603b165724bb58cbae4f758c0b8c0`
+  and expires 2026-10-15:
+  https://github.com/hiidkaboutyou-spec/Persian-Literary-Translation-Engine/actions/runs/37741187702/artifacts/11533708786.
+- The exact-head bundle contains six non-empty files, including the new
+  125-byte `content-page.txt`. Its URL, email and ZWNJ token assertions passed.
+  The 1191x1684 exact-head content PNG was opened at original resolution and
+  showed `Chapter 1` plus the complete right-aligned mixed Persian/Latin line,
+  with joined Persian glyphs and no obvious clipping or overlap.
+
+This closes only the page-to-content evidence gap. It does not establish
+Microsoft Word compatibility, professional typography approval, complete-book
+pagination or a production deployment. PR #169 remains stacked behind #166 and
+#167; head-bound review and Word inspection remain the next external gates.
