@@ -85,6 +85,29 @@ jobs:
           test -s "$artifact_dir/cover-page.png"
           test -s "$artifact_dir/content-page.png"
 
+      - name: Prove page-bound validation rejects a cover-only token
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected=/tmp/cycle14-docx-render-cover-only.txt
+          artifact_dir=/tmp/cycle14-docx-render-negative-artifacts
+          log=/tmp/cycle14-docx-render-negative.log
+          printf '%s\n' 'Cycle 14 DOCX Render' > "$expected"
+
+          if bash tools/docx-render-validator/validate.sh \
+            /tmp/cycle14-docx-render-project/exports/manuscript.docx \
+            "$expected" \
+            "$artifact_dir" \
+            > "$log" 2>&1; then
+            cat "$log" >&2
+            echo 'page-bound negative control unexpectedly passed' >&2
+            exit 1
+          fi
+
+          grep -F 'rendered content-page text is missing expected tokens:' "$log"
+          grep -F -- "- 'Cycle 14 DOCX Render'" "$log"
+          test ! -e "$artifact_dir"
+
       - name: Upload rights-safe render bundle for human layout inspection
         if: success()
         uses: actions/upload-artifact@v6

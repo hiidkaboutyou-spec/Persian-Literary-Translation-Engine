@@ -243,3 +243,56 @@ This closes only the page-to-content evidence gap. It does not establish
 Microsoft Word compatibility, professional typography approval, complete-book
 pagination or a production deployment. PR #169 remains stacked behind #166 and
 #167; head-bound review and Word inspection remain the next external gates.
+
+## Durable page-binding regression checkpoint
+
+Date: 2026-10-08 08:14 UTC. Run:
+`2026-10-08T08:14Z-cycle14-docx-page-binding-regression`. Base:
+`ce70ae88ebf3a2838d81dc7297a2fb4ab42bd337` on the existing PR #169;
+canonical `main` remained
+`963707d3ca61dc97d6835982e2fb82e228709144`. PRs #166, #167 and #169
+were still open, non-draft and mergeable with unchanged prerequisite heads.
+The final-head Cycle 14 run #5 was successful and its retained full text proved
+that `Cycle 14 DOCX Render` appears only on the cover, while the extracted
+content page begins with `Chapter 1`.
+
+The previous page-binding behavior had a strong local negative control, but CI
+only exercised the positive path. Removing the page-scoped assertion could
+therefore leave CI green. This follow-up adds a permanent workflow regression:
+it runs the same validator and application-exported DOCX with the cover-only
+title as the expected token. Full-document extraction must find the title, the
+exact content-page assertion must reject it with the expected diagnostic, and
+no misleading negative artifact directory may be created.
+
+Current evidence and dependency decision:
+
+- Context7 again resolved Poppler's closest maintained documentation as
+  `/fdawgs/node-poppler`. Its current `firstPageToConvert`,
+  `lastPageToConvert` and `maintainLayout` options document the same bounded
+  page extraction already used by the installed CLI; no wrapper is needed.
+- Firecrawl developer search found concrete Bash `errexit` failure modes when
+  functions are evaluated under `if`, `&&` or `||`. The workflow therefore
+  invokes the validator directly in the `if` condition, checks that the branch
+  is the failure branch, and separately verifies both diagnostic lines instead
+  of relying on `set -e` alone. Relevant upstream analysis:
+  https://github.com/koalaman/shellcheck/issues/2303.
+- PostHog's `review-hog-perspective-performance-reliability` guidance was
+  loaded. The relevant requirements are actionable error output, no swallowed
+  failures, bounded resources and operationally useful logs. No connected
+  PostHog project or event schema exists for this repository, so no metric,
+  event or property was queried or invented.
+
+This change adds no package, provider, model, credential, telemetry, service,
+font or cost. It reuses the rights-safe application fixture and installed
+LibreOffice/Poppler tools. Rollback is removal of the single negative-control
+workflow step. Local syntax/YAML/behavior checks and exact-head CI remain
+required before this checkpoint is complete; Word and production are not
+claimed.
+
+Local verification used the rights-safe DOCX downloaded from exact-head run #5:
+
+- validator shell syntax, workflow YAML parsing and `git diff --check`: passed;
+- the cover-only title was found by full-document extraction, then rejected by
+  the exact content-page assertion with both expected diagnostic lines;
+- the negative artifact directory was not created, proving the expected failure
+  cannot leave a bundle that looks reviewable.
