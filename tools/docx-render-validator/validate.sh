@@ -2,16 +2,17 @@
 set -euo pipefail
 
 usage() {
-  echo "usage: $0 <document.docx> <expected-lines.txt>" >&2
+  echo "usage: $0 <document.docx> <expected-lines.txt> [artifact-directory]" >&2
   exit 2
 }
 
-if [[ $# -ne 2 ]]; then
+if [[ $# -lt 2 || $# -gt 3 ]]; then
   usage
 fi
 
 document=$1
 expected=$2
+artifact_dir=${3:-}
 
 if [[ ! -f "$document" || ! -s "$document" ]]; then
   echo "DOCX input is missing or empty: $document" >&2
@@ -23,7 +24,7 @@ if [[ ! -f "$expected" || ! -s "$expected" ]]; then
   exit 1
 fi
 
-for command in soffice timeout pdfinfo pdftotext python3; do
+for command in soffice timeout pdfinfo pdftoppm pdftotext python3; do
   if ! command -v "$command" >/dev/null 2>&1; then
     echo "required DOCX render validator command is unavailable: $command" >&2
     exit 1
@@ -92,5 +93,26 @@ if missing:
         print(f"- {token!r}", file=sys.stderr)
     raise SystemExit(1)
 PY
+
+if [[ -n "$artifact_dir" ]]; then
+  mkdir -p "$artifact_dir"
+  cp "$pdf" "$artifact_dir/rendered.pdf"
+  cp "$text" "$artifact_dir/rendered.txt"
+  pdftoppm \
+    -f 1 \
+    -l 1 \
+    -singlefile \
+    -png \
+    -r 144 \
+    "$pdf" \
+    "$artifact_dir/first-page"
+
+  for artifact in rendered.pdf rendered.txt first-page.png; do
+    if [[ ! -f "$artifact_dir/$artifact" || ! -s "$artifact_dir/$artifact" ]]; then
+      echo "render artifact is missing or empty: $artifact_dir/$artifact" >&2
+      exit 1
+    fi
+  done
+fi
 
 echo "DOCX render smoke passed: pages=$pages"

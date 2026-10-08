@@ -85,3 +85,65 @@ Exact next step after green exact-head CI: inspect the retained DOCX manually
 in Word and LibreOffice for paragraph BiDi, line wrapping and pagination, then
 land the stack in order (#166, #167, this gate) if the head-bound review and
 required checks permit it.
+
+## Visual-artifact checkpoint
+
+Date: 2026-10-08 02:06 UTC. Run:
+`2026-10-08T02:06Z-cycle14-docx-visual-artifact`. Base/head before this
+checkpoint: `960b2faad782a10d5d2b578a6e9f20c610e180ad` on PR #169.
+
+Acceptance for this bounded follow-up is stricter than successful conversion:
+the same rights-safe application export must produce non-empty PDF, extracted
+text and first-page PNG artifacts; the PNG must be inspected for obvious glyph
+clipping, overlap and mixed-script ordering; exact-head CI must retain the
+bundle for independent human review. It still does not claim Microsoft Word
+compatibility, professional typography approval or complete-book pagination.
+
+Current evidence and decisions:
+
+- Context7 resolved `node-poppler` as `/fdawgs/node-poppler`, the closest
+  documented wrapper around the already-installed Poppler CLI because no core
+  Poppler entry was returned. Its current API documentation maps first/last
+  page, `singleFile`, PNG and resolution controls to the required one-page
+  render. No Node dependency was added; the existing system CLI is used.
+- Firecrawl developer search and a full scrape of
+  https://github.com/freedomofpress/dangerzone/issues/524 found a concrete
+  `pdftoppm` failure mode: a full temporary filesystem produced empty files
+  despite exit status zero. The validator therefore verifies every retained
+  artifact is a non-empty regular file instead of trusting process status.
+  The upstream project later stopped using `pdftoppm`; that does not justify a
+  new library here because this gate renders one synthetic page and validates
+  its output explicitly.
+- PostHog's `triaging-visual-review-runs` runtime guidance was loaded. Its
+  applicable boundary is that visual changes require human confirmation before
+  baseline/finalization; one clean render is not general proof. This repository
+  has no connected PostHog Visual Review run or known product telemetry schema,
+  so no event, property, metric or baseline was queried or invented. The PNG is
+  a short-lived GitHub Actions artifact, not PostHog telemetry.
+
+The workflow uploads artifacts only after the render gate succeeds and only
+from the hard-coded synthetic fixture. Reusing this upload path for a private
+manuscript is prohibited without an explicit privacy design and authorization.
+Rollback is removal of the optional third validator argument and the additional
+artifact paths; application/runtime behavior and dependencies remain unchanged.
+
+Local validation on the exact pre-push tree:
+
+- `bash -n tools/docx-render-validator/validate.sh` and `git diff --check`:
+  passed;
+- workflow YAML parse with PyYAML: passed;
+- synthetic RTL DOCX -> LibreOffice PDF -> Poppler text/PNG: passed with one
+  page; PDF 15,161 bytes, extracted UTF-8 text 111 bytes and PNG 18,503 bytes
+  at 1224 x 1584;
+- required URL, email and ZWNJ token: present; deliberately missing-token
+  negative control: rejected with the expected diagnostic;
+- local renderer versions: LibreOfficeDev 26.8.0.0.alpha0 and Poppler
+  `pdftoppm` 26.05.0 (CI logs remain authoritative for Ubuntu versions);
+- direct inspection of the local first-page PNG found one right-aligned line,
+  joined Persian glyphs, intact `https://example.com` and `user@example.org`,
+  and no obvious clipping or overlap. This is a bounded smoke observation, not
+  professional Persian layout approval.
+
+Exact-head CI and its retained bundle are still required before this checkpoint
+is considered complete. Production deployment and Microsoft Word were not
+tested.

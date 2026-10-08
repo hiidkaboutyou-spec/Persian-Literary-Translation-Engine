@@ -69,6 +69,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          artifact_dir=/tmp/cycle14-docx-render-artifacts
           printf '%s\n' \
             'https://example.com' \
             'user@example.org' \
@@ -76,13 +77,21 @@ jobs:
             > /tmp/cycle14-docx-render-expected.txt
           bash tools/docx-render-validator/validate.sh \
             /tmp/cycle14-docx-render-project/exports/manuscript.docx \
-            /tmp/cycle14-docx-render-expected.txt
+            /tmp/cycle14-docx-render-expected.txt \
+            "$artifact_dir"
+          test -s "$artifact_dir/rendered.pdf"
+          test -s "$artifact_dir/rendered.txt"
+          test -s "$artifact_dir/first-page.png"
 
-      - name: Upload rendered DOCX for human layout inspection
-        if: always()
+      - name: Upload rights-safe render bundle for human layout inspection
+        if: success()
         uses: actions/upload-artifact@v6
         with:
-          name: cycle14-rights-safe-docx
-          path: /tmp/cycle14-docx-render-project/exports/manuscript.docx
+          name: cycle14-rights-safe-render-bundle
+          path: |
+            /tmp/cycle14-docx-render-project/exports/manuscript.docx
+            /tmp/cycle14-docx-render-artifacts/rendered.pdf
+            /tmp/cycle14-docx-render-artifacts/rendered.txt
+            /tmp/cycle14-docx-render-artifacts/first-page.png
           if-no-files-found: error
           retention-days: 7
