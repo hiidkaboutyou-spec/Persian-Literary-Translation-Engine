@@ -1,0 +1,124 @@
+name: Cycle 14 DOCX Render
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'engine/crates/document-engine/**'
+      - 'engine/crates/project-engine/**'
+      - 'engine/crates/literary-engine/**'
+      - 'tools/docx-render-validator/**'
+      - '.github/workflows/cycle14-docx-render.yml'
+  pull_request:
+    paths:
+      - 'engine/crates/document-engine/**'
+      - 'engine/crates/project-engine/**'
+      - 'engine/crates/literary-engine/**'
+      - 'tools/docx-render-validator/**'
+      - '.github/workflows/cycle14-docx-render.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cycle14-docx-render-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  libreoffice-render:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install isolated DOCX render tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends libreoffice-writer poppler-utils
+          soffice --version
+          pdftotext -v 2>&1 | head -n 1
+
+      - name: Verify committed engine lockfile
+        working-directory: engine
+        run: cargo metadata --locked --format-version 1 --no-deps > /dev/null
+
+      - name: Exercise real application DOCX export
+        shell: bash
+        working-directory: engine
+        run: |
+          set -euo pipefail
+          project=/tmp/cycle14-docx-render-project
+          source=/tmp/cycle14-docx-render-source.txt
+          rm -rf "$project"
+          printf '%s\n' 'او می‌رود به https://example.com و برای user@example.org می‌نویسد.' > "$source"
+          cargo run --locked --quiet -p literary-engine -- project create "$project" --name 'Cycle 14 DOCX Render'
+          cargo run --locked --quiet -p literary-engine -- project import "$project" "$source"
+          cargo run --locked --quiet -p literary-engine -- project analyze "$project"
+          cargo run --locked --quiet -p literary-engine -- project translate "$project" --provider echo
+          cargo run --locked --quiet -p literary-engine -- project export "$project" --export-format docx
+          test -s "$project/exports/manuscript.docx"
+
+      - name: Render DOCX and verify selectable mixed-script text
+        shell: bash
+        run: |
+          set -euo pipefail
+          artifact_dir=/tmp/cycle14-docx-render-artifacts
+          printf '%s\n' \
+            'https://example.com' \
+            'user@example.org' \
+            'می‌رود' \
+            > /tmp/cycle14-docx-render-expected.txt
+          bash tools/docx-render-validator/validate.sh \
+            /tmp/cycle14-docx-render-project/exports/manuscript.docx \
+            /tmp/cycle14-docx-render-expected.txt \
+            "$artifact_dir"
+          test -s "$artifact_dir/rendered.pdf"
+          test -s "$artifact_dir/rendered.txt"
+          test -s "$artifact_dir/content-page.txt"
+          test -s "$artifact_dir/cover-page.png"
+          test -s "$artifact_dir/content-page.png"
+
+      - name: Prove page-bound validation rejects a cover-only token
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected=/tmp/cycle14-docx-render-cover-only.txt
+          artifact_dir=/tmp/cycle14-docx-render-negative-artifacts
+          log=/tmp/cycle14-docx-render-negative.log
+          printf '%s\n' 'Cycle 14 DOCX Render' > "$expected"
+
+          if bash tools/docx-render-validator/validate.sh \
+            /tmp/cycle14-docx-render-project/exports/manuscript.docx \
+            "$expected" \
+            "$artifact_dir" \
+            > "$log" 2>&1; then
+            cat "$log" >&2
+            echo 'page-bound negative control unexpectedly passed' >&2
+            exit 1
+          fi
+
+          grep -F 'rendered content-page text is missing expected tokens:' "$log"
+          grep -F -- "- 'Cycle 14 DOCX Render'" "$log"
+          test ! -e "$artifact_dir"
+
+      - name: Upload rights-safe render bundle for human layout inspection
+        if: success()
+        uses: actions/upload-artifact@v6
+        with:
+          name: cycle14-rights-safe-render-bundle
+          path: |
+            /tmp/cycle14-docx-render-project/exports/manuscript.docx
+            /tmp/cycle14-docx-render-artifacts/rendered.pdf
+            /tmp/cycle14-docx-render-artifacts/rendered.txt
+            /tmp/cycle14-docx-render-artifacts/content-page.txt
+            /tmp/cycle14-docx-render-artifacts/cover-page.png
+            /tmp/cycle14-docx-render-artifacts/content-page.png
+          if-no-files-found: error
+          retention-days: 7
