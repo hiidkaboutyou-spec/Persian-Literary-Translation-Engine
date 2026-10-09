@@ -94,7 +94,7 @@ jobs:
           test -s cli/phase23-cli-smoke.cdx.json
 
       - name: Upload CLI SBOM smoke artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: phase23-cli-sbom
           path: engine/cli/phase23-cli-smoke.cdx.json
@@ -233,7 +233,7 @@ jobs:
           } > desktop/src-tauri/phase23-integrity-manifest.txt
 
       - name: Upload desktop integrity evidence
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: phase23-desktop-integrity
           path: |
@@ -259,7 +259,7 @@ jobs:
           codesign --verify --deep --strict 'verify/Persian Literary Translation Engine.app'
 
       - name: Upload installable local-use macOS app
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: literary-desktop-macos-arm64-${{ github.sha }}
           path: |
