@@ -131,7 +131,7 @@ name = "bookforge-core"
 version = "3.0.0"
 source = "git+https://github.com/JunjoSick/bookforge?rev=23f8c9d3c97a06f48e13424698441bfb4b037844#23f8c9d3c97a06f48e13424698441bfb4b037844"
 dependencies = [
- "quick-xml",
+ "quick-xml 0.41.0",
  "serde",
  "serde_json",
  "sha2 0.11.0",
@@ -146,7 +146,7 @@ version = "3.0.0"
 source = "git+https://github.com/JunjoSick/bookforge?rev=23f8c9d3c97a06f48e13424698441bfb4b037844#23f8c9d3c97a06f48e13424698441bfb4b037844"
 dependencies = [
  "bookforge-core",
- "quick-xml",
+ "quick-xml 0.41.0",
  "serde",
  "tracing",
  "zip 8.6.0",
@@ -445,7 +445,7 @@ dependencies = [
  "bookforge-epub",
  "lopdf",
  "pdf-extract",
- "quick-xml",
+ "quick-xml 0.42.0",
  "rbook",
  "serde",
  "serde_json",
@@ -1453,6 +1453,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "quick-xml"
+version = "0.42.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41b1177fdf999d2321d3fb46ff47159d9c1fb9ad66a4879f8c50a0b504615e9b"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "quinn"
 version = "0.11.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1583,7 +1592,7 @@ checksum = "663ec1a8b0a945c8bb9c9912b1f8b328ba698a05165a81072e16604be019f45d"
 dependencies = [
  "indexmap",
  "percent-encoding",
- "quick-xml",
+ "quick-xml 0.41.0",
  "thiserror 2.0.20",
  "zip 8.6.0",
 ]
