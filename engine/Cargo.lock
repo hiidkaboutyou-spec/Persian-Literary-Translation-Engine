@@ -26,7 +26,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "sha2 0.10.9",
+ "sha2 0.11.0",
  "tempfile",
  "thiserror 1.0.69",
 ]
@@ -703,7 +703,7 @@ dependencies = [
  "memory-engine",
  "serde",
  "serde_json",
- "sha2 0.10.9",
+ "sha2 0.11.0",
  "tempfile",
  "text-normalization",
  "thiserror 1.0.69",
@@ -1153,7 +1153,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "sha2 0.10.9",
+ "sha2 0.11.0",
  "text-normalization",
 ]
 
@@ -1237,7 +1237,7 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
- "sha2 0.10.9",
+ "sha2 0.11.0",
  "text-normalization",
 ]
 
@@ -1427,7 +1427,7 @@ dependencies = [
  "quality-engine",
  "serde",
  "serde_json",
- "sha2 0.10.9",
+ "sha2 0.11.0",
  "tempfile",
  "thiserror 1.0.69",
  "translation-core",
